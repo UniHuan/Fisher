@@ -222,6 +222,22 @@ describe('RBAC and audit logging (e2e)', () => {
     expect(row?.user_agent).toHaveLength(255);
   });
 
+  it('blocks reviewers from reading audit logs', async () => {
+    const reviewer = await loginAs(app, ADMIN_ROLE.REVIEWER);
+
+    const res = await request(server)
+      .get('/api/v1/admin/audit-logs')
+      .set(clientHeaders())
+      .set('Cookie', reviewer.cookie)
+      .expect(403);
+
+    expect(res.body).toMatchObject({
+      code: ERROR_CODES.FORBIDDEN,
+      message: 'Insufficient permissions',
+      data: null,
+    });
+  });
+
   it('forces operators to see only their own audit rows', async () => {
     const first = await loginAs(app, ADMIN_ROLE.OPERATOR);
     const second = await loginAs(app, ADMIN_ROLE.OPERATOR);
@@ -389,5 +405,7 @@ describe('RBAC and audit logging (e2e)', () => {
       .set('Cookie', reviewer.cookie)
       .expect(200);
     expect(reviewerMe.body.data.permissions).toEqual([...PERMISSIONS[ADMIN_ROLE.REVIEWER]]);
+    expect(reviewerMe.body.data.permissions).not.toContain('audit:read');
+    expect(reviewerMe.body.data.permissions).not.toContain('audit:read:self');
   });
 });
