@@ -29,7 +29,7 @@ CREATE TABLE "spot" (
     "sort_weight" INTEGER NOT NULL DEFAULT 0,
     "is_core" BOOLEAN NOT NULL DEFAULT false,
     "status" VARCHAR(32) NOT NULL DEFAULT 'draft',
-    "source" VARCHAR(32) NOT NULL,
+    "source" VARCHAR(32),
     "verified_at" TIMESTAMPTZ(6),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6) NOT NULL,
@@ -349,7 +349,7 @@ ALTER TABLE "spot" ADD CONSTRAINT "spot_status_check" CHECK ("status" IN ('draft
 ALTER TABLE "spot" ADD CONSTRAINT "spot_open_status_check" CHECK ("open_status" IS NULL OR "open_status" IN ('open', 'paused', 'banned'));
 ALTER TABLE "spot" ADD CONSTRAINT "spot_fee_status_check" CHECK ("fee_status" IS NULL OR "fee_status" IN ('free', 'paid', 'member'));
 ALTER TABLE "spot" ADD CONSTRAINT "spot_district_check" CHECK ("district" IS NULL OR "district" IN ('福田区', '罗湖区', '南山区', '盐田区', '宝安区', '龙岗区', '龙华区', '坪山区', '光明区', '大鹏新区'));
-ALTER TABLE "spot" ADD CONSTRAINT "spot_source_check" CHECK ("source" IN ('official', 'operation', 'user_report', 'third_party'));
+ALTER TABLE "spot" ADD CONSTRAINT "spot_source_check" CHECK ("source" IS NULL OR "source" IN ('official', 'operation', 'user_report', 'third_party'));
 ALTER TABLE "spot" ADD CONSTRAINT "spot_latitude_check" CHECK ("latitude" IS NULL OR ("latitude" BETWEEN 22.3 AND 22.9));
 ALTER TABLE "spot" ADD CONSTRAINT "spot_longitude_check" CHECK ("longitude" IS NULL OR ("longitude" BETWEEN 113.7 AND 114.7));
 ALTER TABLE "spot" ADD CONSTRAINT "spot_nav_latitude_check" CHECK ("nav_latitude" IS NULL OR ("nav_latitude" BETWEEN 22.3 AND 22.9));

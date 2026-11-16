@@ -14,11 +14,14 @@ const prisma = new PrismaClient();
 
 const VALID_SPOT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const INVALID_OPEN_STATUS_SPOT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAW';
+const MINIMAL_DRAFT_SPOT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAX';
 
 describe('database schema', () => {
   beforeAll(async () => {
     await prisma.spot.deleteMany({
-      where: { spot_id: { in: [VALID_SPOT_ID, INVALID_OPEN_STATUS_SPOT_ID] } },
+      where: {
+        spot_id: { in: [VALID_SPOT_ID, INVALID_OPEN_STATUS_SPOT_ID, MINIMAL_DRAFT_SPOT_ID] },
+      },
     });
   });
 
@@ -57,6 +60,17 @@ describe('database schema', () => {
         },
       }),
     ).rejects.toThrow();
+  });
+
+  it('allows a draft with only spot_id and spot_name', async () => {
+    const spot = await prisma.spot.create({
+      data: {
+        spot_id: MINIMAL_DRAFT_SPOT_ID,
+        spot_name: '最简草稿钓点',
+      },
+    });
+    expect(spot.status).toBe('draft');
+    expect(spot.source).toBeNull();
   });
 
   it('serves readiness with a database round trip', async () => {
