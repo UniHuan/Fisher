@@ -1,7 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
+import { ADMIN_ROLE } from '@szfisher/shared';
 import jwt from 'jsonwebtoken';
 import { generateSync } from 'otplib';
 import request from 'supertest';
+import { PERMISSIONS } from '../src/modules/auth/permissions';
 import {
   ADMIN_ORIGIN,
   ADMIN_USER_AGENT,
@@ -355,7 +357,7 @@ describe('Admin auth (e2e)', () => {
       .expect(401);
   });
 
-  it('returns the current admin, empty permissions and a usable csrf token', async () => {
+  it('returns the current admin, role permissions and a usable csrf token', async () => {
     await request(server).get('/api/v1/admin/me').set(clientHeaders()).expect(401);
 
     const session = await loginAs(app, 'operator');
@@ -372,7 +374,7 @@ describe('Admin auth (e2e)', () => {
         role: 'operator',
         totp_enabled: false,
       },
-      permissions: [],
+      permissions: [...PERMISSIONS[ADMIN_ROLE.OPERATOR]],
     });
     expect(me.body.data.csrf_token).toBe(session.csrf);
 

@@ -19,6 +19,7 @@ import {
 import { CsrfService } from './csrf.service';
 import type { LoginDto } from './dto/login.dto';
 import { PasswordService } from './password.service';
+import { permissionsForRole } from './permissions';
 import { RecoveryCodeService } from './recovery-code.service';
 import { TotpService } from './totp.service';
 
@@ -353,9 +354,10 @@ export class AdminAuthService {
     if (row === null || row.status !== 'active' || row.token_version !== admin.tokenVersion) {
       throw this.unauthenticated();
     }
+    const profile = toAdminProfile(row);
     return {
-      admin: toAdminProfile(row),
-      permissions: [],
+      admin: profile,
+      permissions: [...permissionsForRole(profile.role)],
       csrf_token: this.csrf.generate(admin.adminId, admin.jti),
     };
   }

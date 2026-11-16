@@ -1,14 +1,16 @@
-import { Module, type DynamicModule } from '@nestjs/common';
+import { Module, type DynamicModule, type Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
 import { AdminAuthModule } from './modules/auth/admin-auth.module';
+import { AuditLogModule } from './modules/audit/audit-log.module';
 import { HealthController } from './modules/health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
 export class AppModule {
   // Built per application instance so tests can set process.env before Zod validation runs.
-  static forRoot(): DynamicModule {
+  // extraControllers is test-only wiring; production createApp passes nothing.
+  static forRoot(extraControllers: Type<unknown>[] = []): DynamicModule {
     return {
       module: AppModule,
       imports: [
@@ -19,8 +21,9 @@ export class AppModule {
         }),
         PrismaModule,
         AdminAuthModule,
+        AuditLogModule,
       ],
-      controllers: [HealthController],
+      controllers: [HealthController, ...extraControllers],
     };
   }
 }

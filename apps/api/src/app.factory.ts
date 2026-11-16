@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { ValidationPipe, type INestApplication, type Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -12,8 +12,8 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 const BODY_LIMIT = '2mb';
 
-export async function createApp(): Promise<INestApplication> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(), {
+export async function createApp(extraControllers: Type<unknown>[] = []): Promise<INestApplication> {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(extraControllers), {
     bodyParser: false,
   });
   const adminOrigins = app.get(ConfigService).getOrThrow<string[]>('ADMIN_ORIGINS');

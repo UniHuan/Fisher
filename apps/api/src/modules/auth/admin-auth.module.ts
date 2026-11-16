@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AdminAuthGuard } from '../../common/guards/admin-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AdminUsersRepository } from '../admin/admin-users.repository';
 import { AdminAuthController } from './admin-auth.controller';
@@ -15,6 +16,9 @@ import { TotpService } from './totp.service';
   imports: [PrismaModule],
   controllers: [AdminAuthController],
   providers: [
+    // Exported so per-controller @UseGuards can resolve both guard classes.
+    AdminAuthGuard,
+    RolesGuard,
     AdminAuthService,
     AdminUsersRepository,
     AdminTokenService,
@@ -25,6 +29,13 @@ import { TotpService } from './totp.service';
     // Global guard: it only enforces /api/v1/admin and skips @Public routes.
     { provide: APP_GUARD, useClass: AdminAuthGuard },
   ],
-  exports: [AdminAuthService, AdminUsersRepository, AdminTokenService, CsrfService],
+  exports: [
+    AdminAuthGuard,
+    RolesGuard,
+    AdminAuthService,
+    AdminUsersRepository,
+    AdminTokenService,
+    CsrfService,
+  ],
 })
 export class AdminAuthModule {}

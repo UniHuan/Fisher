@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
 import { createApp } from '../src/app.factory';
+import { TestAdminController } from './support/test-admin.controller';
 
 const TEST_DATABASE_URL = 'postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public';
 const TEST_ADMIN_ORIGINS = 'https://admin.szfisher.test,https://admin-staging.szfisher.test';
@@ -21,7 +22,7 @@ export async function createTestApp(): Promise<INestApplication> {
   process.env.STORAGE_DRIVER = 'local';
   process.env.STORAGE_LOCAL_ROOT = mkdtempSync(join(tmpdir(), 'szfisher-api-test-'));
 
-  const app = await createApp();
+  const app = await createApp([TestAdminController]);
   await app.init();
   return app;
 }
