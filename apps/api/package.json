@@ -10,7 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "prisma:test:prepare": "node scripts/prepare-test-database.mjs"
+    "prisma:test:prepare": "node scripts/prepare-test-database.mjs",
+    "openapi:generate": "tsc -p tsconfig.openapi.json && tsx dist/openapi/scripts/generate-openapi.js && openapi-typescript ../../openapi/openapi.yaml -o ../../packages/api-client/src/schema.d.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -47,9 +48,11 @@
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "24.19.2",
     "@types/supertest": "7.2.1",
+    "openapi-typescript": "7.13.0",
     "supertest": "7.3.2",
     "ts-jest": "29.4.15",
     "tsx": "4.23.15",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "yaml": "2.9.1"
   }
 }

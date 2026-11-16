@@ -4,11 +4,16 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --passWithNoTests",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json && cp src/schema.d.ts dist/schema.d.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
   }
 }

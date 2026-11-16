@@ -1,0 +1,294 @@
+openapi: 3.0.0
+paths:
+  /health:
+    get:
+      operationId: HealthController_check
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: &a1
+        - Health
+  /ready:
+    get:
+      operationId: HealthController_ready
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a1
+  /api/v1/admin/auth/login:
+    post:
+      operationId: AdminAuthController_login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginDto"
+      responses:
+        "200":
+          description: ""
+      tags: &a2
+        - admin auth
+  /api/v1/admin/auth/refresh:
+    post:
+      operationId: AdminAuthController_refresh
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/auth/logout:
+    post:
+      operationId: AdminAuthController_logout
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/auth/totp/setup:
+    post:
+      operationId: AdminAuthController_setupTotp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaTokenDto"
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/auth/totp/enable:
+    post:
+      operationId: AdminAuthController_enableTotp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpCodeDto"
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/auth/totp/verify:
+    post:
+      operationId: AdminAuthController_verifyTotp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpCodeDto"
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/auth/totp/recovery:
+    post:
+      operationId: AdminAuthController_recovery
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoveryCodeDto"
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/me:
+    get:
+      operationId: AdminAuthController_me
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags: *a2
+  /api/v1/admin/audit-logs:
+    get:
+      operationId: AuditLogController_list
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags:
+        - audit
+  /api/v1/dictionaries:
+    get:
+      operationId: DictionariesController_list
+      parameters: []
+      responses:
+        "200":
+          description: Dictionary payload with a strong ETag
+        "304":
+          description: ETag matched; no body
+      summary: Public dictionaries in seven stable groups
+      tags:
+        - public
+  /api/v1/admin/dictionaries:
+    get:
+      operationId: AdminDictionariesController_list
+      parameters: []
+      responses:
+        "200":
+          description: Dictionary rows in a stable list
+      summary: List every dictionary row, including disabled ones
+      tags: &a3
+        - admin dictionaries
+    post:
+      operationId: AdminDictionariesController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDictionaryDto"
+      responses:
+        "201":
+          description: Created dictionary row
+        "409":
+          description: Dictionary key already exists
+      summary: Create a dictionary row
+      tags: *a3
+  /api/v1/admin/dictionaries/{type}/{key}:
+    put:
+      operationId: AdminDictionariesController_update
+      parameters:
+        - name: type
+          required: true
+          in: path
+          schema:
+            example: poi_type
+            type: string
+        - name: key
+          required: true
+          in: path
+          schema:
+            example: food
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDictionaryDto"
+      responses:
+        "200":
+          description: Updated dictionary row
+        "404":
+          description: Dictionary row does not exist
+      summary: Update a dictionary label, order, visibility or parent
+      tags: *a3
+  /api/v1/config:
+    get:
+      operationId: ClientConfigController_get
+      parameters: []
+      responses:
+        "200":
+          description: Map defaults, feature switches and freshness
+      summary: Public client configuration whitelist
+      tags:
+        - config
+info:
+  title: SZFisher API
+  description: "Shenzhen fishing assistant API. Base path: /api/v1."
+  version: 1.0.0
+  contact: {}
+tags:
+  - name: public
+    description: Public client endpoints
+  - name: admin auth
+    description: Admin authentication and sessions
+  - name: admin dictionaries
+    description: Super-admin dictionary maintenance
+  - name: audit
+    description: Audit log queries
+  - name: config
+    description: Client configuration whitelist
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+    admin-cookie:
+      type: apiKey
+      in: cookie
+      name: __Host-fish_access
+  schemas:
+    LoginDto:
+      type: object
+      properties: {}
+    MfaTokenDto:
+      type: object
+      properties: {}
+    TotpCodeDto:
+      type: object
+      properties: {}
+    RecoveryCodeDto:
+      type: object
+      properties: {}
+    CreateDictionaryDto:
+      type: object
+      properties:
+        dict_type:
+          type: string
+          enum:
+            - district
+            - fish_type
+            - fee_status
+            - fee_unit
+            - water_type
+            - venue_type
+            - fishing_method
+            - poi_type
+          example: poi_type
+        dict_key:
+          type: string
+          maxLength: 64
+          example: food
+        dict_label:
+          type: string
+          maxLength: 128
+          example: 餐饮
+        sort_order:
+          type: number
+          default: 0
+          minimum: 0
+        enabled:
+          type: boolean
+          default: true
+        parent_key:
+          type: string
+          nullable: true
+          maxLength: 64
+      required:
+        - dict_type
+        - dict_key
+        - dict_label
+    UpdateDictionaryDto:
+      type: object
+      properties:
+        dict_label:
+          type: string
+          maxLength: 128
+          example: 餐饮
+        sort_order:
+          type: number
+          minimum: 0
+        enabled:
+          type: boolean
+        parent_key:
+          type: string
+          nullable: true
+          maxLength: 64

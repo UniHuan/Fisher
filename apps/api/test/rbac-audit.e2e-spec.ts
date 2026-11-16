@@ -1,7 +1,6 @@
 import { Logger, type ExecutionContext, type INestApplication } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import { ADMIN_ROLE, ERROR_CODES } from '@szfisher/shared';
-import { generateSync } from 'otplib';
 import request from 'supertest';
 import { ulid } from 'ulid';
 import { AppError } from '../src/common/errors/app-error';
@@ -11,16 +10,11 @@ import { AuditLogService } from '../src/modules/audit/audit-log.service';
 import { PERMISSIONS } from '../src/modules/auth/permissions';
 import { createTestApp } from './create-test-app';
 import {
-  adminHeaders,
   cleanupAuthTestData,
   clientHeaders,
-  cookieHeaderFrom,
-  createAdmin,
   getAuthTestPrisma,
   loginAs,
-  loginWithPassword,
-  readAuthBody,
-  type AuthSession,
+  loginAsSuperAdmin,
 } from './support/auth-helpers';
 
 jest.setTimeout(30000);
@@ -128,35 +122,6 @@ describe('RBAC and audit logging (e2e)', () => {
     await app.close();
   });
 
-  async function loginAsSuperAdmin(): Promise<AuthSession> {
-    const admin = await createAdmin(app, ADMIN_ROLE.SUPER_ADMIN);
-    const firstLogin = await loginWithPassword(app, admin);
-    const mfaToken = readAuthBody(firstLogin).mfa_token;
-    if (mfaToken === undefined) {
-      throw new Error('expected must_bind_totp mfa_token');
-    }
-    const setup = await request(server)
-      .post('/api/v1/admin/auth/totp/setup')
-      .set(adminHeaders())
-      .send({ mfa_token: mfaToken })
-      .expect(200);
-    const secret = setup.body.data.manual_key as string;
-    admin.totpSecret = secret;
-    const enable = await request(server)
-      .post('/api/v1/admin/auth/totp/enable')
-      .set(adminHeaders())
-      .send({ mfa_token: mfaToken, code: generateSync({ secret }) })
-      .expect(200);
-    const body = readAuthBody(enable);
-    return {
-      response: enable,
-      body,
-      cookie: cookieHeaderFrom(enable),
-      csrf: body.csrf_token ?? '',
-      admin,
-    };
-  }
-
   it('blocks an operator from a super-admin-only route', async () => {
     const operator = await loginAs(app, ADMIN_ROLE.OPERATOR);
 
@@ -175,7 +140,7 @@ describe('RBAC and audit logging (e2e)', () => {
   });
 
   it('lets a super admin call the super-admin-only route', async () => {
-    const superAdmin = await loginAsSuperAdmin();
+    const superAdmin = await loginAsSuperAdmin(app);
 
     const res = await request(server)
       .post('/api/v1/admin/__test__/super-only')
@@ -273,7 +238,7 @@ describe('RBAC and audit logging (e2e)', () => {
   });
 
   it('lets a super admin filter by admin, action, entity type and time range', async () => {
-    const superAdmin = await loginAsSuperAdmin();
+    const superAdmin = await loginAsSuperAdmin(app);
     const audit = app.get(AuditLogService);
     const createAction = `${TEST_ACTION_PREFIX}.filter.create.${ulid()}`;
     const updateAction = `${TEST_ACTION_PREFIX}.filter.update.${ulid()}`;
@@ -331,7 +296,7 @@ describe('RBAC and audit logging (e2e)', () => {
   });
 
   it('paginates results with page metadata and defaults', async () => {
-    const superAdmin = await loginAsSuperAdmin();
+    const superAdmin = await loginAsSuperAdmin(app);
     const audit = app.get(AuditLogService);
     const action = `${TEST_ACTION_PREFIX}.page.${ulid()}`;
     for (let index = 0; index < 3; index += 1) {
@@ -371,7 +336,7 @@ describe('RBAC and audit logging (e2e)', () => {
   });
 
   it('rejects invalid audit log queries', async () => {
-    const superAdmin = await loginAsSuperAdmin();
+    const superAdmin = await loginAsSuperAdmin(app);
     const invalidQueries = [
       { page: 0 },
       { page_size: 101 },

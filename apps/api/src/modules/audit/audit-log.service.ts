@@ -11,6 +11,10 @@ import type { AuditLogQueryDto } from './dto/audit-log-query.dto';
 
 export const AUDIT_LOG_DEFAULT_PAGE_SIZE = 20;
 export const AUDIT_LOG_REDACTED = '[REDACTED]';
+// audit_log columns are varchar(64); callers may build longer composite ids.
+export const AUDIT_ACTION_MAX_LENGTH = 64;
+export const AUDIT_ENTITY_TYPE_MAX_LENGTH = 64;
+export const AUDIT_ENTITY_ID_MAX_LENGTH = 64;
 
 const SENSITIVE_KEY_PATTERN =
   /(password|passwd|token|secret|authorization|cookie|phone|mobile|refresh|access)/i;
@@ -112,9 +116,12 @@ export class AuditLogService {
     try {
       await this.logs.create({
         adminId: input.adminId,
-        action: input.action,
-        entityType: input.entityType,
-        entityId: input.entityId ?? null,
+        action: input.action.slice(0, AUDIT_ACTION_MAX_LENGTH),
+        entityType: input.entityType.slice(0, AUDIT_ENTITY_TYPE_MAX_LENGTH),
+        entityId:
+          input.entityId === undefined || input.entityId === null
+            ? null
+            : input.entityId.slice(0, AUDIT_ENTITY_ID_MAX_LENGTH),
         before: sanitizeAuditPayload(input.before),
         after: sanitizeAuditPayload(input.after),
         ip:

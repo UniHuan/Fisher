@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import type { AdminRole } from '@szfisher/shared';
+import { ADMIN_ROLE, type AdminRole } from '@szfisher/shared';
 import { argon2id, hash } from 'argon2';
 import { generateSync } from 'otplib';
 import request from 'supertest';
@@ -164,6 +164,40 @@ export async function loginWithTotp(
     response,
     body,
     cookie: cookieHeaderFrom(response),
+    csrf: body.csrf_token ?? '',
+    admin,
+  };
+}
+
+/**
+ * Creates a brand-new super admin and completes the forced TOTP binding flow.
+ * New admins start without TOTP, so the first password login returns must_bind_totp.
+ */
+export async function loginAsSuperAdmin(app: INestApplication): Promise<AuthSession> {
+  const server = app.getHttpServer();
+  const admin = await createAdmin(app, ADMIN_ROLE.SUPER_ADMIN);
+  const firstLogin = await loginWithPassword(app, admin);
+  const mfaToken = readAuthBody(firstLogin).mfa_token;
+  if (mfaToken === undefined) {
+    throw new Error('expected must_bind_totp mfa_token');
+  }
+  const setup = await request(server)
+    .post('/api/v1/admin/auth/totp/setup')
+    .set(adminHeaders())
+    .send({ mfa_token: mfaToken })
+    .expect(200);
+  const secret = setup.body.data.manual_key as string;
+  admin.totpSecret = secret;
+  const enable = await request(server)
+    .post('/api/v1/admin/auth/totp/enable')
+    .set(adminHeaders())
+    .send({ mfa_token: mfaToken, code: generateSync({ secret }) })
+    .expect(200);
+  const body = readAuthBody(enable);
+  return {
+    response: enable,
+    body,
+    cookie: cookieHeaderFrom(enable),
     csrf: body.csrf_token ?? '',
     admin,
   };

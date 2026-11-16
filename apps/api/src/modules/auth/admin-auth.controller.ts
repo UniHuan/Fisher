@@ -8,6 +8,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -36,6 +37,7 @@ function sessionBody(session: IssuedSession): SessionBody {
   return { csrf_token: session.csrf_token, admin: session.admin };
 }
 
+@ApiTags('admin auth')
 @Controller('admin')
 export class AdminAuthController {
   constructor(private readonly auth: AdminAuthService) {}

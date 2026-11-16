@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
 import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { AuditLogModule } from './modules/audit/audit-log.module';
+import { ClientConfigModule } from './modules/config/client-config.module';
+import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { HealthController } from './modules/health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -22,6 +24,8 @@ export class AppModule {
         PrismaModule,
         AdminAuthModule,
         AuditLogModule,
+        DictionariesModule,
+        ClientConfigModule,
       ],
       controllers: [HealthController, ...extraControllers],
     };

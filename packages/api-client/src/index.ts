@@ -1,2 +1,4 @@
-// API client contract. Task 7 generates schema types from the OpenAPI document.
-export {};
+// API client contract generated from the committed OpenAPI document.
+export { createApiClient } from './client';
+export type { ApiClient, ClientType, CreateApiClientOptions } from './client';
+export type { components, paths } from './schema';
