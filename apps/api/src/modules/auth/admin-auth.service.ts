@@ -5,7 +5,11 @@ import { ADMIN_ROLE, ERROR_CODES, type AdminRole } from '@szfisher/shared';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
-import { AdminUsersRepository } from '../admin/admin-users.repository';
+import {
+  AUDIT_IP_MAX_LENGTH,
+  AUDIT_USER_AGENT_MAX_LENGTH,
+  AdminUsersRepository,
+} from '../admin/admin-users.repository';
 import {
   ADMIN_SESSION_ABSOLUTE_MS,
   ADMIN_SESSION_IDLE_MS,
@@ -19,7 +23,6 @@ import { RecoveryCodeService } from './recovery-code.service';
 import { TotpService } from './totp.service';
 
 const MFA_TOKEN_TTL_MS = 5 * 60 * 1000;
-const MAX_MFA_ATTEMPTS = 5;
 const GENERIC_LOGIN_MESSAGE = 'Invalid username or password';
 const INVALID_MFA_MESSAGE = 'Invalid or expired MFA token';
 const INVALID_REFRESH_MESSAGE = 'Invalid refresh token';
@@ -98,16 +101,6 @@ function requestDigest(meta: RequestMeta): string {
   return sha256Hex(`${meta.ip}|${meta.userAgent}`);
 }
 
-function readMfaAttempts(responseJson: unknown): number {
-  if (typeof responseJson !== 'object' || responseJson === null || Array.isArray(responseJson)) {
-    return 0;
-  }
-  const attempts = (responseJson as { attempts?: unknown }).attempts;
-  return typeof attempts === 'number' && Number.isInteger(attempts) && attempts >= 0
-    ? attempts
-    : 0;
-}
-
 function toAdminProfile(admin: AdminUser): AdminProfile {
   if (!isAdminRole(admin.role)) {
     throw new AppError(
@@ -175,7 +168,7 @@ export class AdminAuthService {
 
     const passwordValid = await this.passwords.verify(admin.password_hash, input.password);
     if (!passwordValid) {
-      await this.users.recordFailedPassword(admin, now);
+      await this.users.recordFailedPassword(admin.admin_id, now);
       throw this.unauthenticated();
     }
 
@@ -185,7 +178,9 @@ export class AdminAuthService {
 
     await this.users.resetLoginFailures(admin.admin_id);
 
-    if (admin.totp_enabled_at !== null && admin.totp_secret_encrypted !== null) {
+    // A flagged TOTP account must never fall back to a password-only session, even if
+    // its secret is missing or undecryptable; verify will then fail with 401.
+    if (admin.totp_enabled_at !== null) {
       const mfaToken = await this.createMfaChallenge(admin.admin_id, meta, now);
       return { kind: 'mfa_required', body: { mfa_required: true, mfa_token: mfaToken } };
     }
@@ -309,9 +304,9 @@ export class AdminAuthService {
         entityType: 'admin_user',
         entityId: admin.admin_id,
         after: { reason: 'refresh_token_reuse' },
-        ip: meta.ip,
+        ip: meta.ip.slice(0, AUDIT_IP_MAX_LENGTH),
         requestId: meta.requestId,
-        userAgent: meta.userAgent,
+        userAgent: meta.userAgent.slice(0, AUDIT_USER_AGENT_MAX_LENGTH),
       });
       throw this.unauthenticated(INVALID_REFRESH_MESSAGE);
     }
@@ -432,13 +427,12 @@ export class AdminAuthService {
     return { challenge, admin };
   }
 
-  private async failMfa(challenge: IdempotencyKey, message = 'Invalid verification code'): Promise<never> {
-    const attempts = readMfaAttempts(challenge.response_json) + 1;
-    if (attempts >= MAX_MFA_ATTEMPTS) {
-      await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
-    } else {
-      await this.users.updateMfaAttempts(challenge.actor_id, challenge.key, attempts);
-    }
+  private async failMfa(
+    challenge: IdempotencyKey,
+    message = 'Invalid verification code',
+  ): Promise<never> {
+    // Row-locked counting keeps parallel wrong codes from exceeding the five-attempt cap.
+    await this.users.registerMfaFailure(challenge.actor_id, challenge.key);
     throw this.unauthenticated(message);
   }
 

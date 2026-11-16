@@ -18,7 +18,8 @@ import type { AdminContext, RequestWithContext } from '../types/request-context'
 
 function isAdminPath(request: RequestWithContext): boolean {
   const url = request.originalUrl ?? request.path ?? '';
-  const path = url.split('?')[0] ?? '';
+  // Express routes case-insensitively, so the guard must normalize before matching.
+  const path = (url.split('?')[0] ?? '').toLowerCase();
   return path === '/api/v1/admin' || path.startsWith('/api/v1/admin/');
 }
 

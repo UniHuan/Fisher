@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import jwt from 'jsonwebtoken';
 import { generateSync } from 'otplib';
 import request from 'supertest';
 import {
@@ -14,10 +15,13 @@ import {
   loginWithPassword,
   rawSetCookieHeader,
   refresh,
+  type TestAdmin,
 } from './support/auth-helpers';
 import { createTestApp } from './create-test-app';
 
 jest.setTimeout(30000);
+
+const TEST_JWT_ACCESS_SECRET = 'test-jwt-access-secret-0123456789abcdef';
 
 describe('Admin auth (e2e)', () => {
   let app: INestApplication;
@@ -32,6 +36,24 @@ describe('Admin auth (e2e)', () => {
     await cleanupAuthTestData();
     await app.close();
   });
+
+  async function bindTotp(admin: TestAdmin): Promise<string> {
+    const firstLogin = await loginWithPassword(app, admin);
+    const bindToken = firstLogin.body.data.mfa_token as string;
+    const setup = await request(server)
+      .post('/api/v1/admin/auth/totp/setup')
+      .set(adminHeaders())
+      .send({ mfa_token: bindToken })
+      .expect(200);
+    const manualKey = setup.body.data.manual_key as string;
+    await request(server)
+      .post('/api/v1/admin/auth/totp/enable')
+      .set(adminHeaders())
+      .send({ mfa_token: bindToken, code: generateSync({ secret: manualKey }) })
+      .expect(200);
+    admin.totpSecret = manualKey;
+    return manualKey;
+  }
 
   it('sets host-only secure cookies and never returns tokens', async () => {
     const session = await loginAs(app, 'operator');
@@ -440,5 +462,155 @@ describe('Admin auth (e2e)', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.admin.admin_id).toBe(admin.adminId);
     expect(ADMIN_ORIGIN).not.toBe('https://admin-staging.szfisher.test');
+  });
+
+  it('guards mixed-case admin paths that Express routes case-insensitively', async () => {
+    await request(server)
+      .post('/API/V1/ADMIN/AUTH/LOGOUT')
+      .set(clientHeaders())
+      .expect(401);
+
+    const session = await loginAs(app, 'operator');
+    await request(server)
+      .post('/API/V1/ADMIN/AUTH/LOGOUT')
+      .set(clientHeaders())
+      .set('Cookie', session.cookie)
+      .set('X-CSRF-Token', session.csrf)
+      .expect(200);
+  });
+
+  it('counts parallel wrong passwords atomically and locks at five', async () => {
+    const admin = await createAdmin(app, 'operator');
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, (_value, index) =>
+        request(server)
+          .post('/api/v1/admin/auth/login')
+          .set(adminHeaders())
+          .send({ username: admin.username, password: `parallel-wrong-${index}-password` }),
+      ),
+    );
+    for (const response of responses) {
+      expect(response.status).toBe(401);
+    }
+
+    const stored = await getAuthTestPrisma().adminUser.findUniqueOrThrow({
+      where: { admin_id: admin.adminId },
+    });
+    expect(stored.failed_login_count).toBe(5);
+    expect(stored.locked_until).not.toBeNull();
+  });
+
+  it('invalidates the mfa token after five parallel wrong TOTP codes', async () => {
+    const admin = await createAdmin(app, 'super_admin');
+    const manualKey = await bindTotp(admin);
+
+    const login = await loginWithPassword(app, admin);
+    const mfaToken = login.body.data.mfa_token as string;
+    const activeCode = generateSync({ secret: manualKey });
+    const wrongCode = activeCode === '000000' ? '000001' : '000000';
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        request(server)
+          .post('/api/v1/admin/auth/totp/verify')
+          .set(adminHeaders())
+          .send({ mfa_token: mfaToken, code: wrongCode }),
+      ),
+    );
+    for (const response of responses) {
+      expect(response.status).toBe(401);
+    }
+
+    const challenge = await getAuthTestPrisma().idempotencyKey.findFirst({
+      where: { actor_type: 'admin_mfa', actor_id: admin.adminId },
+    });
+    expect(challenge).toBeNull();
+
+    await request(server)
+      .post('/api/v1/admin/auth/totp/verify')
+      .set(adminHeaders())
+      .send({ mfa_token: mfaToken, code: generateSync({ secret: manualKey }) })
+      .expect(401);
+  });
+
+  it('truncates long user agents when recording refresh-reuse audits', async () => {
+    const first = await loginAs(app, 'operator');
+    await refresh(app, first.cookie);
+    const before = await getAuthTestPrisma().adminUser.findUniqueOrThrow({
+      where: { admin_id: first.admin.adminId },
+    });
+
+    const longUserAgent = 'long-agent-'.padEnd(300, 'x');
+    await request(server)
+      .post('/api/v1/admin/auth/refresh')
+      .set(adminHeaders())
+      .set('User-Agent', longUserAgent)
+      .set('Cookie', first.cookie)
+      .expect(401);
+
+    const after = await getAuthTestPrisma().adminUser.findUniqueOrThrow({
+      where: { admin_id: first.admin.adminId },
+    });
+    expect(after.token_version).toBe(before.token_version + 1);
+    expect(after.refresh_token_hash).toBeNull();
+    expect(after.session_started_at).toBeNull();
+
+    const audit = await getAuthTestPrisma().auditLog.findFirst({
+      where: { admin_id: first.admin.adminId, action: 'auth.refresh_reuse' },
+      orderBy: { created_at: 'desc' },
+    });
+    expect(audit).not.toBeNull();
+    expect(audit?.user_agent).toHaveLength(255);
+  });
+
+  it('returns 40102 for an expired access token', async () => {
+    const admin = await createAdmin(app, 'operator');
+    const expiredToken = jwt.sign(
+      { role: 'operator', token_version: 0 },
+      TEST_JWT_ACCESS_SECRET,
+      {
+        algorithm: 'HS256',
+        subject: admin.adminId,
+        jwtid: 'expired-access-token',
+        expiresIn: -10,
+      },
+    );
+
+    const response = await request(server)
+      .get('/api/v1/admin/me')
+      .set(clientHeaders())
+      .set('Cookie', `__Host-fish_access=${expiredToken}`)
+      .expect(401);
+    expect(response.body).toMatchObject({ code: 40102, message: 'Token expired' });
+  });
+
+  it('requires MFA when totp_enabled_at is set but the secret is missing', async () => {
+    const admin = await createAdmin(app, 'operator');
+    await getAuthTestPrisma().adminUser.update({
+      where: { admin_id: admin.adminId },
+      data: { totp_enabled_at: new Date() },
+    });
+
+    const login = await loginWithPassword(app, admin);
+    expect(login.status).toBe(200);
+    expect(login.body.data).toMatchObject({
+      mfa_required: true,
+      mfa_token: expect.any(String),
+    });
+    expect(login.headers['set-cookie']).toBeUndefined();
+
+    const verify = await request(server)
+      .post('/api/v1/admin/auth/totp/verify')
+      .set(adminHeaders())
+      .send({ mfa_token: login.body.data.mfa_token as string, code: '123456' })
+      .expect(401);
+    expect(verify.body.code).toBe(40101);
+    expect(verify.headers['set-cookie']).toBeUndefined();
+
+    const stored = await getAuthTestPrisma().adminUser.findUniqueOrThrow({
+      where: { admin_id: admin.adminId },
+    });
+    expect(stored.session_started_at).toBeNull();
+    expect(stored.refresh_token_hash).toBeNull();
   });
 });

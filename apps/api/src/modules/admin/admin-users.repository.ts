@@ -5,7 +5,29 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 export const MFA_ACTOR_TYPE = 'admin_mfa';
 export const MAX_FAILED_PASSWORDS = 5;
+export const MAX_MFA_ATTEMPTS = 5;
 export const PASSWORD_LOCK_MS = 15 * 60 * 1000;
+export const AUDIT_IP_MAX_LENGTH = 45;
+export const AUDIT_USER_AGENT_MAX_LENGTH = 255;
+
+interface FailedLoginRow {
+  failed_login_count: number;
+  locked_until: Date | null;
+}
+
+interface MfaAttemptRow {
+  response_json: unknown;
+}
+
+function readMfaAttempts(responseJson: unknown): number {
+  if (typeof responseJson !== 'object' || responseJson === null || Array.isArray(responseJson)) {
+    return 0;
+  }
+  const attempts = (responseJson as { attempts?: unknown }).attempts;
+  return typeof attempts === 'number' && Number.isInteger(attempts) && attempts >= 0
+    ? attempts
+    : 0;
+}
 
 export interface StartSessionInput {
   refreshTokenHash: string;
@@ -44,22 +66,38 @@ export class AdminUsersRepository {
   }
 
   /**
-   * Counts one password failure. An expired lock restarts the count at one; reaching
-   * five failed attempts locks the account for 15 minutes.
+   * Counts one password failure under a row lock. An expired lock restarts the count
+   * at one; reaching five failed attempts locks the account for 15 minutes. The lock
+   * keeps parallel failures from over-counting or slipping past the fifth attempt.
    */
-  async recordFailedPassword(admin: AdminUser, now: Date): Promise<void> {
-    const lockExpired =
-      admin.locked_until !== null && admin.locked_until.getTime() <= now.getTime();
-    const failedLoginCount = (lockExpired ? 0 : admin.failed_login_count) + 1;
-    await this.prisma.adminUser.update({
-      where: { admin_id: admin.admin_id },
-      data: {
-        failed_login_count: failedLoginCount,
-        locked_until:
-          failedLoginCount >= MAX_FAILED_PASSWORDS
-            ? new Date(now.getTime() + PASSWORD_LOCK_MS)
-            : null,
-      },
+  async recordFailedPassword(adminId: string, now: Date): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<FailedLoginRow[]>`
+        SELECT "failed_login_count", "locked_until"
+        FROM "admin_user"
+        WHERE "admin_id" = ${adminId}
+        FOR UPDATE
+      `;
+      const row = rows[0];
+      if (row === undefined) {
+        return;
+      }
+      if (row.locked_until !== null && row.locked_until.getTime() > now.getTime()) {
+        return;
+      }
+      const lockExpired =
+        row.locked_until !== null && row.locked_until.getTime() <= now.getTime();
+      const failedLoginCount = (lockExpired ? 0 : row.failed_login_count) + 1;
+      await tx.adminUser.update({
+        where: { admin_id: adminId },
+        data: {
+          failed_login_count: failedLoginCount,
+          locked_until:
+            failedLoginCount >= MAX_FAILED_PASSWORDS
+              ? new Date(now.getTime() + PASSWORD_LOCK_MS)
+              : null,
+        },
+      });
     });
   }
 
@@ -193,16 +231,42 @@ export class AdminUsersRepository {
     });
   }
 
-  async updateMfaAttempts(adminId: string, keyHash: string, attempts: number): Promise<void> {
-    await this.prisma.idempotencyKey.update({
-      where: {
-        actor_type_actor_id_key: {
-          actor_type: MFA_ACTOR_TYPE,
-          actor_id: adminId,
-          key: keyHash,
-        },
-      },
-      data: { response_json: { attempts } },
+  /**
+   * Atomically counts one failed MFA code under a row lock and deletes the challenge
+   * on the fifth failure. Returns the new attempt count (zero when already consumed).
+   */
+  async registerMfaFailure(adminId: string, keyHash: string): Promise<number> {
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<MfaAttemptRow[]>`
+        SELECT "response_json"
+        FROM "idempotency_key"
+        WHERE "actor_type" = ${MFA_ACTOR_TYPE}
+          AND "actor_id" = ${adminId}
+          AND "key" = ${keyHash}
+        FOR UPDATE
+      `;
+      const row = rows[0];
+      if (row === undefined) {
+        return 0;
+      }
+      const attempts = readMfaAttempts(row.response_json) + 1;
+      if (attempts >= MAX_MFA_ATTEMPTS) {
+        await tx.idempotencyKey.deleteMany({
+          where: { actor_type: MFA_ACTOR_TYPE, actor_id: adminId, key: keyHash },
+        });
+      } else {
+        await tx.idempotencyKey.update({
+          where: {
+            actor_type_actor_id_key: {
+              actor_type: MFA_ACTOR_TYPE,
+              actor_id: adminId,
+              key: keyHash,
+            },
+          },
+          data: { response_json: { attempts } },
+        });
+      }
+      return attempts;
     });
   }
 
@@ -225,9 +289,12 @@ export class AdminUsersRepository {
       ...(audit.after === undefined || audit.after === null
         ? {}
         : { after_json: audit.after }),
-      ip: audit.ip ?? null,
+      ip: audit.ip === undefined || audit.ip === null ? null : audit.ip.slice(0, AUDIT_IP_MAX_LENGTH),
       request_id: audit.requestId ?? null,
-      user_agent: audit.userAgent ?? null,
+      user_agent:
+        audit.userAgent === undefined || audit.userAgent === null
+          ? null
+          : audit.userAgent.slice(0, AUDIT_USER_AGENT_MAX_LENGTH),
     };
   }
 }

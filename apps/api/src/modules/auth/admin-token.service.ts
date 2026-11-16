@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ADMIN_ROLE, type AdminRole } from '@szfisher/shared';
-import jwt from 'jsonwebtoken';
+import { ADMIN_ROLE, ERROR_CODES, type AdminRole } from '@szfisher/shared';
+import jwt, { TokenExpiredError } from 'jsonwebtoken';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { AppError } from '../../common/errors/app-error';
 
 export const ADMIN_ACCESS_TTL_SECONDS = 30 * 60;
 export const ADMIN_SESSION_IDLE_MS = 30 * 60 * 1000;
@@ -92,7 +93,10 @@ export class AdminTokenService {
         return null;
       }
       return { adminId: sub, role, tokenVersion, jti };
-    } catch {
+    } catch (error) {
+      if (error instanceof TokenExpiredError) {
+        throw new AppError(ERROR_CODES.TOKEN_EXPIRED, HttpStatus.UNAUTHORIZED, 'Token expired');
+      }
       return null;
     }
   }
