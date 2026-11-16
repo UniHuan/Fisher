@@ -4,11 +4,17 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --passWithNoTests",
     "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "ts-jest": "29.4.15"
   }
 }
