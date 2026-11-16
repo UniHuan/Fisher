@@ -75,3 +75,5 @@ jobs:
       - run: pnpm --filter @szfisher/api prisma:generate
       # test:integration owns test database preparation (guarded reset plus seed).
       - run: pnpm test:integration
+      # Regenerates OpenAPI and client types, then fails if either differs from the commit.
+      - run: pnpm openapi:check
