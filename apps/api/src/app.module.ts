@@ -1,6 +1,7 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
+import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { HealthController } from './modules/health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -17,6 +18,7 @@ export class AppModule {
           validate: parseEnv,
         }),
         PrismaModule,
+        AdminAuthModule,
       ],
       controllers: [HealthController],
     };

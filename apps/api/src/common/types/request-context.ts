@@ -3,7 +3,10 @@ import type { Request } from 'express';
 
 export interface AdminContext {
   adminId: string;
+  username: string;
   role: AdminRole;
+  tokenVersion: number;
+  jti: string;
 }
 
 export interface RequestWithContext extends Request {
