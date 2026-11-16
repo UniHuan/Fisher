@@ -1,15 +1,12 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AdminUser, IdempotencyKey } from '@prisma/client';
 import { ADMIN_ROLE, ERROR_CODES, type AdminRole } from '@szfisher/shared';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
-import {
-  AUDIT_IP_MAX_LENGTH,
-  AUDIT_USER_AGENT_MAX_LENGTH,
-  AdminUsersRepository,
-} from '../admin/admin-users.repository';
+import { AdminUsersRepository } from '../admin/admin-users.repository';
+import { AuditLogService } from '../audit/audit-log.service';
 import {
   ADMIN_SESSION_ABSOLUTE_MS,
   ADMIN_SESSION_IDLE_MS,
@@ -120,6 +117,7 @@ function toAdminProfile(admin: AdminUser): AdminProfile {
 
 @Injectable()
 export class AdminAuthService {
+  private readonly logger = new Logger(AdminAuthService.name);
   private readonly adminOrigins: string[];
 
   constructor(
@@ -130,6 +128,7 @@ export class AdminAuthService {
     private readonly passwords: PasswordService,
     private readonly totp: TotpService,
     private readonly recoveryCodes: RecoveryCodeService,
+    private readonly auditLogs: AuditLogService,
   ) {
     this.adminOrigins = config.getOrThrow<string[]>('ADMIN_ORIGINS');
   }
@@ -160,6 +159,10 @@ export class AdminAuthService {
     if (admin === null) {
       // Real argon2 work for unknown usernames keeps response timing comparable.
       await this.passwords.verifyDummy(input.password);
+      // audit_log.admin_id is a foreign key, so unknown usernames cannot be audited there.
+      this.logger.warn(
+        `auth.login_failed unknown_username username=${input.username} request_id=${meta.requestId || 'unknown'} ip=${meta.ip || 'unknown'} user_agent=${meta.userAgent || 'unknown'}`,
+      );
       throw this.unauthenticated();
     }
 
@@ -170,6 +173,9 @@ export class AdminAuthService {
     const passwordValid = await this.passwords.verify(admin.password_hash, input.password);
     if (!passwordValid) {
       await this.users.recordFailedPassword(admin.admin_id, now);
+      await this.recordAuthAudit('auth.login_failed', admin.admin_id, request, {
+        after: { reason: 'invalid_password' },
+      });
       throw this.unauthenticated();
     }
 
@@ -192,7 +198,9 @@ export class AdminAuthService {
       return { kind: 'must_bind_totp', body: { must_bind_totp: true, mfa_token: mfaToken } };
     }
 
-    return { kind: 'session', session: await this.completeLogin(admin, now) };
+    const session = await this.completeLogin(admin, now);
+    await this.recordAuthAudit('auth.login', admin.admin_id, request);
+    return { kind: 'session', session };
   }
 
   async setupTotp(mfaToken: string, request: RequestWithContext): Promise<TotpSetupResult> {
@@ -232,6 +240,7 @@ export class AdminAuthService {
     const updated = await this.users.enableTotp(admin.admin_id, generated.hashes, now);
     await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
     const session = await this.completeLogin(updated, now);
+    await this.recordAuthAudit('auth.totp_enabled', admin.admin_id, request);
     return { session, recovery_codes: generated.plain };
   }
 
@@ -254,7 +263,9 @@ export class AdminAuthService {
       return this.failMfa(challenge);
     }
     await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
-    return this.completeLogin(admin, now);
+    const session = await this.completeLogin(admin, now);
+    await this.recordAuthAudit('auth.totp_verified', admin.admin_id, request);
+    return session;
   }
 
   async loginWithRecoveryCode(
@@ -279,6 +290,7 @@ export class AdminAuthService {
     await this.users.saveRecoveryCodeHashes(admin.admin_id, result.remaining);
     await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
     const session = await this.completeLogin(admin, now);
+    await this.recordAuthAudit('auth.recovery_used', admin.admin_id, request);
     return { session, remaining_recovery_codes: result.remaining.length };
   }
 
@@ -298,16 +310,11 @@ export class AdminAuthService {
     }
 
     if (!this.tokens.refreshHashMatches(admin.refresh_token_hash, refreshToken)) {
-      const meta = readRequestMeta(request);
-      await this.users.revokeSessionsAndAudit(admin.admin_id, {
-        adminId: admin.admin_id,
-        action: 'auth.refresh_reuse',
-        entityType: 'admin_user',
-        entityId: admin.admin_id,
+      // Revoke first, then audit as a separate best-effort write. A failing audit insert
+      // must never roll back the session revocation that protects the account.
+      await this.users.revokeSessions(admin.admin_id);
+      await this.recordAuthAudit('auth.refresh_reuse', admin.admin_id, request, {
         after: { reason: 'refresh_token_reuse' },
-        ip: meta.ip.slice(0, AUDIT_IP_MAX_LENGTH),
-        requestId: meta.requestId,
-        userAgent: meta.userAgent.slice(0, AUDIT_USER_AGENT_MAX_LENGTH),
       });
       throw this.unauthenticated(INVALID_REFRESH_MESSAGE);
     }
@@ -345,8 +352,9 @@ export class AdminAuthService {
     };
   }
 
-  async logout(admin: AdminContext): Promise<void> {
+  async logout(admin: AdminContext, request: RequestWithContext): Promise<void> {
     await this.users.revokeSessions(admin.adminId);
+    await this.recordAuthAudit('auth.logout', admin.adminId, request);
   }
 
   async getMe(admin: AdminContext): Promise<MeResult> {
@@ -436,6 +444,37 @@ export class AdminAuthService {
     // Row-locked counting keeps parallel wrong codes from exceeding the five-attempt cap.
     await this.users.registerMfaFailure(challenge.actor_id, challenge.key);
     throw this.unauthenticated(message);
+  }
+
+  /**
+   * Best-effort auth audit: a failed insert is logged and never fails authentication.
+   * Unknown usernames never reach this helper because audit_log.admin_id is an FK.
+   */
+  private async recordAuthAudit(
+    action: string,
+    adminId: string,
+    request: RequestWithContext,
+    payload: { before?: unknown; after?: unknown } = {},
+  ): Promise<void> {
+    const meta = readRequestMeta(request);
+    try {
+      await this.auditLogs.record({
+        adminId,
+        action,
+        entityType: 'admin_user',
+        entityId: adminId,
+        before: payload.before,
+        after: payload.after,
+        ip: meta.ip,
+        requestId: meta.requestId,
+        userAgent: meta.userAgent,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `request_id=${meta.requestId || 'unknown'} action=${action} failed to write auth audit log: ${message}`,
+      );
+    }
   }
 
   private readTotpSecret(admin: AdminUser): string {

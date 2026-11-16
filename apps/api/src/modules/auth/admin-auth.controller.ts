@@ -9,19 +9,23 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
+import { ERROR_CODES } from '@szfisher/shared';
 import type { Response } from 'express';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { AppError } from '../../common/errors/app-error';
 import {
   ADMIN_REFRESH_COOKIE,
   clearAuthCookies,
   readCookie,
   setAuthCookies,
 } from '../../common/http/admin-cookies';
+import { ApiClientHeaders } from '../../common/openapi/client-headers.decorator';
 import {
   ApiCommonErrorResponses,
   ApiEnvelopeResponse,
   ApiEnvelopeUnionResponse,
+  ApiErrorResponse,
 } from '../../common/openapi/api-response.decorators';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
 import {
@@ -41,6 +45,7 @@ import {
 } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { MfaTokenDto, RecoveryCodeDto, TotpCodeDto } from './dto/totp.dto';
+import { LoginRateLimiter } from './login-rate-limiter.service';
 
 const CSRF_HEADER = {
   name: 'X-CSRF-Token',
@@ -58,10 +63,14 @@ function sessionBody(session: IssuedSession): SessionBody {
 }
 
 @ApiTags('admin auth')
+@ApiClientHeaders()
 @ApiCommonErrorResponses()
 @Controller('admin')
 export class AdminAuthController {
-  constructor(private readonly auth: AdminAuthService) {}
+  constructor(
+    private readonly auth: AdminAuthService,
+    private readonly loginLimiter: LoginRateLimiter,
+  ) {}
 
   @Public()
   @Post('auth/login')
@@ -70,11 +79,28 @@ export class AdminAuthController {
     [AdminSessionDto, LoginMfaRequiredDto, LoginMustBindTotpDto],
     { description: 'Session issued, TOTP required, or TOTP binding required' },
   )
+  @ApiErrorResponse(HttpStatus.TOO_MANY_REQUESTS, 'Too many login attempts (42901)')
   async login(
     @Body() body: LoginDto,
     @Req() request: RequestWithContext,
     @Res({ passthrough: true }) response: Response,
   ): Promise<SessionBody | { mfa_required: true; mfa_token: string } | { must_bind_totp: true; mfa_token: string }> {
+    // Per-IP limiter runs before credential work so floods never reach argon2.
+    const decision = this.loginLimiter.hit(
+      request.ip ?? request.socket?.remoteAddress ?? 'unknown',
+    );
+    response.setHeader('X-RateLimit-Limit', String(decision.limit));
+    response.setHeader('X-RateLimit-Remaining', String(decision.remaining));
+    response.setHeader('X-RateLimit-Reset', String(Math.ceil(decision.resetAt / 1000)));
+    if (!decision.allowed) {
+      response.setHeader('Retry-After', String(decision.retryAfterSeconds));
+      throw new AppError(
+        ERROR_CODES.RATE_LIMITED,
+        HttpStatus.TOO_MANY_REQUESTS,
+        'Too many login attempts',
+      );
+    }
+
     this.auth.assertAllowedOrigin(request, { required: true });
     const result = await this.auth.login(body, request);
     if (result.kind === 'session') {
@@ -113,9 +139,10 @@ export class AdminAuthController {
   @ApiEnvelopeResponse(null, { description: 'Logged out; data is null' })
   async logout(
     @CurrentAdmin() admin: AdminContext,
+    @Req() request: RequestWithContext,
     @Res({ passthrough: true }) response: Response,
   ): Promise<null> {
-    await this.auth.logout(admin);
+    await this.auth.logout(admin, request);
     clearAuthCookies(response);
     return null;
   }

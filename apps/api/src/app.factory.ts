@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { CacheControlMiddleware } from './common/middleware/cache-control.middleware';
 import { ClientContextMiddleware } from './common/middleware/client-context.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -21,6 +22,10 @@ export async function createApp(extraControllers: Type<unknown>[] = []): Promise
   // Request IDs must run before body parsing so parser errors still carry one.
   const requestIdMiddleware = new RequestIdMiddleware();
   app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
+
+  // no-store default; public dictionary/config controllers override it for their payload.
+  const cacheControlMiddleware = new CacheControlMiddleware();
+  app.use(cacheControlMiddleware.use.bind(cacheControlMiddleware));
 
   app.enableCors({
     origin: adminOrigins,

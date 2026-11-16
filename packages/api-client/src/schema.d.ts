@@ -583,7 +583,12 @@ export interface operations {
     AdminAuthController_login: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -667,6 +672,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
                 };
             };
+            /** @description Too many login attempts (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
             /** @description Internal server error (50001) */
             500: {
                 headers: {
@@ -690,7 +704,12 @@ export interface operations {
     AdminAuthController_refresh: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -794,6 +813,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
                 /** @description Synchronizer CSRF token issued by login or refresh */
                 "X-CSRF-Token": string;
             };
@@ -900,7 +923,12 @@ export interface operations {
     AdminAuthController_setupTotp: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1007,7 +1035,12 @@ export interface operations {
     AdminAuthController_enableTotp: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1114,7 +1147,12 @@ export interface operations {
     AdminAuthController_verifyTotp: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1221,7 +1259,12 @@ export interface operations {
     AdminAuthController_recovery: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1328,7 +1371,12 @@ export interface operations {
     AdminAuthController_me: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1430,8 +1478,28 @@ export interface operations {
     };
     AuditLogController_list: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Filter by admin ULID; operators are scoped to themselves regardless */
+                admin_id?: string;
+                /** @description Exact audit action name */
+                action?: string;
+                /** @description Exact entity type */
+                entity_type?: string;
+                /** @description Inclusive lower bound on created_at (ISO 8601) */
+                from?: string;
+                /** @description Inclusive upper bound on created_at (ISO 8601) */
+                to?: string;
+                /** @description Page number, starting at 1 */
+                page?: number;
+                /** @description Page size */
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1489,7 +1557,12 @@ export interface operations {
     DictionariesController_list: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1536,7 +1609,12 @@ export interface operations {
     AdminDictionariesController_list: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1595,6 +1673,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
                 /** @description Synchronizer CSRF token issued by login or refresh */
                 "X-CSRF-Token": string;
             };
@@ -1650,7 +1732,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
             /** @description Internal server error (50001) */
             500: {
@@ -1667,6 +1751,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
                 /** @description Synchronizer CSRF token issued by login or refresh */
                 "X-CSRF-Token": string;
             };
@@ -1725,7 +1813,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
             /** @description Internal server error (50001) */
             500: {
@@ -1741,7 +1831,12 @@ export interface operations {
     ClientConfigController_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
             path?: never;
             cookie?: never;
         };

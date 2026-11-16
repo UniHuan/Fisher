@@ -1,8 +1,9 @@
-import type { INestApplication } from '@nestjs/common';
+import { Logger, type INestApplication } from '@nestjs/common';
 import { ADMIN_ROLE } from '@szfisher/shared';
 import jwt from 'jsonwebtoken';
 import { generateSync } from 'otplib';
 import request from 'supertest';
+import { AuditLogRepository } from '../src/modules/audit/audit-log.repository';
 import { PERMISSIONS } from '../src/modules/auth/permissions';
 import {
   ADMIN_ORIGIN,
@@ -17,6 +18,7 @@ import {
   loginWithPassword,
   rawSetCookieHeader,
   refresh,
+  resetLoginRateLimiter,
   type TestAdmin,
 } from './support/auth-helpers';
 import { createTestApp } from './create-test-app';
@@ -232,10 +234,28 @@ describe('Admin auth (e2e)', () => {
     });
     expect(stored.totp_enabled_at).not.toBeNull();
     expect(stored.recovery_codes_hash).toHaveLength(9);
+
+    const totpAudits = await getAuthTestPrisma().auditLog.findMany({
+      where: {
+        admin_id: admin.adminId,
+        action: { in: ['auth.totp_enabled', 'auth.totp_verified', 'auth.recovery_used'] },
+      },
+    });
+    expect(new Set(totpAudits.map((row) => row.action))).toEqual(
+      new Set(['auth.totp_enabled', 'auth.totp_verified', 'auth.recovery_used']),
+    );
+    for (const row of totpAudits) {
+      expect(row.entity_type).toBe('admin_user');
+      expect(row.entity_id).toBe(admin.adminId);
+      expect(row.ip).toBeTruthy();
+      expect(row.request_id).toMatch(/^req_/);
+      expect(row.user_agent).toBe(ADMIN_USER_AGENT);
+    }
   });
 
   it('locks an account for 15 minutes after five wrong passwords', async () => {
     const admin = await createAdmin(app, 'operator');
+    resetLoginRateLimiter(app);
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const res = await request(server)
@@ -255,6 +275,8 @@ describe('Admin auth (e2e)', () => {
     expect(lockedUntil).toBeGreaterThan(Date.now());
     expect(lockedUntil).toBeLessThanOrEqual(Date.now() + 15 * 60 * 1000 + 5000);
 
+    // Five logins already consumed the IP window; clear it so 401 lockout behavior is visible.
+    resetLoginRateLimiter(app);
     const lockedAttempt = await request(server)
       .post('/api/v1/admin/auth/login')
       .set(adminHeaders())
@@ -291,6 +313,7 @@ describe('Admin auth (e2e)', () => {
 
   it('rejects login without an allowed Origin', async () => {
     const admin = await createAdmin(app, 'operator');
+    resetLoginRateLimiter(app);
 
     await request(server)
       .post('/api/v1/admin/auth/login')
@@ -483,6 +506,7 @@ describe('Admin auth (e2e)', () => {
 
   it('counts parallel wrong passwords atomically and locks at five', async () => {
     const admin = await createAdmin(app, 'operator');
+    resetLoginRateLimiter(app);
     const responses = await Promise.all(
       Array.from({ length: 5 }, (_value, index) =>
         request(server)
@@ -614,5 +638,156 @@ describe('Admin auth (e2e)', () => {
     });
     expect(stored.session_started_at).toBeNull();
     expect(stored.refresh_token_hash).toBeNull();
+  });
+
+  it('rate limits login per IP and returns retry headers', async () => {
+    resetLoginRateLimiter(app);
+    const attempt = (): request.Test =>
+      request(server)
+        .post('/api/v1/admin/auth/login')
+        .set(adminHeaders())
+        .send({ username: 'no_such_rate_limit_admin', password: 'irrelevant-password-value' });
+
+    for (let index = 0; index < 5; index += 1) {
+      const allowed = await attempt().expect(401);
+      expect(allowed.headers['x-ratelimit-limit']).toBe('5');
+      expect(allowed.headers['x-ratelimit-remaining']).toBe(String(4 - index));
+      expect(allowed.headers['x-ratelimit-reset']).toMatch(/^\d+$/);
+    }
+
+    const blocked = await attempt().expect(429);
+    expect(blocked.body).toMatchObject({ code: 42901 });
+    expect(blocked.body.request_id).toMatch(/^req_/);
+    expect(blocked.headers['retry-after']).toMatch(/^\d+$/);
+    expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(0);
+    expect(blocked.headers['x-ratelimit-limit']).toBe('5');
+    expect(blocked.headers['x-ratelimit-remaining']).toBe('0');
+    expect(blocked.headers['x-ratelimit-reset']).toMatch(/^\d+$/);
+
+    resetLoginRateLimiter(app);
+  });
+
+  it('marks auth and admin responses as no-store by default', async () => {
+    const session = await loginAs(app, ADMIN_ROLE.OPERATOR);
+    expect(session.response.headers['cache-control']).toBe('no-store');
+
+    const me = await request(server)
+      .get('/api/v1/admin/me')
+      .set(clientHeaders())
+      .set('Cookie', session.cookie)
+      .expect(200);
+    expect(me.headers['cache-control']).toBe('no-store');
+
+    const auditList = await request(server)
+      .get('/api/v1/admin/audit-logs')
+      .set(clientHeaders())
+      .set('Cookie', session.cookie)
+      .expect(200);
+    expect(auditList.headers['cache-control']).toBe('no-store');
+
+    const admin = await createAdmin(app, ADMIN_ROLE.SUPER_ADMIN);
+    const firstLogin = await loginWithPassword(app, admin);
+    const setup = await request(server)
+      .post('/api/v1/admin/auth/totp/setup')
+      .set(adminHeaders())
+      .send({ mfa_token: firstLogin.body.data.mfa_token as string })
+      .expect(200);
+    expect(setup.headers['cache-control']).toBe('no-store');
+  });
+
+  it('records auth.login, auth.login_failed and auth.logout audit rows', async () => {
+    resetLoginRateLimiter(app);
+    const failedAdmin = await createAdmin(app, ADMIN_ROLE.OPERATOR);
+    await request(server)
+      .post('/api/v1/admin/auth/login')
+      .set(adminHeaders())
+      .send({ username: failedAdmin.username, password: 'wrong-password-for-audit' })
+      .expect(401);
+
+    const failedRow = await getAuthTestPrisma().auditLog.findFirst({
+      where: { admin_id: failedAdmin.adminId, action: 'auth.login_failed' },
+    });
+    expect(failedRow).not.toBeNull();
+    expect(failedRow).toMatchObject({
+      entity_type: 'admin_user',
+      entity_id: failedAdmin.adminId,
+      user_agent: ADMIN_USER_AGENT,
+    });
+    expect(failedRow?.ip).toBeTruthy();
+    expect(failedRow?.request_id).toMatch(/^req_/);
+
+    const auditCountBeforeUnknown = await getAuthTestPrisma().auditLog.count();
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      await request(server)
+        .post('/api/v1/admin/auth/login')
+        .set(adminHeaders())
+        .send({ username: 'no_such_audit_admin', password: 'irrelevant-password' })
+        .expect(401);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('unknown_username'));
+    } finally {
+      warnSpy.mockRestore();
+    }
+    // Unknown usernames fail the audit_log FK, so they are logger-only.
+    expect(await getAuthTestPrisma().auditLog.count()).toBe(auditCountBeforeUnknown);
+
+    const session = await loginAs(app, ADMIN_ROLE.OPERATOR);
+    expect(
+      await getAuthTestPrisma().auditLog.findFirst({
+        where: { admin_id: session.admin.adminId, action: 'auth.login' },
+      }),
+    ).not.toBeNull();
+
+    await request(server)
+      .post('/api/v1/admin/auth/logout')
+      .set(clientHeaders())
+      .set('Cookie', session.cookie)
+      .set('X-CSRF-Token', session.csrf)
+      .expect(200);
+
+    const logoutRow = await getAuthTestPrisma().auditLog.findFirst({
+      where: { admin_id: session.admin.adminId, action: 'auth.logout' },
+    });
+    expect(logoutRow).not.toBeNull();
+    expect(logoutRow).toMatchObject({
+      entity_type: 'admin_user',
+      entity_id: session.admin.adminId,
+      user_agent: ADMIN_USER_AGENT,
+    });
+    expect(logoutRow?.ip).toBeTruthy();
+    expect(logoutRow?.request_id).toMatch(/^req_/);
+  });
+
+  it('revokes refresh sessions even when the audit write fails', async () => {
+    const first = await loginAs(app, ADMIN_ROLE.OPERATOR);
+    await refresh(app, first.cookie);
+    const before = await getAuthTestPrisma().adminUser.findUniqueOrThrow({
+      where: { admin_id: first.admin.adminId },
+    });
+
+    const auditRepository = app.get(AuditLogRepository);
+    const createSpy = jest
+      .spyOn(auditRepository, 'create')
+      .mockRejectedValue(new Error('audit store unavailable'));
+    const logSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    try {
+      await request(server)
+        .post('/api/v1/admin/auth/refresh')
+        .set(adminHeaders())
+        .set('Cookie', first.cookie)
+        .expect(401);
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('auth.refresh_reuse'));
+    } finally {
+      createSpy.mockRestore();
+      logSpy.mockRestore();
+    }
+
+    const after = await getAuthTestPrisma().adminUser.findUniqueOrThrow({
+      where: { admin_id: first.admin.adminId },
+    });
+    expect(after.token_version).toBe(before.token_version + 1);
+    expect(after.refresh_token_hash).toBeNull();
+    expect(after.session_started_at).toBeNull();
+    expect(after.last_active_at).toBeNull();
   });
 });

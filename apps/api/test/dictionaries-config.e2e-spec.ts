@@ -457,6 +457,24 @@ describe('dictionaries and client config (e2e)', () => {
     expect(invalidUpdate.body).toMatchObject({ code: ERROR_CODES.VALIDATION, data: null });
   });
 
+  it('keeps public cache policy and marks admin dictionary responses no-store', async () => {
+    const publicFirst = await publicGetDictionaries().expect(200);
+    expect(publicFirst.headers['cache-control']).toBe('public, max-age=600');
+
+    const notModified = await publicGetDictionaries()
+      .set('If-None-Match', publicFirst.headers.etag as string)
+      .expect(304);
+    expect(notModified.headers['cache-control']).toBe('public, max-age=600');
+
+    const superAdmin = await loginAsSuperAdmin(app);
+    const admin = await request(server)
+      .get('/api/v1/admin/dictionaries')
+      .set(clientHeaders())
+      .set('Cookie', superAdmin.cookie)
+      .expect(200);
+    expect(admin.headers['cache-control']).toBe('no-store');
+  });
+
   it('exposes concrete enveloped response types in the generated client schema', () => {
     // These assignments fail to compile if openapi-typescript emits `never`.
     const dictionaries: PublicDictionariesResponse = {

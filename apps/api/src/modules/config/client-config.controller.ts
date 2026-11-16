@@ -2,6 +2,7 @@ import { Controller, Get, HttpStatus, Req, Res } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ERROR_CODES } from '@szfisher/shared';
 import type { Response } from 'express';
+import { ApiClientHeaders } from '../../common/openapi/client-headers.decorator';
 import { sendConditionalJson } from '../../common/http/conditional-get';
 import {
   ApiCommonErrorResponses,
@@ -12,6 +13,7 @@ import { ClientConfigService } from './config.service';
 import { ClientConfigDto } from './dto/client-config.dto';
 
 @ApiTags('config')
+@ApiClientHeaders()
 @ApiCommonErrorResponses([ERROR_CODES.VALIDATION, ERROR_CODES.INTERNAL])
 @Controller('config')
 export class ClientConfigController {

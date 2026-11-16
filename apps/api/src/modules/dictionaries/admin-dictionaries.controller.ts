@@ -13,16 +13,17 @@ import {
   ApiHeader,
   ApiOperation,
   ApiParam,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ADMIN_ROLE, ERROR_CODES } from '@szfisher/shared';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ApiClientHeaders } from '../../common/openapi/client-headers.decorator';
 import {
   ApiCommonErrorResponses,
   ApiEnvelopeResponse,
+  ApiErrorResponse,
 } from '../../common/openapi/api-response.decorators';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
 import {
@@ -46,6 +47,7 @@ const CSRF_HEADER = {
 // PRD 8.7: dictionary maintenance is super-admin only.
 @ApiTags('admin dictionaries')
 @ApiCookieAuth('admin-cookie')
+@ApiClientHeaders()
 @ApiCommonErrorResponses([
   ERROR_CODES.VALIDATION,
   ERROR_CODES.UNAUTHENTICATED,
@@ -75,7 +77,7 @@ export class AdminDictionariesController {
     status: 201,
     description: 'Created dictionary row',
   })
-  @ApiResponse({ status: 409, description: 'Dictionary key already exists (40901)' })
+  @ApiErrorResponse(409, 'Dictionary key already exists (40901)')
   create(
     @Body() body: CreateDictionaryDto,
     @CurrentAdmin() admin: AdminContext,
@@ -90,7 +92,7 @@ export class AdminDictionariesController {
   @ApiParam({ name: 'key', example: 'food' })
   @ApiHeader(CSRF_HEADER)
   @ApiEnvelopeResponse(AdminDictionaryItemDto, { description: 'Updated dictionary row' })
-  @ApiResponse({ status: 404, description: 'Dictionary row does not exist (40401)' })
+  @ApiErrorResponse(404, 'Dictionary row does not exist (40401)')
   update(
     @Param('type') type: string,
     @Param('key') key: string,

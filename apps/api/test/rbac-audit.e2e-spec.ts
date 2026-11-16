@@ -5,6 +5,7 @@ import request from 'supertest';
 import { ulid } from 'ulid';
 import { AppError } from '../src/common/errors/app-error';
 import { RolesGuard } from '../src/common/guards/roles.guard';
+import type { AdminContext } from '../src/common/types/request-context';
 import { AuditLogRepository } from '../src/modules/audit/audit-log.repository';
 import { AuditLogService } from '../src/modules/audit/audit-log.service';
 import { PERMISSIONS } from '../src/modules/auth/permissions';
@@ -105,6 +106,65 @@ describe('AuditLogService resilience', () => {
       expect.stringContaining('request_id=req_audit_failure_1'),
     );
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('spot.create'));
+  });
+
+  it('denies audit reads to every role except super_admin and operator', async () => {
+    const repository = {
+      create: jest.fn(),
+      findPage: jest.fn(),
+    } as unknown as AuditLogRepository;
+    const service = new AuditLogService(repository);
+    const reviewer: AdminContext = {
+      adminId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      username: 'reviewer',
+      role: ADMIN_ROLE.REVIEWER,
+      tokenVersion: 0,
+      jti: 'reviewer-jti',
+    };
+
+    await expect(service.list(reviewer, {})).rejects.toMatchObject({
+      code: ERROR_CODES.FORBIDDEN,
+      httpStatus: 403,
+      message: 'Insufficient permissions',
+    });
+    expect(repository.findPage).not.toHaveBeenCalled();
+  });
+
+  it('redacts sensitive values even under non-sensitive keys', async () => {
+    const create = jest.fn().mockResolvedValue(undefined);
+    const repository = { create } as unknown as AuditLogRepository;
+    const service = new AuditLogService(repository);
+
+    await service.record({
+      adminId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      action: 'spot.update',
+      entityType: 'spot',
+      after: {
+        contact: '13800138000',
+        note: 'Bearer some-opaque-credential-value',
+        email_address: 'angler@example.com',
+        jwt_value: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl',
+        refresh_hash: 'a'.repeat(64),
+        opaque_key: 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCd',
+        spot_name: '测试钓点',
+      },
+      before: '13800138000',
+    });
+
+    const stored = create.mock.calls[0]?.[0] as {
+      after: Record<string, string>;
+      before: string;
+    };
+    expect(stored.after).toEqual({
+      contact: '[REDACTED]',
+      note: '[REDACTED]',
+      email_address: '[REDACTED]',
+      jwt_value: '[REDACTED]',
+      refresh_hash: '[REDACTED]',
+      opaque_key: '[REDACTED]',
+      spot_name: '测试钓点',
+    });
+    expect(stored.before).toBe('[REDACTED]');
   });
 });
 
@@ -362,6 +422,7 @@ describe('RBAC and audit logging (e2e)', () => {
       .set('Cookie', operator.cookie)
       .expect(200);
     expect(me.body.data.permissions).toEqual([...PERMISSIONS[ADMIN_ROLE.OPERATOR]]);
+    expect(me.body.data.permissions).toContain('poi:read');
 
     const reviewer = await loginAs(app, ADMIN_ROLE.REVIEWER);
     const reviewerMe = await request(server)

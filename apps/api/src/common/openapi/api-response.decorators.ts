@@ -29,6 +29,21 @@ function extraModels(...models: Type<unknown>[]): Type<unknown>[] {
   return [ApiEnvelopeBaseDto, ApiEnvelopeDto, ApiErrorEnvelopeDto, ApiValidationIssueDto, ...models];
 }
 
+/** Documents a failure envelope for a status that is not part of the common set. */
+export function ApiErrorResponse(
+  status: number,
+  description: string,
+): MethodDecorator & ClassDecorator {
+  return applyDecorators(
+    ApiExtraModels(ApiErrorEnvelopeDto),
+    ApiResponse({
+      status,
+      description,
+      schema: { $ref: getSchemaPath(ApiErrorEnvelopeDto) },
+    }),
+  );
+}
+
 /** Documents `{code,message,data,request_id}` with `data` referencing the concrete DTO. */
 export function ApiEnvelopeResponse(
   model: Type<unknown> | null,

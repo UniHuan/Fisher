@@ -34,7 +34,27 @@ paths:
   /api/v1/admin/auth/login:
     post:
       operationId: AdminAuthController_login
-      parameters: []
+      parameters:
+        - &a2
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a3
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
       requestBody:
         required: true
         content:
@@ -57,66 +77,74 @@ paths:
                           - $ref: "#/components/schemas/AdminSessionDto"
                           - $ref: "#/components/schemas/LoginMfaRequiredDto"
                           - $ref: "#/components/schemas/LoginMustBindTotpDto"
-        "400": &a2
+        "400": &a4
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": &a3
+        "401": &a5
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a4
+        "403": &a6
           description: Forbidden (40301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "404": &a5
+        "404": &a7
           description: Not found (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "409": &a6
+        "409": &a8
           description: State conflict (40901)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "413": &a7
+        "413": &a9
           description: Payload too large (41301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "422": &a8
+        "422": &a10
           description: Business validation failed (42201)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a9
+        "429":
+          description: Too many login attempts (42901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": &a11
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "503": &a10
+        "503": &a12
           description: Dependency unavailable (50301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      tags: &a11
+      tags: &a13
         - admin auth
   /api/v1/admin/auth/refresh:
     post:
       operationId: AdminAuthController_refresh
-      parameters: []
+      parameters:
+        - *a2
+        - *a3
       responses:
         "200":
           description: Success
@@ -130,20 +158,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSessionDto"
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
-      tags: *a11
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
+      tags: *a13
   /api/v1/admin/auth/logout:
     post:
       operationId: AdminAuthController_logout
       parameters:
+        - *a2
+        - *a3
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -164,22 +194,24 @@ paths:
                       data:
                         nullable: true
                         example: null
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
       security:
         - admin-cookie: []
-      tags: *a11
+      tags: *a13
   /api/v1/admin/auth/totp/setup:
     post:
       operationId: AdminAuthController_setupTotp
-      parameters: []
+      parameters:
+        - *a2
+        - *a3
       requestBody:
         required: true
         content:
@@ -199,20 +231,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/TotpSetupDto"
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
-      tags: *a11
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
+      tags: *a13
   /api/v1/admin/auth/totp/enable:
     post:
       operationId: AdminAuthController_enableTotp
-      parameters: []
+      parameters:
+        - *a2
+        - *a3
       requestBody:
         required: true
         content:
@@ -232,20 +266,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/TotpEnableDto"
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
-      tags: *a11
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
+      tags: *a13
   /api/v1/admin/auth/totp/verify:
     post:
       operationId: AdminAuthController_verifyTotp
-      parameters: []
+      parameters:
+        - *a2
+        - *a3
       requestBody:
         required: true
         content:
@@ -265,20 +301,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSessionDto"
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
-      tags: *a11
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
+      tags: *a13
   /api/v1/admin/auth/totp/recovery:
     post:
       operationId: AdminAuthController_recovery
-      parameters: []
+      parameters:
+        - *a2
+        - *a3
       requestBody:
         required: true
         content:
@@ -298,20 +336,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/TotpRecoveryDto"
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
-      tags: *a11
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
+      tags: *a13
   /api/v1/admin/me:
     get:
       operationId: AdminAuthController_me
-      parameters: []
+      parameters:
+        - *a2
+        - *a3
       responses:
         "200":
           description: Success
@@ -325,22 +365,100 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/MeDto"
-        "400": *a2
-        "401": *a3
-        "403": *a4
-        "404": *a5
-        "409": *a6
-        "413": *a7
-        "422": *a8
-        "500": *a9
-        "503": *a10
+        "400": *a4
+        "401": *a5
+        "403": *a6
+        "404": *a7
+        "409": *a8
+        "413": *a9
+        "422": *a10
+        "500": *a11
+        "503": *a12
       security:
         - admin-cookie: []
-      tags: *a11
+      tags: *a13
   /api/v1/admin/audit-logs:
     get:
       operationId: AuditLogController_list
-      parameters: []
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: admin_id
+          required: false
+          in: query
+          description: Filter by admin ULID; operators are scoped to themselves regardless
+          schema:
+            minLength: 26
+            maxLength: 26
+            example: 01HX0000000000000000000000
+            type: string
+        - name: action
+          required: false
+          in: query
+          description: Exact audit action name
+          schema:
+            minLength: 1
+            maxLength: 64
+            example: dictionary.update
+            type: string
+        - name: entity_type
+          required: false
+          in: query
+          description: Exact entity type
+          schema:
+            minLength: 1
+            maxLength: 64
+            example: dictionary
+            type: string
+        - name: from
+          required: false
+          in: query
+          description: Inclusive lower bound on created_at (ISO 8601)
+          schema:
+            format: date-time
+            example: 2026-11-16T00:00:00.000Z
+            type: string
+        - name: to
+          required: false
+          in: query
+          description: Inclusive upper bound on created_at (ISO 8601)
+          schema:
+            format: date-time
+            example: 2026-11-16T23:59:59.999Z
+            type: string
+        - name: page
+          required: false
+          in: query
+          description: Page number, starting at 1
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: page_size
+          required: false
+          in: query
+          description: Page size
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
       responses:
         "200":
           description: Paginated audit log rows
@@ -385,7 +503,25 @@ paths:
   /api/v1/dictionaries:
     get:
       operationId: DictionariesController_list
-      parameters: []
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
       responses:
         "200":
           description: Dictionary payload with a strong ETag
@@ -418,7 +554,27 @@ paths:
   /api/v1/admin/dictionaries:
     get:
       operationId: AdminDictionariesController_list
-      parameters: []
+      parameters:
+        - &a14
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a15
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
       responses:
         "200":
           description: Dictionary rows in a stable list
@@ -432,38 +588,40 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminDictionaryListDto"
-        "400": &a12
+        "400": &a16
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": &a13
+        "401": &a17
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a14
+        "403": &a18
           description: Forbidden (40301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a15
+        "500": &a19
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a16
+      security: &a20
         - admin-cookie: []
       summary: List every dictionary row, including disabled ones
-      tags: &a17
+      tags: &a21
         - admin dictionaries
     post:
       operationId: AdminDictionariesController_create
       parameters:
+        - *a14
+        - *a15
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -489,19 +647,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminDictionaryItemDto"
-        "400": *a12
-        "401": *a13
-        "403": *a14
+        "400": *a16
+        "401": *a17
+        "403": *a18
         "409":
           description: Dictionary key already exists (40901)
-        "500": *a15
-      security: *a16
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a19
+      security: *a20
       summary: Create a dictionary row
-      tags: *a17
+      tags: *a21
   /api/v1/admin/dictionaries/{type}/{key}:
     put:
       operationId: AdminDictionariesController_update
       parameters:
+        - *a14
+        - *a15
         - name: type
           required: true
           in: path
@@ -539,19 +703,41 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminDictionaryItemDto"
-        "400": *a12
-        "401": *a13
-        "403": *a14
+        "400": *a16
+        "401": *a17
+        "403": *a18
         "404":
           description: Dictionary row does not exist (40401)
-        "500": *a15
-      security: *a16
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a19
+      security: *a20
       summary: Update a dictionary label, order, visibility or parent
-      tags: *a17
+      tags: *a21
   /api/v1/config:
     get:
       operationId: ClientConfigController_get
-      parameters: []
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
       responses:
         "200":
           description: Map defaults, feature switches and freshness with a strong ETag

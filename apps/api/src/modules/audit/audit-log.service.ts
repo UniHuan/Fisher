@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import type { AuditLog, Prisma } from '@prisma/client';
-import { ADMIN_ROLE, type Paginated } from '@szfisher/shared';
+import { ADMIN_ROLE, ERROR_CODES, type Paginated } from '@szfisher/shared';
+import { AppError } from '../../common/errors/app-error';
 import type { AdminContext } from '../../common/types/request-context';
 import {
   AUDIT_IP_MAX_LENGTH,
@@ -19,6 +20,34 @@ export const AUDIT_ENTITY_ID_MAX_LENGTH = 64;
 const SENSITIVE_KEY_PATTERN =
   /(password|passwd|token|secret|authorization|cookie|phone|mobile|refresh|access)/i;
 const MAX_SANITIZE_DEPTH = 6;
+
+/**
+ * Values that are secret or personal data regardless of their key name. Ordinary
+ * labels such as 测试钓点 do not match any pattern and stay readable.
+ */
+const SENSITIVE_VALUE_PATTERNS: readonly RegExp[] = [
+  // Chinese mainland mobile numbers.
+  /1[3-9]\d{9}/,
+  // Email addresses.
+  /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/,
+  // Bearer credentials embedded in a string.
+  /\bBearer\s+\S+/i,
+  // JWT-like values start with the base64url of `{"` (eyJ...).
+  /\beyJ[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]+)*/,
+  // Long hex strings (hashes, refresh tokens, API keys).
+  /\b[0-9a-fA-F]{32,}\b/,
+  // Long unbroken base64url-like values (opaque tokens, keys, signatures).
+  /[A-Za-z0-9_-]{40,}/,
+];
+
+/** True when the whole string must be replaced with [REDACTED]. */
+export function isSensitiveAuditValue(value: string): boolean {
+  return SENSITIVE_VALUE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function redactString(value: string): string {
+  return isSensitiveAuditValue(value) ? AUDIT_LOG_REDACTED : value;
+}
 
 export interface AuditInput {
   adminId: string;
@@ -65,7 +94,10 @@ export function sanitizeAuditPayload(
   if (depth >= MAX_SANITIZE_DEPTH) {
     return AUDIT_LOG_REDACTED;
   }
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (typeof value === 'string') {
+    return redactString(value);
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
   if (value instanceof Date) {
@@ -143,6 +175,15 @@ export class AuditLogService {
   }
 
   async list(admin: AdminContext, query: AuditLogQueryDto): Promise<Paginated<AuditLogItem>> {
+    // Default deny: the service, not just the controller, owns who may read the trail.
+    if (admin.role !== ADMIN_ROLE.SUPER_ADMIN && admin.role !== ADMIN_ROLE.OPERATOR) {
+      throw new AppError(
+        ERROR_CODES.FORBIDDEN,
+        HttpStatus.FORBIDDEN,
+        'Insufficient permissions',
+      );
+    }
+
     const page = query.page ?? 1;
     const pageSize = query.page_size ?? AUDIT_LOG_DEFAULT_PAGE_SIZE;
     // Operators are scoped to their own trail regardless of any admin_id they send.

@@ -4,6 +4,7 @@ import { ADMIN_ROLE, ERROR_CODES, type Paginated } from '@szfisher/shared';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ApiClientHeaders } from '../../common/openapi/client-headers.decorator';
 import {
   ApiCommonErrorResponses,
   ApiEnvelopeResponse,
@@ -16,6 +17,7 @@ import { AuditLogQueryDto } from './dto/audit-log-query.dto';
 // PRD 8.1: super admins read all logs, operators read their own, reviewers have no access.
 @ApiTags('audit')
 @ApiCookieAuth('admin-cookie')
+@ApiClientHeaders()
 @ApiCommonErrorResponses([
   ERROR_CODES.VALIDATION,
   ERROR_CODES.UNAUTHENTICATED,

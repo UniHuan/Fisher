@@ -2,6 +2,7 @@ import { Controller, Get, HttpStatus, Req, Res } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ERROR_CODES } from '@szfisher/shared';
 import type { Response } from 'express';
+import { ApiClientHeaders } from '../../common/openapi/client-headers.decorator';
 import { sendConditionalJson } from '../../common/http/conditional-get';
 import {
   ApiCommonErrorResponses,
@@ -12,6 +13,7 @@ import { DictionariesService } from './dictionaries.service';
 import { PublicDictionariesDto } from './dto/dictionary-response.dto';
 
 @ApiTags('public')
+@ApiClientHeaders()
 @ApiCommonErrorResponses([ERROR_CODES.VALIDATION, ERROR_CODES.INTERNAL])
 @Controller('dictionaries')
 export class DictionariesController {

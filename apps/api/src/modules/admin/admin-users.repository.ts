@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type AdminUser, type IdempotencyKey } from '@prisma/client';
-import { ulid } from 'ulid';
+import type { AdminUser, IdempotencyKey } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export const MFA_ACTOR_TYPE = 'admin_mfa';
@@ -32,18 +31,6 @@ function readMfaAttempts(responseJson: unknown): number {
 export interface StartSessionInput {
   refreshTokenHash: string;
   now: Date;
-}
-
-export interface AuditRecordInput {
-  adminId: string;
-  action: string;
-  entityType: string;
-  entityId?: string | null;
-  before?: Prisma.InputJsonValue | null;
-  after?: Prisma.InputJsonValue | null;
-  ip?: string | null;
-  requestId?: string | null;
-  userAgent?: string | null;
 }
 
 export interface CreateMfaChallengeInput {
@@ -161,23 +148,6 @@ export class AdminUsersRepository {
     });
   }
 
-  /** Refresh-token reuse revokes every session and records the security audit atomically. */
-  async revokeSessionsAndAudit(adminId: string, audit: AuditRecordInput): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.adminUser.update({
-        where: { admin_id: adminId },
-        data: {
-          token_version: { increment: 1 },
-          refresh_token_hash: null,
-          refresh_token_issued_at: null,
-          session_started_at: null,
-          last_active_at: null,
-        },
-      }),
-      this.prisma.auditLog.create({ data: this.toAuditRow(audit) }),
-    ]);
-  }
-
   async touchLastActive(adminId: string, now: Date): Promise<void> {
     await this.prisma.adminUser.update({
       where: { admin_id: adminId },
@@ -274,27 +244,5 @@ export class AdminUsersRepository {
     await this.prisma.idempotencyKey.deleteMany({
       where: { actor_type: MFA_ACTOR_TYPE, actor_id: adminId, key: keyHash },
     });
-  }
-
-  private toAuditRow(audit: AuditRecordInput): Prisma.AuditLogUncheckedCreateInput {
-    return {
-      log_id: ulid(),
-      admin_id: audit.adminId,
-      action: audit.action,
-      entity_type: audit.entityType,
-      entity_id: audit.entityId ?? null,
-      ...(audit.before === undefined || audit.before === null
-        ? {}
-        : { before_json: audit.before }),
-      ...(audit.after === undefined || audit.after === null
-        ? {}
-        : { after_json: audit.after }),
-      ip: audit.ip === undefined || audit.ip === null ? null : audit.ip.slice(0, AUDIT_IP_MAX_LENGTH),
-      request_id: audit.requestId ?? null,
-      user_agent:
-        audit.userAgent === undefined || audit.userAgent === null
-          ? null
-          : audit.userAgent.slice(0, AUDIT_USER_AGENT_MAX_LENGTH),
-    };
   }
 }

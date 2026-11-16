@@ -8,6 +8,7 @@ import { AuditLogService } from './audit-log.service';
   imports: [PrismaModule],
   controllers: [AuditLogController],
   providers: [AuditLogRepository, AuditLogService],
-  exports: [AuditLogService],
+  // The repository is exported so tests can simulate audit storage failures.
+  exports: [AuditLogRepository, AuditLogService],
 })
 export class AuditLogModule {}
