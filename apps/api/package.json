@@ -10,7 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "prisma:test:prepare": "export DATABASE_URL=${DATABASE_URL:-postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public}; prisma generate && prisma migrate reset --force --skip-seed && prisma db seed"
+    "prisma:test:prepare": "node scripts/prepare-test-database.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -119,7 +119,7 @@ const DEFAULT_CONFIGS: ConfigEntry[] = [
   { config_key: 'analytics_event_retention_days', config_value: '180', description: '埋点明细保留时长（天）' },
 ];
 
-async function seedDictionaries(prisma: PrismaClient): Promise<void> {
+export async function seedDictionaries(prisma: PrismaClient): Promise<void> {
   for (const group of DICTIONARY_GROUPS) {
     for (const [index, entry] of group.entries.entries()) {
       const sort_order = index + 1;
@@ -134,33 +134,42 @@ async function seedDictionaries(prisma: PrismaClient): Promise<void> {
           sort_order,
           enabled: true,
         },
-        update: {
-          dict_label: entry.dict_label,
-          sort_order,
-          enabled: true,
-        },
+        // Create-only: operators may edit dictionary labels, order and visibility (PRD 8.7).
+        update: {},
       });
     }
   }
 }
 
-async function seedConfigs(prisma: PrismaClient): Promise<void> {
+export async function seedConfigs(prisma: PrismaClient): Promise<void> {
   for (const entry of DEFAULT_CONFIGS) {
     await prisma.config.upsert({
       where: { config_key: entry.config_key },
       create: entry,
-      update: { description: entry.description },
+      // Create-only so operator edits to config values survive a re-run.
+      update: {},
     });
   }
 }
 
-async function seedAdmin(prisma: PrismaClient): Promise<void> {
-  const nodeEnv = process.env.NODE_ENV;
-  const username = process.env.SEED_ADMIN_USERNAME;
-  const password = process.env.SEED_ADMIN_PASSWORD;
+export function isProductionSeedingAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.NODE_ENV !== 'production' || env.SEED_ALLOW_PRODUCTION === 'true';
+}
+
+export async function seedAdmin(
+  prisma: PrismaClient,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
+  const nodeEnv = env.NODE_ENV;
+  const username = env.SEED_ADMIN_USERNAME;
+  const password = env.SEED_ADMIN_PASSWORD;
 
   if ((nodeEnv !== 'local' && nodeEnv !== 'staging') || !username || !password) {
     return;
+  }
+
+  if (password.length < 12) {
+    throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters');
   }
 
   const password_hash = await hash(password, { type: argon2id });
@@ -182,6 +191,12 @@ async function seedAdmin(prisma: PrismaClient): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // Dictionary and config edits belong to operators (PRD 8.7), so production seeding is opt-in.
+  if (!isProductionSeedingAllowed()) {
+    throw new Error(
+      'Refusing to seed in NODE_ENV=production; set SEED_ALLOW_PRODUCTION=true to override',
+    );
+  }
   const prisma = new PrismaClient();
   try {
     await seedDictionaries(prisma);
@@ -192,7 +207,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
