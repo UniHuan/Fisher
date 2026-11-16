@@ -10,6 +10,27 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      # Prisma Client generation and the build do not connect; give Prisma a placeholder URL.
+      DATABASE_URL: postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      # Version comes from the root package.json "packageManager" field (pnpm@10.0.0).
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @szfisher/shared build
+      - run: pnpm --filter @szfisher/api prisma:generate
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  integration:
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:15
@@ -37,8 +58,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @szfisher/shared build
       - run: pnpm --filter @szfisher/api prisma:generate
-      - run: pnpm lint
-      - run: pnpm typecheck
+      # Migrates, seeds and generates the local integration database.
       - run: pnpm --filter @szfisher/api prisma:test:prepare
-      - run: pnpm test
-      - run: pnpm build
+      - run: pnpm test:integration

@@ -5,7 +5,8 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests --testMatch \"**/src/**/*.spec.ts\"",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand --config jest.config.cjs",
     "build": "prisma generate && nest build",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

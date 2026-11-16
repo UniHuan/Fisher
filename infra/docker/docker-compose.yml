@@ -1,0 +1,46 @@
+# Local development stack only. Never use these defaults outside a developer machine.
+# Override any value with a root .env file or environment variables before running compose.
+name: szfisher
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: szfisher
+      POSTGRES_PASSWORD: szfisher
+      POSTGRES_DB: szfisher
+    ports:
+      - "5432:5432"
+    volumes:
+      - szfisher_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U szfisher -d szfisher"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: local
+      PORT: "3000"
+      DATABASE_URL: postgresql://szfisher:szfisher@postgres:5432/szfisher?schema=public
+      ADMIN_ORIGINS: ${ADMIN_ORIGINS:-https://admin.szfisher.local}
+      # LOCAL-ONLY placeholder defaults (each at least 32 characters). Replace with real secrets.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-only-jwt-access-secret-change-me-0123456789}
+      CSRF_SECRET: ${CSRF_SECRET:-local-only-csrf-secret-change-me-0123456789abcdef}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-local-only-totp-encryption-key-change-me-0123456789}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_ROOT: /app/storage
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  szfisher_postgres_data:
