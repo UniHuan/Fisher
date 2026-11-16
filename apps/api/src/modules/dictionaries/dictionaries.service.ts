@@ -1,5 +1,4 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { createHash } from 'node:crypto';
 import { ERROR_CODES } from '@szfisher/shared';
 import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
@@ -14,8 +13,6 @@ import { DictionariesRepository, toAdminDictionaryItem } from './dictionaries.re
 import type { CreateDictionaryDto } from './dto/create-dictionary.dto';
 import type { UpdateDictionaryDto } from './dto/update-dictionary.dto';
 
-const CACHE_CONTROL = 'public, max-age=600';
-
 export function emptyPublicDictionaries(): PublicDictionaries {
   return {
     districts: [],
@@ -28,33 +25,6 @@ export function emptyPublicDictionaries(): PublicDictionaries {
   };
 }
 
-/** Strong entity tag from the stable dictionary payload, never from the envelope or request_id. */
-export function dictionaryEtag(payload: PublicDictionaries): string {
-  const digest = createHash('sha256').update(JSON.stringify(payload), 'utf8').digest('hex');
-  // First 16 bytes of SHA-256, quoted as an HTTP entity tag.
-  return `"${digest.slice(0, 32)}"`;
-}
-
-export function etagMatches(
-  ifNoneMatch: string | string[] | undefined,
-  etag: string,
-): boolean {
-  if (ifNoneMatch === undefined) {
-    return false;
-  }
-  const headerValues = Array.isArray(ifNoneMatch) ? ifNoneMatch : [ifNoneMatch];
-  for (const header of headerValues) {
-    for (const candidate of header.split(',')) {
-      // Weak comparison for cache validation; our tag itself is strong.
-      const normalized = candidate.trim().replace(/^W\//, '');
-      if (normalized === '*' || normalized === etag) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 @Injectable()
 export class DictionariesService {
   constructor(
@@ -62,7 +32,7 @@ export class DictionariesService {
     private readonly auditLogs: AuditLogService,
   ) {}
 
-  async getPublicDictionaries(): Promise<{ payload: PublicDictionaries; etag: string }> {
+  async getPublicDictionaries(): Promise<PublicDictionaries> {
     const rows = await this.dictionaries.findEnabled();
     const payload = emptyPublicDictionaries();
 
@@ -79,11 +49,7 @@ export class DictionariesService {
       });
     }
 
-    return { payload, etag: dictionaryEtag(payload) };
-  }
-
-  static cacheControl(): string {
-    return CACHE_CONTROL;
+    return payload;
   }
 
   async listAll(): Promise<AdminDictionaryList> {

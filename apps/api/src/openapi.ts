@@ -29,5 +29,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag('config', 'Client configuration whitelist')
     .build();
 
-  return SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config);
+  document.openapi = '3.0.3';
+  return document;
 }

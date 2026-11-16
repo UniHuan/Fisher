@@ -33,7 +33,7 @@ export async function createApp(extraControllers: Type<unknown>[] = []): Promise
       'X-Client-Type',
       'X-Client-Version',
     ],
-    exposedHeaders: ['X-Request-Id'],
+    exposedHeaders: ['X-Request-Id', 'ETag', 'Cache-Control'],
     maxAge: 600,
   });
 

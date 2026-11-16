@@ -187,7 +187,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public dictionaries in seven stable groups */
         get: operations["DictionariesController_list"];
         put?: never;
         post?: never;
@@ -239,7 +238,6 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public client configuration whitelist */
         get: operations["ClientConfigController_get"];
         put?: never;
         post?: never;
@@ -253,10 +251,229 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        LoginDto: Record<string, never>;
-        MfaTokenDto: Record<string, never>;
-        TotpCodeDto: Record<string, never>;
-        RecoveryCodeDto: Record<string, never>;
+        HealthStatusDto: {
+            /** @example ok */
+            status: string;
+        };
+        ApiEnvelopeBaseDto: {
+            /**
+             * @description Business code; 0 means success
+             * @example 0
+             */
+            code: number;
+            /** @example ok */
+            message: string;
+            /** @example req_01HX0000000000000000000000 */
+            request_id: string;
+        };
+        ApiEnvelopeDto: {
+            /**
+             * @description Business code; 0 means success
+             * @example 0
+             */
+            code: number;
+            /** @example ok */
+            message: string;
+            /** @example req_01HX0000000000000000000000 */
+            request_id: string;
+            /** @description Operation payload; its shape is documented per endpoint */
+            data: {
+                [key: string]: unknown;
+            };
+        };
+        ApiValidationIssueDto: {
+            /** @example dict_key */
+            field: string;
+            /** @example dict_key must be longer than or equal to 1 characters */
+            message: string;
+        };
+        ApiErrorEnvelopeDto: {
+            /**
+             * @description Stable business error code
+             * @example 40001
+             * @enum {number}
+             */
+            code: 40001 | 40101 | 40102 | 40301 | 40401 | 40901 | 40902 | 41301 | 42201 | 42901 | 50001 | 50301;
+            /** @example Bad request */
+            message: string;
+            /**
+             * @description Always null for failures
+             * @example null
+             */
+            data: {
+                [key: string]: unknown;
+            } | null;
+            /** @example req_01HX0000000000000000000000 */
+            request_id: string;
+            /** @description Field-level validation details when available */
+            details?: components["schemas"]["ApiValidationIssueDto"][];
+        };
+        AdminProfileDto: {
+            /** @example 01HX0000000000000000000000 */
+            admin_id: string;
+            /** @example operator01 */
+            username: string;
+            /**
+             * @example operator
+             * @enum {string}
+             */
+            role: "super_admin" | "operator" | "reviewer";
+            /** @example true */
+            totp_enabled: boolean;
+        };
+        AdminSessionDto: {
+            /** @example csrf-token-value */
+            csrf_token: string;
+            admin: components["schemas"]["AdminProfileDto"];
+        };
+        LoginMfaRequiredDto: {
+            /**
+             * @example true
+             * @enum {boolean}
+             */
+            mfa_required: true;
+            /** @example mfa-token-value */
+            mfa_token: string;
+        };
+        LoginMustBindTotpDto: {
+            /**
+             * @example true
+             * @enum {boolean}
+             */
+            must_bind_totp: true;
+            /** @example mfa-token-value */
+            mfa_token: string;
+        };
+        LoginDto: {
+            /** @example operator01 */
+            username: string;
+            /** @example correct horse battery staple */
+            password: string;
+        };
+        TotpSetupDto: {
+            /** @example otpauth://totp/SZFisher:operator01?secret=... */
+            otpauth_uri: string;
+            /** @example JBSWY3DPEHPK3PXP */
+            manual_key: string;
+        };
+        MfaTokenDto: {
+            /** @example mfa-token-value */
+            mfa_token: string;
+        };
+        TotpEnableDto: {
+            /** @example csrf-token-value */
+            csrf_token: string;
+            admin: components["schemas"]["AdminProfileDto"];
+            /**
+             * @example [
+             *       "AAAA-BBBB",
+             *       "CCCC-DDDD"
+             *     ]
+             */
+            recovery_codes: string[];
+        };
+        TotpCodeDto: {
+            /** @example mfa-token-value */
+            mfa_token: string;
+            /** @example 123456 */
+            code: string;
+        };
+        TotpRecoveryDto: {
+            /** @example csrf-token-value */
+            csrf_token: string;
+            admin: components["schemas"]["AdminProfileDto"];
+            /** @example 9 */
+            remaining_recovery_codes: number;
+        };
+        RecoveryCodeDto: {
+            /** @example mfa-token-value */
+            mfa_token: string;
+            /** @example AAAA-BBBB */
+            recovery_code: string;
+        };
+        MeDto: {
+            admin: components["schemas"]["AdminProfileDto"];
+            /**
+             * @example [
+             *       "spot:read",
+             *       "audit:read"
+             *     ]
+             */
+            permissions: string[];
+            /** @example csrf-token-value */
+            csrf_token: string;
+        };
+        AuditLogItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            log_id: string;
+            /** @example 01HX0000000000000000000001 */
+            admin_id: string;
+            /** @example dictionary.update */
+            action: string;
+            /** @example dictionary */
+            entity_type: string;
+            /** @example poi_type:food */
+            entity_id: string | null;
+            before_json: {
+                [key: string]: unknown;
+            } | null;
+            after_json: {
+                [key: string]: unknown;
+            } | null;
+            /** @example 203.0.113.10 */
+            ip: string | null;
+            /** @example req_01HX0000000000000000000000 */
+            request_id: string | null;
+            /** @example szfisher-admin/1.0.0 */
+            user_agent: string | null;
+            /** @example 2026-11-16T08:00:00.000Z */
+            created_at: string;
+        };
+        AuditLogPageDto: {
+            items: components["schemas"]["AuditLogItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 1 */
+            total: number;
+            /** @example false */
+            has_more: boolean;
+        };
+        PublicDictionaryItemDto: {
+            /** @example food */
+            key: string;
+            /** @example 餐饮 */
+            label: string;
+            /** @example 1 */
+            sort_order: number;
+        };
+        PublicDictionariesDto: {
+            districts: components["schemas"]["PublicDictionaryItemDto"][];
+            fish_types: components["schemas"]["PublicDictionaryItemDto"][];
+            fee_status: components["schemas"]["PublicDictionaryItemDto"][];
+            water_types: components["schemas"]["PublicDictionaryItemDto"][];
+            venue_types: components["schemas"]["PublicDictionaryItemDto"][];
+            fishing_methods: components["schemas"]["PublicDictionaryItemDto"][];
+            poi_types: components["schemas"]["PublicDictionaryItemDto"][];
+        };
+        AdminDictionaryItemDto: {
+            /** @example poi_type */
+            dict_type: string;
+            /** @example food */
+            dict_key: string;
+            /** @example 餐饮 */
+            dict_label: string;
+            /** @example 1 */
+            sort_order: number;
+            /** @example true */
+            enabled: boolean;
+            /** @example null */
+            parent_key: string | null;
+        };
+        AdminDictionaryListDto: {
+            items: components["schemas"]["AdminDictionaryItemDto"][];
+        };
         CreateDictionaryDto: {
             /**
              * @example poi_type
@@ -267,10 +484,8 @@ export interface components {
             dict_key: string;
             /** @example 餐饮 */
             dict_label: string;
-            /** @default 0 */
-            sort_order: number;
-            /** @default true */
-            enabled: boolean;
+            sort_order?: number;
+            enabled?: boolean;
             parent_key?: string | null;
         };
         UpdateDictionaryDto: {
@@ -279,6 +494,33 @@ export interface components {
             sort_order?: number;
             enabled?: boolean;
             parent_key?: string | null;
+        };
+        MapConfigDto: {
+            /** @example 22.5431 */
+            default_latitude: number;
+            /** @example 114.0579 */
+            default_longitude: number;
+            /** @example 12 */
+            default_zoom: number;
+        };
+        FeatureFlagsDto: {
+            /** @example true */
+            map_tab: boolean;
+            /** @example true */
+            search: boolean;
+            /** @example true */
+            banned_spots: boolean;
+        };
+        DataFreshnessDto: {
+            /** @example 30 */
+            core_days: number;
+            /** @example 90 */
+            normal_days: number;
+        };
+        ClientConfigDto: {
+            map: components["schemas"]["MapConfigDto"];
+            features: components["schemas"]["FeatureFlagsDto"];
+            data_freshness: components["schemas"]["DataFreshnessDto"];
         };
     };
     responses: never;
@@ -298,11 +540,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Process is alive */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HealthStatusDto"];
+                };
             };
         };
     };
@@ -315,11 +560,23 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Database is reachable */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HealthStatusDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -336,11 +593,97 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Session issued, TOTP required, or TOTP binding required */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSessionDto"] | components["schemas"]["LoginMfaRequiredDto"] | components["schemas"]["LoginMustBindTotpDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -353,28 +696,204 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSessionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
     AdminAuthController_logout: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Logged out; data is null */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        /** @example null */
+                        data: unknown;
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -391,11 +910,97 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["TotpSetupDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -412,11 +1017,97 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["TotpEnableDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -433,11 +1124,97 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSessionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -454,11 +1231,97 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["TotpRecoveryDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -471,11 +1334,97 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["MeDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -488,11 +1437,52 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Paginated audit log rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AuditLogPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -510,7 +1500,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicDictionariesDto"];
+                    };
+                };
             };
             /** @description ETag matched; no body */
             304: {
@@ -518,6 +1512,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -535,14 +1547,57 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminDictionaryListDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
     AdminDictionariesController_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -557,21 +1612,64 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminDictionaryItemDto"];
+                    };
+                };
             };
-            /** @description Dictionary key already exists */
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dictionary key already exists (40901) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
         };
     };
     AdminDictionariesController_update: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
             path: {
                 type: string;
                 key: string;
@@ -589,14 +1687,54 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminDictionaryItemDto"];
+                    };
+                };
             };
-            /** @description Dictionary row does not exist */
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dictionary row does not exist (40401) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };
@@ -609,12 +1747,41 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Map defaults, feature switches and freshness */
+            /** @description Map defaults, feature switches and freshness with a strong ETag */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ClientConfigDto"];
+                    };
+                };
+            };
+            /** @description ETag matched; no body */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
             };
         };
     };

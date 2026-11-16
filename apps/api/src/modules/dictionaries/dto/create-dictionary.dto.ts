@@ -18,7 +18,7 @@ export class CreateDictionaryDto {
   @Length(1, 128)
   dict_label!: string;
 
-  @ApiPropertyOptional({ default: 0, minimum: 0 })
+  @ApiPropertyOptional({ minimum: 0 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -26,7 +26,7 @@ export class CreateDictionaryDto {
   @Max(1_000_000)
   sort_order?: number;
 
-  @ApiPropertyOptional({ default: true })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;

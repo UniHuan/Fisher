@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { ADMIN_ROLE, ERROR_CODES } from '@szfisher/shared';
 import request from 'supertest';
 import { ulid } from 'ulid';
+import type { paths } from '../../../packages/api-client/src/schema';
 import { createTestApp } from './create-test-app';
 import {
   cleanupAuthTestData,
@@ -10,6 +11,11 @@ import {
   loginAs,
   loginAsSuperAdmin,
 } from './support/auth-helpers';
+
+type PublicDictionariesResponse =
+  paths['/api/v1/dictionaries']['get']['responses'][200]['content']['application/json'];
+type ClientConfigResponse =
+  paths['/api/v1/config']['get']['responses'][200]['content']['application/json'];
 
 jest.setTimeout(30000);
 
@@ -185,6 +191,62 @@ describe('dictionaries and client config (e2e)', () => {
     expect(Object.keys(data.features).sort()).toEqual(['banned_spots', 'map_tab', 'search']);
     expect(Object.keys(data.data_freshness).sort()).toEqual(['core_days', 'normal_days']);
     expect(JSON.stringify(res.body)).not.toMatch(/secret|key|password|internal/i);
+  });
+
+  it('returns a stable config etag, cache-control and 304 on If-None-Match', async () => {
+    const prisma = getAuthTestPrisma();
+    await prisma.config.deleteMany({ where: { config_key: 'features.search' } });
+
+    const first = await request(server).get('/api/v1/config').set(PUBLIC_HEADERS).expect(200);
+    expect(first.headers.etag).toMatch(/^"[0-9a-f]{32}"$/);
+    expect(first.headers['cache-control']).toBe('public, max-age=600');
+
+    const repeated = await request(server)
+      .get('/api/v1/config')
+      .set(PUBLIC_HEADERS)
+      .expect(200);
+    expect(repeated.headers.etag).toBe(first.headers.etag);
+
+    const notModified = await request(server)
+      .get('/api/v1/config')
+      .set(PUBLIC_HEADERS)
+      .set('If-None-Match', first.headers.etag as string)
+      .expect(304);
+    expect(notModified.text).toBe('');
+    expect(notModified.headers['cache-control']).toBe('public, max-age=600');
+
+    try {
+      await prisma.config.create({
+        data: {
+          config_key: 'features.search',
+          config_value: 'false',
+          description: 'e2e config etag change',
+        },
+      });
+
+      const changed = await request(server)
+        .get('/api/v1/config')
+        .set(PUBLIC_HEADERS)
+        .expect(200);
+      expect(changed.body.data.features.search).toBe(false);
+      expect(changed.headers.etag).not.toBe(first.headers.etag);
+    } finally {
+      await prisma.config.deleteMany({ where: { config_key: 'features.search' } });
+    }
+
+    const restored = await request(server)
+      .get('/api/v1/config')
+      .set(PUBLIC_HEADERS)
+      .expect(200);
+    expect(restored.headers.etag).toBe(first.headers.etag);
+
+    const cors = await request(server)
+      .get('/api/v1/config')
+      .set(PUBLIC_HEADERS)
+      .set('Origin', 'https://admin.szfisher.test')
+      .expect(200);
+    expect(cors.headers['access-control-expose-headers']).toContain('ETag');
+    expect(cors.headers['access-control-expose-headers']).toContain('Cache-Control');
   });
 
   it('lets super admin add a dictionary item visible in the public dictionary', async () => {
@@ -393,5 +455,36 @@ describe('dictionaries and client config (e2e)', () => {
       .send({ sort_order: 'not-a-number' })
       .expect(400);
     expect(invalidUpdate.body).toMatchObject({ code: ERROR_CODES.VALIDATION, data: null });
+  });
+
+  it('exposes concrete enveloped response types in the generated client schema', () => {
+    // These assignments fail to compile if openapi-typescript emits `never`.
+    const dictionaries: PublicDictionariesResponse = {
+      code: ERROR_CODES.SUCCESS,
+      message: 'ok',
+      request_id: 'req_contract_dictionaries',
+      data: {
+        districts: [],
+        fish_types: [],
+        fee_status: [],
+        water_types: [],
+        venue_types: [],
+        fishing_methods: [],
+        poi_types: [],
+      },
+    };
+    const config: ClientConfigResponse = {
+      code: ERROR_CODES.SUCCESS,
+      message: 'ok',
+      request_id: 'req_contract_config',
+      data: {
+        map: { default_latitude: 22.5431, default_longitude: 114.0579, default_zoom: 12 },
+        features: { map_tab: true, search: true, banned_spots: true },
+        data_freshness: { core_days: 30, normal_days: 90 },
+      },
+    };
+
+    expect(dictionaries.data.districts).toEqual([]);
+    expect(config.data.map.default_zoom).toBe(12);
   });
 });

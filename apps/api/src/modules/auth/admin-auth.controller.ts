@@ -8,7 +8,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -18,6 +18,11 @@ import {
   readCookie,
   setAuthCookies,
 } from '../../common/http/admin-cookies';
+import {
+  ApiCommonErrorResponses,
+  ApiEnvelopeResponse,
+  ApiEnvelopeUnionResponse,
+} from '../../common/openapi/api-response.decorators';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
 import {
   type AdminProfile,
@@ -25,8 +30,23 @@ import {
   type MeResult,
   AdminAuthService,
 } from './admin-auth.service';
+import {
+  AdminSessionDto,
+  LoginMfaRequiredDto,
+  LoginMustBindTotpDto,
+  MeDto,
+  TotpEnableDto,
+  TotpRecoveryDto,
+  TotpSetupDto,
+} from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { MfaTokenDto, RecoveryCodeDto, TotpCodeDto } from './dto/totp.dto';
+
+const CSRF_HEADER = {
+  name: 'X-CSRF-Token',
+  required: true,
+  description: 'Synchronizer CSRF token issued by login or refresh',
+};
 
 interface SessionBody {
   csrf_token: string;
@@ -38,6 +58,7 @@ function sessionBody(session: IssuedSession): SessionBody {
 }
 
 @ApiTags('admin auth')
+@ApiCommonErrorResponses()
 @Controller('admin')
 export class AdminAuthController {
   constructor(private readonly auth: AdminAuthService) {}
@@ -45,6 +66,10 @@ export class AdminAuthController {
   @Public()
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
+  @ApiEnvelopeUnionResponse(
+    [AdminSessionDto, LoginMfaRequiredDto, LoginMustBindTotpDto],
+    { description: 'Session issued, TOTP required, or TOTP binding required' },
+  )
   async login(
     @Body() body: LoginDto,
     @Req() request: RequestWithContext,
@@ -62,6 +87,7 @@ export class AdminAuthController {
   @Public()
   @Post('auth/refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiEnvelopeResponse(AdminSessionDto)
   async refresh(
     @Req() request: RequestWithContext,
     @Res({ passthrough: true }) response: Response,
@@ -82,6 +108,9 @@ export class AdminAuthController {
 
   @Post('auth/logout')
   @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth('admin-cookie')
+  @ApiHeader(CSRF_HEADER)
+  @ApiEnvelopeResponse(null, { description: 'Logged out; data is null' })
   async logout(
     @CurrentAdmin() admin: AdminContext,
     @Res({ passthrough: true }) response: Response,
@@ -94,6 +123,7 @@ export class AdminAuthController {
   @Public()
   @Post('auth/totp/setup')
   @HttpCode(HttpStatus.OK)
+  @ApiEnvelopeResponse(TotpSetupDto)
   async setupTotp(
     @Body() body: MfaTokenDto,
     @Req() request: RequestWithContext,
@@ -105,6 +135,7 @@ export class AdminAuthController {
   @Public()
   @Post('auth/totp/enable')
   @HttpCode(HttpStatus.OK)
+  @ApiEnvelopeResponse(TotpEnableDto)
   async enableTotp(
     @Body() body: TotpCodeDto,
     @Req() request: RequestWithContext,
@@ -119,6 +150,7 @@ export class AdminAuthController {
   @Public()
   @Post('auth/totp/verify')
   @HttpCode(HttpStatus.OK)
+  @ApiEnvelopeResponse(AdminSessionDto)
   async verifyTotp(
     @Body() body: TotpCodeDto,
     @Req() request: RequestWithContext,
@@ -133,6 +165,7 @@ export class AdminAuthController {
   @Public()
   @Post('auth/totp/recovery')
   @HttpCode(HttpStatus.OK)
+  @ApiEnvelopeResponse(TotpRecoveryDto)
   async recovery(
     @Body() body: RecoveryCodeDto,
     @Req() request: RequestWithContext,
@@ -152,6 +185,8 @@ export class AdminAuthController {
   }
 
   @Get('me')
+  @ApiCookieAuth('admin-cookie')
+  @ApiEnvelopeResponse(MeDto)
   async me(@CurrentAdmin() admin: AdminContext): Promise<MeResult> {
     return this.auth.getMe(admin);
   }
