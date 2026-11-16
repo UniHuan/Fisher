@@ -77,3 +77,18 @@ jobs:
       - run: pnpm test:integration
       # Regenerates OpenAPI and client types, then fails if either differs from the commit.
       - run: pnpm openapi:check
+
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # Validates both Compose files against the Compose schema.
+      - name: Validate Compose files
+        run: |
+          docker compose -f infra/docker/docker-compose.yml config > /dev/null
+          docker compose -f infra/docker/docker-compose.test.yml config > /dev/null
+      # Proves the production image builds; the build stage uses only a placeholder URL.
+      - name: Build API image
+        run: docker build -f infra/docker/Dockerfile.api -t szfisher-api:ci .

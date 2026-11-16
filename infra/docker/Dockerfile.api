@@ -6,6 +6,9 @@ WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# Inert placeholder: Prisma Client generation reads the datasource URL but never
+# connects. Runtime receives the real DATABASE_URL from the deployment environment.
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates openssl python3 make g++ \
