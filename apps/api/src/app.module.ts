@@ -1,9 +1,24 @@
-import { Module } from '@nestjs/common';
+import { Module, type DynamicModule } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { parseEnv } from './config/env.schema';
 import { HealthController } from './modules/health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 
-@Module({
-  imports: [PrismaModule],
-  controllers: [HealthController],
-})
-export class AppModule {}
+@Module({})
+export class AppModule {
+  // Built per application instance so tests can set process.env before Zod validation runs.
+  static forRoot(): DynamicModule {
+    return {
+      module: AppModule,
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          cache: true,
+          validate: parseEnv,
+        }),
+        PrismaModule,
+      ],
+      controllers: [HealthController],
+    };
+  }
+}
