@@ -1,2 +1,10 @@
-// Placeholder entrypoint. Task 3 replaces this with the NestJS application bootstrap.
-export {};
+import { createApp } from './app.factory';
+import { parseEnv } from './config/env.schema';
+
+async function bootstrap(): Promise<void> {
+  const env = parseEnv(process.env);
+  const app = await createApp();
+  await app.listen(env.PORT);
+}
+
+void bootstrap();
