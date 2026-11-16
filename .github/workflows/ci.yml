@@ -15,6 +15,21 @@ jobs:
       DATABASE_URL: postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public
     steps:
       - uses: actions/checkout@v4
+      # Guards the Docker build context: nested .env files must stay out, examples may stay.
+      - name: Check Docker context ignores nested env files
+        run: |
+          for path in .env apps/api/.env apps/api/prisma/.env; do
+            if ! git -c core.excludesFile="$PWD/.dockerignore" check-ignore --no-index -q "$path"; then
+              echo "::error::$path would enter the Docker build context"
+              exit 1
+            fi
+          done
+          for path in .env.example apps/api/.env.example; do
+            if git -c core.excludesFile="$PWD/.dockerignore" check-ignore --no-index -q "$path"; then
+              echo "::error::$path must remain in the Docker build context"
+              exit 1
+            fi
+          done
       # Version comes from the root package.json "packageManager" field (pnpm@10.0.0).
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -58,6 +73,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @szfisher/shared build
       - run: pnpm --filter @szfisher/api prisma:generate
-      # Migrates, seeds and generates the local integration database.
-      - run: pnpm --filter @szfisher/api prisma:test:prepare
+      # test:integration owns test database preparation (guarded reset plus seed).
       - run: pnpm test:integration

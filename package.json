@@ -14,7 +14,10 @@
     "db:down": "docker compose -f infra/docker/docker-compose.yml down",
     "db:migrate": "pnpm --filter @szfisher/api exec prisma migrate deploy",
     "db:seed": "pnpm --filter @szfisher/api prisma:seed",
-    "test:integration": "pnpm --filter @szfisher/api test:e2e"
+    "db:test:up": "docker compose -f infra/docker/docker-compose.test.yml up -d",
+    "db:test:down": "docker compose -f infra/docker/docker-compose.test.yml down",
+    "db:test:prepare": "pnpm --filter @szfisher/api prisma:test:prepare",
+    "test:integration": "pnpm db:test:prepare && pnpm --filter @szfisher/api test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

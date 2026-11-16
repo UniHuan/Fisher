@@ -12,6 +12,6 @@ openapi
 **/*.tsbuildinfo
 *.docx
 *.png
-.env
-.env.*
-!.env.example
+**/.env
+**/.env.*
+!**/.env.example
