@@ -4,17 +4,41 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: szfisher_test
+          POSTGRES_USER: szfisher
+          POSTGRES_PASSWORD: szfisher
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U szfisher -d szfisher_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public
     steps:
       - uses: actions/checkout@v4
+      # Version comes from the root package.json "packageManager" field (pnpm@10.0.0).
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-      - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @szfisher/shared build
+      - run: pnpm --filter @szfisher/api prisma:generate
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm --filter @szfisher/api prisma:test:prepare
       - run: pnpm test
+      - run: pnpm build
