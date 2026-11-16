@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Spot {
+  spot_id           String    @id @db.Char(26)
+  spot_name         String    @db.VarChar(60)
+  city_code         String    @default("440300") @db.VarChar(6)
+  district          String?   @db.VarChar(32)
+  latitude          Decimal?  @db.Decimal(9, 6)
+  longitude         Decimal?  @db.Decimal(9, 6)
+  nav_latitude      Decimal?  @db.Decimal(9, 6)
+  nav_longitude     Decimal?  @db.Decimal(9, 6)
+  parking_latitude  Decimal?  @db.Decimal(9, 6)
+  parking_longitude Decimal?  @db.Decimal(9, 6)
+  address           String?   @db.VarChar(120)
+  fish_types        String[]  @default([])
+  fee_status        String?   @db.VarChar(32)
+  fee_unit          String?   @db.VarChar(32)
+  fee_detail        String?   @db.VarChar(200)
+  water_type        String?   @db.VarChar(32)
+  venue_type        String?   @db.VarChar(32)
+  fishing_method    String[]  @default([])
+  open_status       String?   @db.VarChar(32)
+  ban_note          String?   @db.VarChar(200)
+  open_hours        String?   @db.VarChar(100)
+  spot_score        Decimal?  @db.Decimal(2, 1)
+  description       String?   @db.Text
+  tips              String?   @db.Text
+  images            String[]  @default([])
+  cover_image_key   String?   @db.VarChar(255)
+  sort_weight       Int       @default(0)
+  is_core           Boolean   @default(false)
+  status            String    @default("draft") @db.VarChar(32)
+  source            String    @db.VarChar(32)
+  verified_at       DateTime? @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
+
+  spot_pois     SpotPoi[]
+  poi_sync_runs PoiSyncRun[]
+
+  // The PRD 10.7 spot indexes (status, district), (status, is_core, verified_at),
+  // (status, sort_weight, verified_at), (latitude, longitude) and (updated_at) are
+  // created as partial indexes (WHERE deleted_at IS NULL) in 0001_init/migration.sql.
+  // Prisma PSL cannot express partial predicates, so they stay migration-only:
+  // declaring them here would make every future migrate dev emit duplicate
+  // non-partial CREATE INDEX statements.
+  @@map("spot")
+}
+
+model Poi {
+  poi_id          String   @id @db.Char(26)
+  external_poi_id String?  @db.VarChar(64)
+  poi_name        String   @db.VarChar(80)
+  poi_type        String   @db.VarChar(32)
+  latitude        Decimal  @db.Decimal(9, 6)
+  longitude       Decimal  @db.Decimal(9, 6)
+  address         String?  @db.VarChar(120)
+  rating          Decimal? @db.Decimal(2, 1)
+  open_time       String?  @db.VarChar(100)
+  source          String   @db.VarChar(32)
+  status          String   @default("active") @db.VarChar(32)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @updatedAt @db.Timestamptz(6)
+
+  spot_pois SpotPoi[]
+
+  @@unique([source, external_poi_id])
+  @@index([poi_type, status])
+  @@map("poi")
+}
+
+model SpotPoi {
+  spot_id           String   @db.Char(26)
+  poi_id            String   @db.Char(26)
+  distance_m        Int
+  poi_type_override String?  @db.VarChar(32)
+  sort_order        Int?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  spot Spot @relation(fields: [spot_id], references: [spot_id], onDelete: Restrict)
+  poi  Poi  @relation(fields: [poi_id], references: [poi_id], onDelete: Restrict)
+
+  @@id([spot_id, poi_id])
+  @@index([spot_id, poi_type_override, distance_m])
+  @@index([poi_id])
+  @@map("spot_poi")
+}
+
+model AppUser {
+  user_id       String    @id @db.Char(26)
+  nickname      String?   @db.VarChar(40)
+  avatar_url    String?   @db.VarChar(255)
+  status        String    @default("active") @db.VarChar(32)
+  token_version Int       @default(0)
+  last_login_at DateTime? @db.Timestamptz(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at    DateTime? @db.Timestamptz(6)
+
+  user_identities UserIdentity[]
+  user_devices    UserDevice[]
+
+  @@index([status, created_at])
+  @@map("app_user")
+}
+
+model UserIdentity {
+  identity_id     String    @id @db.Char(26)
+  user_id         String    @db.Char(26)
+  provider        String    @db.VarChar(32)
+  provider_uid    String    @db.VarChar(128)
+  unionid         String?   @db.VarChar(64)
+  phone_encrypted String?   @db.VarChar(255)
+  phone_hmac      String?   @db.VarChar(64)
+  meta_json       Json?     @db.JsonB
+  is_primary      Boolean   @default(false)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  last_login_at   DateTime? @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@unique([provider, provider_uid])
+  @@unique([phone_hmac])
+  @@index([user_id])
+  @@map("user_identity")
+}
+
+model UserDevice {
+  device_id      String    @id @db.Char(26)
+  user_id        String    @db.Char(26)
+  platform       String    @db.VarChar(32)
+  push_token     String?   @db.VarChar(255)
+  app_version    String?   @db.VarChar(32)
+  last_active_at DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @updatedAt @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@unique([platform, push_token])
+  @@index([user_id, last_active_at])
+  @@map("user_device")
+}
+
+model AdminUser {
+  admin_id                String    @id @db.Char(26)
+  username                String    @unique @db.VarChar(64)
+  password_hash           String    @db.VarChar(255)
+  role                    String    @db.VarChar(32)
+  status                  String    @default("active") @db.VarChar(32)
+  token_version           Int       @default(0)
+  refresh_token_hash      String?   @db.Char(64)
+  refresh_token_issued_at DateTime? @db.Timestamptz(6)
+  session_started_at      DateTime? @db.Timestamptz(6)
+  last_active_at          DateTime? @db.Timestamptz(6)
+  totp_secret_encrypted   String?   @db.VarChar(512)
+  totp_enabled_at         DateTime? @db.Timestamptz(6)
+  recovery_codes_hash     String[]  @default([])
+  failed_login_count      Int       @default(0)
+  locked_until            DateTime? @db.Timestamptz(6)
+  last_login_at           DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @updatedAt @db.Timestamptz(6)
+
+  audit_logs  AuditLog[]
+  import_jobs ImportJob[]
+
+  @@map("admin_user")
+}
+
+model AuditLog {
+  log_id      String   @id @db.Char(26)
+  admin_id    String   @db.Char(26)
+  action      String   @db.VarChar(64)
+  entity_type String   @db.VarChar(64)
+  entity_id   String?  @db.VarChar(64)
+  before_json Json?    @db.JsonB
+  after_json  Json?    @db.JsonB
+  ip          String?  @db.VarChar(45)
+  request_id  String?  @db.VarChar(64)
+  user_agent  String?  @db.VarChar(255)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  admin AdminUser @relation(fields: [admin_id], references: [admin_id], onDelete: Restrict)
+
+  @@index([admin_id, created_at])
+  @@index([entity_type, entity_id])
+  @@index([request_id])
+  @@map("audit_log")
+}
+
+model ImportJob {
+  job_id         String    @id @db.Char(26)
+  admin_id       String    @db.Char(26)
+  file_key       String    @db.VarChar(255)
+  file_hash      String    @db.Char(64)
+  status         String    @default("pending") @db.VarChar(32)
+  total_rows     Int       @default(0)
+  success_rows   Int       @default(0)
+  failed_rows    Int       @default(0)
+  error_file_key String?   @db.VarChar(255)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  finished_at    DateTime? @db.Timestamptz(6)
+
+  admin AdminUser @relation(fields: [admin_id], references: [admin_id], onDelete: Restrict)
+
+  @@unique([admin_id, file_hash])
+  @@index([status, created_at])
+  @@map("import_job")
+}
+
+model Config {
+  config_key   String   @id @db.VarChar(128)
+  config_value String   @db.Text
+  description  String?  @db.VarChar(255)
+  updated_by   String?  @db.Char(26)
+  updated_at   DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("config")
+}
+
+model Dictionary {
+  dict_type  String   @db.VarChar(32)
+  dict_key   String   @db.VarChar(64)
+  dict_label String   @db.VarChar(128)
+  sort_order Int      @default(0)
+  enabled    Boolean  @default(true)
+  parent_key String?  @db.VarChar(64)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@id([dict_type, dict_key])
+  @@index([dict_type, enabled, sort_order])
+  @@map("dictionary")
+}
+
+model IdempotencyKey {
+  actor_type    String   @db.VarChar(32)
+  actor_id      String   @db.Char(26)
+  key           String   @db.VarChar(128)
+  request_hash  String   @db.VarChar(64)
+  response_json Json?    @db.JsonB
+  expires_at    DateTime @db.Timestamptz(6)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([actor_type, actor_id, key])
+  @@index([expires_at])
+  @@map("idempotency_key")
+}
+
+model AnalyticsEvent {
+  event_id    String   @id @db.Char(26)
+  event_name  String   @db.VarChar(64)
+  client_type String   @db.VarChar(16)
+  platform    String?  @db.VarChar(16)
+  app_version String?  @db.VarChar(32)
+  user_id     String?  @db.Char(26)
+  session_id  String?  @db.VarChar(64)
+  request_id  String?  @db.VarChar(64)
+  properties  Json?    @db.JsonB
+  occurred_at DateTime @db.Timestamptz(6)
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([event_name, occurred_at])
+  @@index([client_type, occurred_at])
+  @@index([user_id, occurred_at])
+  @@map("analytics_event")
+}
+
+model PoiSyncRun {
+  sync_id       String    @id @db.Char(26)
+  spot_id       String    @db.Char(26)
+  status        String    @db.VarChar(32)
+  poi_count     Int       @default(0)
+  error_message String?   @db.Text
+  quota_used    Int       @default(0)
+  started_at    DateTime  @default(now()) @db.Timestamptz(6)
+  finished_at   DateTime? @db.Timestamptz(6)
+
+  spot Spot @relation(fields: [spot_id], references: [spot_id], onDelete: Restrict)
+
+  @@index([spot_id, started_at])
+  @@map("poi_sync_run")
+}
