@@ -16,8 +16,9 @@ permissions:
 jobs:
   analyze:
     name: Analyze JavaScript and TypeScript
-    # Fork PRs receive a read-only token, so only analyze PRs from this repository.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Code scanning is free for public repositories. Fork PRs also receive a
+    # read-only token, so only analyze PRs whose branch is in this repository.
+    if: github.event.repository.private == false && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
