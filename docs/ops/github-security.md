@@ -42,7 +42,7 @@
 ## Dependabot 策略
 
 - npm 和 GitHub Actions 的 minor/patch 更新自动创建 PR。
-- npm 主版本、Node 与 Nginx 基础镜像主版本不自动创建 PR，按发布计划人工处理。
+- npm、GitHub Actions 的主版本，Node 基础镜像主版本，Nginx 基础镜像次版本和主版本不自动创建 PR，按发布计划人工处理。
 - Dependabot alerts 仍然覆盖安全公告。严重漏洞需要人工评估是否提前升级。
 - 主版本 PR 不开启 auto-merge，必须通过完整 CI 和人工验证。
 
