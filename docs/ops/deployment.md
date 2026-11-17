@@ -38,6 +38,7 @@ docker build -f infra/docker/Dockerfile.api \
 
 docker build -f infra/docker/Dockerfile.admin \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://fish-api-staging.unihuan.com/api/v1 \
+  --build-arg NEXT_PUBLIC_TENCENT_MAP_JS_KEY="<staging-js-key>" \
   -t "$REGISTRY/szfisher-admin:staging-$TAG" .
 
 docker push "$REGISTRY/szfisher-api:$TAG"
@@ -49,9 +50,13 @@ docker push "$REGISTRY/szfisher-admin:staging-$TAG"
 ```bash
 docker build -f infra/docker/Dockerfile.admin \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://fish-api.unihuan.com/api/v1 \
+  --build-arg NEXT_PUBLIC_TENCENT_MAP_JS_KEY="<production-js-key>" \
   -t "$REGISTRY/szfisher-admin:$TAG" .
 docker push "$REGISTRY/szfisher-admin:$TAG"
 ```
+
+腾讯地图 JS Key 只用于后台域名，必须在腾讯位置服务控制台限制到
+`fish-admin.unihuan.com` 与 staging 域名。它不是服务端密钥，但仍需按域名白名单管理。
 
 `Dockerfile.api` 使用非 root 用户、内置 `/health` 健康检查；`Dockerfile.admin` 使用 unprivileged Nginx，监听 8080。
 

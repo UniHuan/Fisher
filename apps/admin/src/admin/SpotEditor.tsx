@@ -31,6 +31,7 @@ import {
   type Session,
   type UpdateSpotBody,
 } from './api';
+import { MapPickerModal } from './MapPickerModal';
 
 interface SpotEditorProps {
   open: boolean;
@@ -109,10 +110,27 @@ export function SpotEditor({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [mapInitial, setMapInitial] = useState<{
+    latitude: string | null;
+    longitude: string | null;
+  }>({ latitude: null, longitude: null });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadPurposeRef = useRef<'cover' | 'detail'>('detail');
   const writable = session.admin.role !== 'reviewer';
   const canDelete = session.admin.role === 'super_admin';
+
+  const openMapPicker = (): void => {
+    const latitude = form.getFieldValue('latitude');
+    const longitude = form.getFieldValue('longitude');
+    setMapInitial({
+      latitude:
+        typeof latitude === 'string' && latitude.trim() !== '' ? latitude : null,
+      longitude:
+        typeof longitude === 'string' && longitude.trim() !== '' ? longitude : null,
+    });
+    setMapPickerOpen(true);
+  };
 
   const showError = (error: unknown): void => {
     if (isAuthError(error)) {
@@ -176,6 +194,7 @@ export function SpotEditor({
 
   useEffect(() => {
     if (!open) {
+      setMapPickerOpen(false);
       return undefined;
     }
     let active = true;
@@ -554,6 +573,16 @@ export function SpotEditor({
               <Input placeholder="留空默认等于钓点坐标" />
             </Form.Item>
           </Col>
+          <Col span={24}>
+            <Space size={12} align="center">
+              <Button size="small" disabled={!writable} onClick={openMapPicker}>
+                地图选点
+              </Button>
+              <Typography.Text type="secondary">
+                点击地图或搜索地址，自动填入钓点 GCJ-02 坐标。
+              </Typography.Text>
+            </Space>
+          </Col>
         </Row>
 
         <Divider />
@@ -723,6 +752,20 @@ export function SpotEditor({
           ))}
         </div>
       </Form>
+      <MapPickerModal
+        open={mapPickerOpen}
+        initialLatitude={mapInitial.latitude}
+        initialLongitude={mapInitial.longitude}
+        onPick={(picked) => {
+          form.setFieldsValue({
+            latitude: picked.latitude,
+            longitude: picked.longitude,
+            ...(picked.address === null ? {} : { address: picked.address }),
+          });
+          message.success('坐标已填入');
+        }}
+        onClose={() => setMapPickerOpen(false)}
+      />
     </Drawer>
   );
 }
