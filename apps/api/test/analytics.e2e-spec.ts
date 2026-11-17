@@ -101,5 +101,19 @@ describe('analytics (e2e)', () => {
       spot_id: spot.spot_id,
       open_status: 'open',
     });
+
+    const errorResponse = await request(app.getHttpServer())
+      .get('/api/v1/spots')
+      .query({ page: 0 })
+      .set(CLIENT_HEADERS)
+      .expect(400);
+    const errorRequestId = errorResponse.headers['x-request-id'] as string;
+    requestIds.push(errorRequestId);
+    const errorEvent = await waitForEvent(prisma, errorRequestId, 'api_error');
+    expect(errorEvent?.properties).toMatchObject({
+      route: '/api/v1/spots',
+      error_code: 40001,
+      status: 400,
+    });
   });
 });

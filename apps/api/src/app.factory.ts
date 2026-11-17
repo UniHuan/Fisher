@@ -69,7 +69,7 @@ export async function createApp(extraControllers: Type<unknown>[] = []): Promise
     new ResponseInterceptor(),
     new AnalyticsInterceptor(app.get(AnalyticsService)),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(new AllExceptionsFilter(app.get(AnalyticsService)));
 
   return app;
 }
