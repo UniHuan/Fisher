@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { JsonLogger } from './common/logging/json-logger';
+import { accessLogMiddleware } from './common/middleware/access-log.middleware';
 import { CacheControlMiddleware } from './common/middleware/cache-control.middleware';
 import { ClientContextMiddleware } from './common/middleware/client-context.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -16,12 +18,14 @@ const BODY_LIMIT = '2mb';
 export async function createApp(extraControllers: Type<unknown>[] = []): Promise<INestApplication> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(extraControllers), {
     bodyParser: false,
+    logger: new JsonLogger(),
   });
   const adminOrigins = app.get(ConfigService).getOrThrow<string[]>('ADMIN_ORIGINS');
 
   // Request IDs must run before body parsing so parser errors still carry one.
   const requestIdMiddleware = new RequestIdMiddleware();
   app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
+  app.use(accessLogMiddleware);
 
   // no-store default; public dictionary/config controllers override it for their payload.
   const cacheControlMiddleware = new CacheControlMiddleware();

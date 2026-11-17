@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { JsonLogger } from '../common/logging/json-logger';
 import { AppModule } from '../app.module';
 import { PoisService } from '../modules/pois/pois.service';
 
@@ -9,7 +10,7 @@ import { PoisService } from '../modules/pois/pois.service';
  */
 async function main(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule.forRoot(), {
-    logger: ['error', 'warn', 'log'],
+    logger: new JsonLogger(),
   });
   try {
     const result = await app.get(PoisService).syncDueSpots();

@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+
+# The admin app is a static export. The API base URL is compiled into the bundle,
+# so staging and production build separate image tags from the same commit.
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ARG NEXT_PUBLIC_API_BASE_URL=https://fish-api.unihuan.com/api/v1
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/admin/package.json apps/admin/package.json
+COPY apps/miniprogram/package.json apps/miniprogram/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/api-client/package.json packages/api-client/package.json
+RUN pnpm install --frozen-lockfile
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY packages/api-client packages/api-client
+COPY apps/admin apps/admin
+RUN pnpm --filter @szfisher/shared build \
+  && pnpm --filter @szfisher/api-client build \
+  && pnpm --filter @szfisher/admin build
+
+# Unprivileged Nginx listens on 8080; the CDN/WAF reaches this origin over HTTPS.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+COPY infra/nginx/admin.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/admin/out /usr/share/nginx/html
+RUN nginx -t
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1

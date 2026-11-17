@@ -43,6 +43,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Check operational script syntax
+        run: |
+          bash -n scripts/backup-postgres.sh
+          bash -n scripts/smoke-api.sh
 
   integration:
     runs-on: ubuntu-latest
@@ -89,6 +93,21 @@ jobs:
         run: |
           docker compose -f infra/docker/docker-compose.yml config > /dev/null
           docker compose -f infra/docker/docker-compose.test.yml config > /dev/null
-      # Proves the production image builds; the build stage uses only a placeholder URL.
+          DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+            API_IMAGE=szfisher-api:ci \
+            ADMIN_ORIGINS=https://admin.example.test \
+            JWT_ACCESS_SECRET=placeholder-jwt-secret-0123456789abcdef \
+            CSRF_SECRET=placeholder-csrf-secret-0123456789abcdef \
+            TOTP_ENCRYPTION_KEY=placeholder-totp-key-0123456789abcdef \
+            docker compose -f infra/docker/docker-compose.prod.yml config > /dev/null
+      # Proves both production images build; the API build stage uses only a placeholder URL.
       - name: Build API image
         run: docker build -f infra/docker/Dockerfile.api -t szfisher-api:ci .
+      - name: Build admin static image
+        run: docker build -f infra/docker/Dockerfile.admin -t szfisher-admin:ci .
+      - name: Validate API Nginx config
+        run: |
+          docker run --rm \
+            -v "$PWD/infra/nginx/api.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$PWD/infra/nginx/snippets:/etc/nginx/snippets:ro" \
+            nginx:1.27-alpine nginx -t
