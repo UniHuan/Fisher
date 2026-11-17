@@ -27,6 +27,7 @@ import {
   type PublicDictionaries,
   type Session,
 } from './api';
+import { ImportDrawer } from './ImportDrawer';
 import { SpotEditor } from './SpotEditor';
 
 interface SpotsWorkspaceProps {
@@ -81,6 +82,7 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
   const [reloadKey, setReloadKey] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorSpotId, setEditorSpotId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const writable = session.admin.role !== 'reviewer';
 
@@ -329,9 +331,14 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
             </Typography.Paragraph>
           </div>
           {writable && (
-            <Button type="primary" size="large" onClick={() => openEditor(null)}>
-              新增钓点
-            </Button>
+            <Space>
+              <Button size="large" onClick={() => setImportOpen(true)}>
+                Excel 导入
+              </Button>
+              <Button type="primary" size="large" onClick={() => openEditor(null)}>
+                新增钓点
+              </Button>
+            </Space>
           )}
         </div>
 
@@ -428,6 +435,14 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
           refresh();
         }}
         onExpired={onExpired}
+      />
+      <ImportDrawer
+        open={importOpen}
+        session={session}
+        onClose={() => {
+          setImportOpen(false);
+        }}
+        onImported={refresh}
       />
     </Layout>
   );
