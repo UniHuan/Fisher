@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
 import { argon2id, hash } from 'argon2';
 import ExcelJS from 'exceljs';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { generateSync } from 'otplib';
@@ -28,7 +29,7 @@ interface RoleAccount {
 }
 
 async function createRoleAccount(role: 'operator' | 'reviewer'): Promise<RoleAccount> {
-  const username = `pw_${role}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const username = `pw_${role}_${Date.now()}_${randomUUID().slice(0, 8)}`;
   const password = `Playwright-${role}-${Date.now()}-Strong!`;
   const admin = await prisma.adminUser.create({
     data: {
