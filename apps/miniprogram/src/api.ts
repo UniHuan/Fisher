@@ -63,6 +63,7 @@ function request<T>(path: string, params: Record<string, unknown> = {}): Promise
     wx.request({
       url: `${API_BASE}${path}${queryString(params)}`,
       method: 'GET',
+      timeout: 15000,
       header: {
         'X-Client-Type': 'miniprogram',
         'X-Client-Version': CLIENT_VERSION,

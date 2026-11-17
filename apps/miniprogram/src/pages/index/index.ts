@@ -52,12 +52,12 @@ interface IndexData {
   filterCount: number;
   filterFish: string[];
   filterFee: string;
-  filterWater: string;
-  filterVenue: string;
+  filterWater: string[];
+  filterVenue: string[];
   draftFish: string[];
   draftFee: string;
-  draftWater: string;
-  draftVenue: string;
+  draftWater: string[];
+  draftVenue: string[];
   fishOptions: FilterOption[];
   feeOptions: FilterOption[];
   waterOptions: FilterOption[];
@@ -81,7 +81,7 @@ interface TapEvent {
 }
 
 interface FilterTapEvent {
-  currentTarget: { dataset: { value: string } };
+  currentTarget: { dataset: { value: string; section?: string } };
 }
 
 interface SingleFilterEvent {
@@ -103,6 +103,7 @@ interface IndexMethods {
   openFilters(): void;
   closeFilters(): void;
   toggleFish(event: FilterTapEvent): void;
+  toggleMulti(event: FilterTapEvent): void;
   selectFilter(event: SingleFilterEvent): void;
   resetDraftFilters(): void;
   applyFilters(): void;
@@ -136,12 +137,12 @@ Page<IndexData, IndexMethods>({
     filterCount: 0,
     filterFish: [],
     filterFee: '',
-    filterWater: '',
-    filterVenue: '',
+    filterWater: [],
+    filterVenue: [],
     draftFish: [],
     draftFee: '',
-    draftWater: '',
-    draftVenue: '',
+    draftWater: [],
+    draftVenue: [],
     fishOptions: [],
     feeOptions: [],
     waterOptions: [],
@@ -233,8 +234,8 @@ Page<IndexData, IndexMethods>({
         district,
         fish_types: this.data.filterFish.join(',') || undefined,
         fee_status: this.data.filterFee || undefined,
-        water_type: this.data.filterWater || undefined,
-        venue_type: this.data.filterVenue || undefined,
+        water_type: this.data.filterWater.join(',') || undefined,
+        venue_type: this.data.filterVenue.join(',') || undefined,
         include_banned: this.data.includeBanned,
         page: nextPage,
         page_size: this.data.pageSize,
@@ -354,8 +355,8 @@ Page<IndexData, IndexMethods>({
       filterOpen: true,
       draftFish: this.data.filterFish.slice(),
       draftFee: this.data.filterFee,
-      draftWater: this.data.filterWater,
-      draftVenue: this.data.filterVenue,
+      draftWater: this.data.filterWater.slice(),
+      draftVenue: this.data.filterVenue.slice(),
     });
     this.refreshFilterOptions();
   },
@@ -367,6 +368,8 @@ Page<IndexData, IndexMethods>({
   refreshFilterOptions() {
     const dictionaries = this.data.dictionaries;
     const fish = this.data.draftFish;
+    const water = this.data.draftWater;
+    const venue = this.data.draftVenue;
     const singleOptions = (
       keys: Array<{ key: string; label: string }> | undefined,
       selected: string,
@@ -378,15 +381,20 @@ Page<IndexData, IndexMethods>({
         selected: selected === item.key,
       })),
     ];
-    this.setData({
-      fishOptions: (dictionaries?.fish_types ?? []).map((item) => ({
+    const multiOptions = (
+      keys: Array<{ key: string; label: string }> | undefined,
+      selected: string[],
+    ): FilterOption[] =>
+      (keys ?? []).map((item) => ({
         key: item.key,
         label: item.label,
-        selected: fish.indexOf(item.key) >= 0,
-      })),
+        selected: selected.indexOf(item.key) >= 0,
+      }));
+    this.setData({
+      fishOptions: multiOptions(dictionaries?.fish_types, fish),
       feeOptions: singleOptions(dictionaries?.fee_status, this.data.draftFee),
-      waterOptions: singleOptions(dictionaries?.water_types, this.data.draftWater),
-      venueOptions: singleOptions(dictionaries?.venue_types, this.data.draftVenue),
+      waterOptions: multiOptions(dictionaries?.water_types, water),
+      venueOptions: multiOptions(dictionaries?.venue_types, venue),
     });
   },
 
@@ -403,14 +411,34 @@ Page<IndexData, IndexMethods>({
     this.refreshFilterOptions();
   },
 
+  toggleMulti(event: FilterTapEvent) {
+    const { section, value } = event.currentTarget.dataset;
+    if (section === 'water') {
+      const next = this.data.draftWater.slice();
+      const index = next.indexOf(value);
+      if (index >= 0) {
+        next.splice(index, 1);
+      } else {
+        next.push(value);
+      }
+      this.setData({ draftWater: next });
+    } else if (section === 'venue') {
+      const next = this.data.draftVenue.slice();
+      const index = next.indexOf(value);
+      if (index >= 0) {
+        next.splice(index, 1);
+      } else {
+        next.push(value);
+      }
+      this.setData({ draftVenue: next });
+    }
+    this.refreshFilterOptions();
+  },
+
   selectFilter(event: SingleFilterEvent) {
     const { section, value } = event.currentTarget.dataset;
     if (section === 'fee') {
       this.setData({ draftFee: value });
-    } else if (section === 'water') {
-      this.setData({ draftWater: value });
-    } else if (section === 'venue') {
-      this.setData({ draftVenue: value });
     }
     this.refreshFilterOptions();
   },
@@ -420,25 +448,27 @@ Page<IndexData, IndexMethods>({
     this.setData({
       draftFish: [],
       draftFee: '',
-      draftWater: '',
-      draftVenue: '',
+      draftWater: [],
+      draftVenue: [],
     });
     this.refreshFilterOptions();
   },
 
   applyFilters() {
     const fish = this.data.draftFish.slice();
+    const water = this.data.draftWater.slice();
+    const venue = this.data.draftVenue.slice();
     const filterCount =
       fish.length +
-      [this.data.draftFee, this.data.draftWater, this.data.draftVenue].filter(
-        (value) => value !== '',
-      ).length;
+      water.length +
+      venue.length +
+      (this.data.draftFee === '' ? 0 : 1);
     this.setData({
       filterOpen: false,
       filterFish: fish,
       filterFee: this.data.draftFee,
-      filterWater: this.data.draftWater,
-      filterVenue: this.data.draftVenue,
+      filterWater: water,
+      filterVenue: venue,
       filterCount,
     });
     void this.loadSpots(true, 'filter');
@@ -456,12 +486,12 @@ Page<IndexData, IndexMethods>({
       includeBanned: false,
       filterFish: [],
       filterFee: '',
-      filterWater: '',
-      filterVenue: '',
+      filterWater: [],
+      filterVenue: [],
       draftFish: [],
       draftFee: '',
-      draftWater: '',
-      draftVenue: '',
+      draftWater: [],
+      draftVenue: [],
       filterCount: 0,
       filterOpen: false,
       spots: [],
