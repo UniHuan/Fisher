@@ -7,6 +7,8 @@ export const SERVER_ANALYTICS_EVENTS = new Set([
   'api_spot_list',
   'api_spot_detail',
   'api_search',
+  'api_error',
+  'api_rate_limited',
 ]);
 
 const ALLOWED_PROPERTIES = new Set([
@@ -16,6 +18,9 @@ const ALLOWED_PROPERTIES = new Set([
   'spot_id',
   'open_status',
   'latency_ms',
+  'route',
+  'error_code',
+  'status',
 ]);
 
 const CLIENT_TYPES = new Set<string>(Object.values(CLIENT_TYPE));

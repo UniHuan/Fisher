@@ -46,6 +46,16 @@ interface ErrorDescription {
   details?: ValidationIssue[];
 }
 
+interface AnalyticsRecorder {
+  record(input: {
+    eventName: string;
+    clientType?: string;
+    appVersion?: string | null;
+    requestId?: string | null;
+    properties?: Record<string, unknown>;
+  }): Promise<void>;
+}
+
 function asValidationIssues(details: unknown): ValidationIssue[] | undefined {
   if (!Array.isArray(details)) {
     return undefined;
@@ -112,6 +122,8 @@ function rawHttpStatus(exception: unknown): number | undefined {
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  constructor(private readonly analytics?: AnalyticsRecorder) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<RequestWithContext>();
@@ -124,6 +136,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     const { status, code, message, details } = this.describe(exception, request, requestId);
+    if (request.path.startsWith('/api/v1')) {
+      void this.analytics?.record({
+        eventName:
+          code === ERROR_CODES.RATE_LIMITED ? 'api_rate_limited' : 'api_error',
+        clientType: request.clientType,
+        appVersion: request.clientVersion,
+        requestId,
+        properties: {
+          route: request.path,
+          error_code: code,
+          status,
+        },
+      });
+    }
     response.status(status).json(fail(code, message, requestId, details));
   }
 
