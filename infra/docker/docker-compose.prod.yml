@@ -1,0 +1,91 @@
+# Reference production/staging stack for a single ECS host.
+#
+# The managed PostgreSQL instance is external. API images are immutable tags from
+# ACR; the migrate service must finish before the API starts. The admin static
+# image is used only when serving the admin origin from this host instead of
+# OSS + CDN. TLS, WAF and SLB are cloud resources in front of these ports.
+#
+# Required environment:
+#   API_IMAGE, DATABASE_URL, ADMIN_ORIGINS, JWT_ACCESS_SECRET, CSRF_SECRET,
+#   TOTP_ENCRYPTION_KEY, OSS_REGION, OSS_ACCESS_KEY_ID,
+#   OSS_ACCESS_KEY_SECRET, OSS_WORK_BUCKET, OSS_PUBLIC_BUCKET, OSS_PUBLIC_BASE_URL
+# Optional: ADMIN_IMAGE, TENCENT_MAP_SERVER_KEY, LOG_LEVEL, STORAGE_DRIVER.
+
+name: szfisher-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  PORT: "3000"
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+  ADMIN_ORIGINS: ${ADMIN_ORIGINS:?ADMIN_ORIGINS is required}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+  CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET is required}
+  TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:?TOTP_ENCRYPTION_KEY is required}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-oss}
+  STORAGE_LOCAL_ROOT: /app/storage
+  OSS_REGION: ${OSS_REGION:-}
+  OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+  OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+  OSS_WORK_BUCKET: ${OSS_WORK_BUCKET:-}
+  OSS_PUBLIC_BUCKET: ${OSS_PUBLIC_BUCKET:-}
+  OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
+  TENCENT_MAP_SERVER_KEY: ${TENCENT_MAP_SERVER_KEY:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  migrate:
+    image: ${API_IMAGE:?API_IMAGE is required}
+    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+    working_dir: /app/apps/api
+    environment:
+      <<: *api-environment
+      HOME: /tmp
+    restart: "no"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
+  api:
+    image: ${API_IMAGE:?API_IMAGE is required}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: *api-environment
+    ports:
+      # Only the host Nginx reaches this port; never expose it through the security group.
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
+  # Optional staging fallback when the static admin is not on OSS/CDN.
+  # Build the image with NEXT_PUBLIC_API_BASE_URL for the target environment.
+  admin:
+    image: ${ADMIN_IMAGE:-szfisher-admin:latest}
+    profiles: ["admin"]
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
