@@ -4,6 +4,7 @@ export const TEST_DATABASE_URL =
   'postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public';
 const API_ORIGIN = 'http://localhost:3011';
 const ADMIN_ORIGIN = 'http://localhost:3010';
+const PNPM = './scripts/pnpm.sh';
 
 export default defineConfig({
   testDir: './apps/api/test/playwright',
@@ -28,7 +29,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'corepack pnpm --filter @szfisher/api dev',
+      command: `${PNPM} --filter @szfisher/api dev`,
       url: `${API_ORIGIN}/health`,
       reuseExistingServer: false,
       timeout: 180_000,
@@ -48,7 +49,7 @@ export default defineConfig({
       // Serve the same static export that ships in the admin image. This also
       // avoids Next's single-dev-server-per-directory restriction.
       command:
-        'corepack pnpm --filter @szfisher/api-client build && corepack pnpm --filter @szfisher/admin build && python3 -m http.server 3010 --bind 127.0.0.1 --directory apps/admin/out',
+        `${PNPM} --filter @szfisher/api-client build && ${PNPM} --filter @szfisher/admin build && python3 -m http.server 3010 --bind 127.0.0.1 --directory apps/admin/out`,
       url: ADMIN_ORIGIN,
       reuseExistingServer: false,
       timeout: 240_000,

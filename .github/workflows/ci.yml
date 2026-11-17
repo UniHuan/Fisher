@@ -24,7 +24,7 @@ jobs:
               exit 1
             fi
           done
-          for path in .env.example apps/api/.env.example; do
+          for path in .env.example; do
             if git -c core.excludesFile="$PWD/.dockerignore" check-ignore --no-index -q "$path"; then
               echo "::error::$path must remain in the Docker build context"
               exit 1
@@ -38,6 +38,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @szfisher/shared build
+      - run: pnpm --filter @szfisher/api-client build
       - run: pnpm --filter @szfisher/api prisma:generate
       - run: pnpm lint
       - run: pnpm typecheck
@@ -137,9 +138,12 @@ jobs:
         run: docker build -f infra/docker/Dockerfile.api -t szfisher-api:ci .
       - name: Build admin static image
         run: docker build -f infra/docker/Dockerfile.admin -t szfisher-admin:ci .
-      - name: Validate API Nginx config
+      - name: Validate Nginx config
         run: |
           docker run --rm \
             -v "$PWD/infra/nginx/api.conf:/etc/nginx/conf.d/default.conf:ro" \
             -v "$PWD/infra/nginx/snippets:/etc/nginx/snippets:ro" \
+            nginx:1.27-alpine nginx -t
+          docker run --rm \
+            -v "$PWD/infra/nginx/admin.conf:/etc/nginx/conf.d/default.conf:ro" \
             nginx:1.27-alpine nginx -t
