@@ -2,7 +2,7 @@
 
 # The admin app is a static export. The API base URL is compiled into the bundle,
 # so staging and production build separate image tags from the same commit.
-FROM node:24-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage: frozen workspace install, shared build, Prisma Client and API build.
-FROM node:24-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 COPY LICENSE NOTICE ./
 ENV PNPM_HOME=/pnpm
@@ -30,7 +30,7 @@ RUN pnpm --filter @szfisher/shared build \
   && pnpm --filter @szfisher/api build
 
 # Runtime stage: compiled API plus the generated Prisma Client and native binaries.
-FROM node:24-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update \
