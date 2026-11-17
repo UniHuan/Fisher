@@ -9,6 +9,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "test:admin": "playwright test",
+    "test:admin:install": "playwright install chromium",
     "build": "pnpm -r build",
     "db:up": "docker compose -f infra/docker/docker-compose.yml up -d postgres",
     "db:down": "docker compose -f infra/docker/docker-compose.yml down",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
     "eslint": "10.15.0",
     "globals": "17.14.0",
     "jest": "30.5.2",
