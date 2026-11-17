@@ -37,6 +37,7 @@ x-api-environment: &api-environment
   OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
   TENCENT_MAP_SERVER_KEY: ${TENCENT_MAP_SERVER_KEY:-}
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  ANALYTICS_RETENTION_DAYS: ${ANALYTICS_RETENTION_DAYS:-180}
 
 services:
   migrate:

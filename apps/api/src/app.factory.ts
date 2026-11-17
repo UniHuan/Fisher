@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { AnalyticsInterceptor } from './modules/analytics/analytics.interceptor';
+import { AnalyticsService } from './modules/analytics/analytics.service';
 import { JsonLogger } from './common/logging/json-logger';
 import { accessLogMiddleware } from './common/middleware/access-log.middleware';
 import { CacheControlMiddleware } from './common/middleware/cache-control.middleware';
@@ -63,7 +65,10 @@ export async function createApp(extraControllers: Type<unknown>[] = []): Promise
       transform: true,
     }),
   );
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalInterceptors(
+    new ResponseInterceptor(),
+    new AnalyticsInterceptor(app.get(AnalyticsService)),
+  );
   app.useGlobalFilters(new AllExceptionsFilter());
 
   return app;

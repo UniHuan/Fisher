@@ -38,6 +38,7 @@ docker build -f infra/docker/Dockerfile.api \
 
 docker build -f infra/docker/Dockerfile.admin \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://fish-api-staging.unihuan.com/api/v1 \
+  --build-arg NEXT_PUBLIC_TENCENT_MAP_JS_KEY="<staging-js-key>" \
   -t "$REGISTRY/szfisher-admin:staging-$TAG" .
 
 docker push "$REGISTRY/szfisher-api:$TAG"
@@ -49,9 +50,13 @@ docker push "$REGISTRY/szfisher-admin:staging-$TAG"
 ```bash
 docker build -f infra/docker/Dockerfile.admin \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://fish-api.unihuan.com/api/v1 \
+  --build-arg NEXT_PUBLIC_TENCENT_MAP_JS_KEY="<production-js-key>" \
   -t "$REGISTRY/szfisher-admin:$TAG" .
 docker push "$REGISTRY/szfisher-admin:$TAG"
 ```
+
+腾讯地图 JS Key 只用于后台域名，必须在腾讯位置服务控制台限制到
+`fish-admin.unihuan.com` 与 staging 域名。它不是服务端密钥，但仍需按域名白名单管理。
 
 `Dockerfile.api` 使用非 root 用户、内置 `/health` 健康检查；`Dockerfile.admin` 使用 unprivileged Nginx，监听 8080。
 
@@ -227,3 +232,13 @@ docker compose --env-file /etc/szfisher/production.env \
 ```
 
 建议由 systemd timer 或云函数每天触发一次，任务会跳过 24 小时内已成功同步的钓点。
+
+分析明细保留 180 天，用同一套定时任务清理：
+
+```bash
+docker compose --env-file /etc/szfisher/production.env \
+  -f infra/docker/docker-compose.prod.yml exec -T api \
+  node apps/api/dist/jobs/purge-analytics.job.js
+```
+
+API 会把公开列表、搜索和详情结果写入 `analytics_event`，字段经过白名单过滤，不写入坐标、Token 或联系方式；客户端事件仍由微信自定义分析承载。

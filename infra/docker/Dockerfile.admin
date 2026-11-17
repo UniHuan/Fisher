@@ -8,7 +8,9 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ARG NEXT_PUBLIC_API_BASE_URL=https://fish-api.unihuan.com/api/v1
+ARG NEXT_PUBLIC_TENCENT_MAP_JS_KEY=
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_TENCENT_MAP_JS_KEY=$NEXT_PUBLIC_TENCENT_MAP_JS_KEY
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
