@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
 import { argon2id, hash } from 'argon2';
 import ExcelJS from 'exceljs';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { generateSync } from 'otplib';
@@ -18,6 +19,30 @@ const USERNAME = `pw_admin_${Date.now()}`;
 const PASSWORD = `Playwright-${Date.now()}-Strong!`;
 const prisma = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } });
 let adminId = '';
+const roleAdminIds: string[] = [];
+let operatorAccount: RoleAccount;
+let reviewerAccount: RoleAccount;
+
+interface RoleAccount {
+  username: string;
+  password: string;
+}
+
+async function createRoleAccount(role: 'operator' | 'reviewer'): Promise<RoleAccount> {
+  const username = `pw_${role}_${Date.now()}_${randomUUID().slice(0, 8)}`;
+  const password = `Playwright-${role}-${Date.now()}-Strong!`;
+  const admin = await prisma.adminUser.create({
+    data: {
+      admin_id: ulid(),
+      username,
+      password_hash: await hash(password, { type: argon2id }),
+      role,
+      status: 'active',
+    },
+  });
+  roleAdminIds.push(admin.admin_id);
+  return { username, password };
+}
 
 async function selectOption(
   page: Page,
@@ -53,6 +78,13 @@ async function expectSuccessMessage(page: Page, text: string): Promise<void> {
   ).toBeVisible({ timeout: 20_000 });
 }
 
+async function loginWithPassword(page: Page, account: RoleAccount): Promise<void> {
+  await page.goto('/');
+  await page.getByLabel('账号').fill(account.username);
+  await page.getByLabel('密码').fill(account.password);
+  await page.getByRole('button', { name: /^登\s*录$/ }).click();
+}
+
 async function cleanupTestData(): Promise<void> {
   const spots = await prisma.spot.findMany({
     where: {
@@ -71,11 +103,12 @@ async function cleanupTestData(): Promise<void> {
   }
   await prisma.poi.deleteMany({ where: { poi_name: { startsWith: POI_PREFIX } } });
   rmSync('/tmp/szfisher-playwright-storage', { recursive: true, force: true });
-  if (adminId !== '') {
-    await prisma.auditLog.deleteMany({ where: { admin_id: adminId } });
-    await prisma.idempotencyKey.deleteMany({ where: { actor_id: adminId } });
-    await prisma.importJob.deleteMany({ where: { admin_id: adminId } });
-    await prisma.adminUser.deleteMany({ where: { admin_id: adminId } });
+  const adminIds = [adminId, ...roleAdminIds].filter((value) => value !== '');
+  if (adminIds.length > 0) {
+    await prisma.auditLog.deleteMany({ where: { admin_id: { in: adminIds } } });
+    await prisma.idempotencyKey.deleteMany({ where: { actor_id: { in: adminIds } } });
+    await prisma.importJob.deleteMany({ where: { admin_id: { in: adminIds } } });
+    await prisma.adminUser.deleteMany({ where: { admin_id: { in: adminIds } } });
   }
 }
 
@@ -119,6 +152,9 @@ test.beforeAll(async () => {
     },
   });
   adminId = admin.admin_id;
+
+  operatorAccount = await createRoleAccount('operator');
+  reviewerAccount = await createRoleAccount('reviewer');
 });
 
 test.afterAll(async () => {
@@ -232,4 +268,26 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
     .getByRole('button', { name: /^下\s*线$/ })
     .click();
   await expectSuccessMessage(page, '钓点已下线');
+});
+
+test('reviewer sees the read-only workspace', async ({ page }) => {
+  await loginWithPassword(page, reviewerAccount);
+
+  await expect(page.getByRole('heading', { name: '钓点库' })).toBeVisible();
+  await expect(page.locator('.ant-tag').filter({ hasText: '审核员' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '新增钓点' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Excel 导入' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^字\s*典$/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^审\s*计$/ })).toHaveCount(0);
+});
+
+test('operator sees write actions without dictionary management', async ({ page }) => {
+  await loginWithPassword(page, operatorAccount);
+
+  await expect(page.getByRole('heading', { name: '钓点库' })).toBeVisible();
+  await expect(page.locator('.ant-tag').filter({ hasText: '运营' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '新增钓点' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Excel 导入' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^审\s*计$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^字\s*典$/ })).toHaveCount(0);
 });
