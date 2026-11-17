@@ -142,7 +142,7 @@
               class="filter-chip {{item.selected ? 'is-active' : ''}}"
               data-section="water"
               data-value="{{item.key}}"
-              bindtap="selectFilter"
+              bindtap="toggleMulti"
             >{{item.label}}</view>
           </view>
         </view>
@@ -155,7 +155,7 @@
               class="filter-chip {{item.selected ? 'is-active' : ''}}"
               data-section="venue"
               data-value="{{item.key}}"
-              bindtap="selectFilter"
+              bindtap="toggleMulti"
             >{{item.label}}</view>
           </view>
         </view>
