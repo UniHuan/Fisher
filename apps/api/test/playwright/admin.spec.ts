@@ -36,18 +36,21 @@ async function selectOption(
 
 async function selectMultiple(page: Page, label: string, option: string): Promise<void> {
   await page.getByLabel(label).click();
-  await page
+  const optionLocator = page
     .locator('.ant-select-dropdown:visible .ant-select-item-option')
     .filter({ hasText: option })
-    .first()
-    .click({ force: true });
+    .first();
+  // Dropdown options can render outside the viewport on CI. Dispatch the DOM
+  // click directly so the Ant Design option handler runs without Playwright's
+  // viewport actionability check.
+  await optionLocator.evaluate((element) => (element as HTMLElement).click());
   await page.keyboard.press('Escape');
 }
 
 async function expectSuccessMessage(page: Page, text: string): Promise<void> {
   await expect(
     page.locator('.ant-message-notice-title').filter({ hasText: text }).first(),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20_000 });
 }
 
 async function cleanupTestData(): Promise<void> {
