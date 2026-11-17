@@ -12,6 +12,7 @@ import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
 import { AuditLogService } from '../audit/audit-log.service';
 import { DictionariesRepository } from '../dictionaries/dictionaries.repository';
+import { SpotPoiDistancesService } from '../pois/spot-poi-distances.service';
 import { StorageService } from '../storage/storage.service';
 import {
   DEFAULT_SPOT_SOURCE,
@@ -139,6 +140,7 @@ export class AdminSpotsService {
     private readonly auditLogs: AuditLogService,
     private readonly idempotency: IdempotencyService,
     private readonly storage: StorageService,
+    private readonly poiDistances: SpotPoiDistancesService,
   ) {}
 
   async list(query: AdminSpotListQueryDto): Promise<{
@@ -239,6 +241,12 @@ export class AdminSpotsService {
     const row = await this.spots.findById(spotId);
     if (row === null) {
       this.throwNotFound();
+    }
+    if (
+      (existing.latitude?.toFixed(6) ?? null) !== (row.latitude?.toFixed(6) ?? null) ||
+      (existing.longitude?.toFixed(6) ?? null) !== (row.longitude?.toFixed(6) ?? null)
+    ) {
+      await this.poiDistances.recalculateForSpot(spotId);
     }
     const detail = await this.presentDetail(row);
     const warnings = await this.duplicateWarnings(spotId, values);

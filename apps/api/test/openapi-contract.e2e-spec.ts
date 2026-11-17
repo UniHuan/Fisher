@@ -29,7 +29,10 @@ interface OpenApiOperation {
 interface OpenApiDocument {
   paths: Record<string, Record<string, OpenApiOperation | undefined>>;
   components?: {
-    schemas?: Record<string, { properties?: Record<string, { type?: string }> }>;
+    schemas?: Record<
+      string,
+      { properties?: Record<string, { type?: string }>; required?: string[] }
+    >;
   };
 }
 
@@ -206,6 +209,26 @@ describe('OpenAPI contract', () => {
       job?.responses?.['404']?.content?.['application/json']?.schema?.$ref,
     ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
     expect(document.components?.schemas?.ImportJobDto).toBeDefined();
+  });
+
+  it('documents POI CRUD, binding, unbinding and sync operations', () => {
+    const paths = document.paths;
+    expect(paths['/api/v1/admin/pois']?.get).toBeDefined();
+    expect(paths['/api/v1/admin/pois']?.post).toBeDefined();
+    expect(paths['/api/v1/admin/pois/{id}']?.put).toBeDefined();
+    expect(paths['/api/v1/admin/spots/{id}/pois']?.get).toBeDefined();
+    expect(paths['/api/v1/admin/spots/{id}/pois']?.post).toBeDefined();
+    expect(paths['/api/v1/admin/spots/{id}/pois/{poi_id}']?.delete).toBeDefined();
+    expect(paths['/api/v1/admin/spots/{id}/pois/sync']?.post).toBeDefined();
+    expect(
+      paths['/api/v1/admin/spots/{id}/pois']?.post?.responses?.['409']
+        ?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
+    expect(
+      document.components?.schemas?.CreatePoiDto?.required,
+    ).toEqual(expect.arrayContaining(['poi_name', 'poi_type', 'latitude', 'longitude']));
+    expect(document.components?.schemas?.AdminSpotPoiListDto).toBeDefined();
+    expect(document.components?.schemas?.PoiSyncRunDto).toBeDefined();
   });
 
   it('documents the admin media upload with CSRF and client headers', () => {

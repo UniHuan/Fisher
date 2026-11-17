@@ -110,7 +110,11 @@ export async function cleanupAdminSpotTestData(): Promise<void> {
     return;
   }
   const prisma = getAuthTestPrisma();
-  await prisma.spot.deleteMany({ where: { spot_id: { in: [...trackedSpotIds] } } });
+  const ids = [...trackedSpotIds];
+  // POI relations and sync runs are RESTRICT FKs; clear the children first.
+  await prisma.spotPoi.deleteMany({ where: { spot_id: { in: ids } } });
+  await prisma.poiSyncRun.deleteMany({ where: { spot_id: { in: ids } } });
+  await prisma.spot.deleteMany({ where: { spot_id: { in: ids } } });
   trackedSpotIds.length = 0;
 }
 

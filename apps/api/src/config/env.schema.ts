@@ -50,6 +50,9 @@ const baseEnvSchema = z.object({
   OSS_WORK_BUCKET: z.string().min(1).optional(),
   OSS_PUBLIC_BUCKET: z.string().min(1).optional(),
   OSS_PUBLIC_BASE_URL: z.string().url().optional(),
+  // Optional at boot so local/manual POI management works without a Tencent key.
+  // Empty is treated as missing by the provider; compose passes it through as "".
+  TENCENT_MAP_SERVER_KEY: z.string().optional(),
 });
 
 export const envSchema = baseEnvSchema.superRefine((value, context) => {

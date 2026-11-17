@@ -3,6 +3,7 @@ import { AdminAuthModule } from '../auth/admin-auth.module';
 import { AuditLogModule } from '../audit/audit-log.module';
 import { DictionariesModule } from '../dictionaries/dictionaries.module';
 import { ImportsModule } from '../imports/imports.module';
+import { PoisModule } from '../pois/pois.module';
 import { StorageModule } from '../storage/storage.module';
 import { AdminSpotsController } from './admin-spots.controller';
 import { AdminSpotsRepository } from './admin-spots.repository';
@@ -15,6 +16,7 @@ import { IdempotencyService } from './idempotency.service';
     AuditLogModule,
     DictionariesModule,
     ImportsModule,
+    PoisModule,
     StorageModule,
   ],
   controllers: [AdminSpotsController],
