@@ -27,6 +27,8 @@ import {
   type PublicDictionaries,
   type Session,
 } from './api';
+import { AuditLogDrawer } from './AuditLogDrawer';
+import { DictionaryDrawer } from './DictionaryDrawer';
 import { ImportDrawer } from './ImportDrawer';
 import { PoiDrawer } from './PoiDrawer';
 import { SpotEditor } from './SpotEditor';
@@ -85,6 +87,9 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
   const [editorSpotId, setEditorSpotId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [poiSpot, setPoiSpot] = useState<{ spot_id: string; spot_name: string } | null>(null);
+  const [dictionaryOpen, setDictionaryOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [dictionaryReloadKey, setDictionaryReloadKey] = useState(0);
 
   const writable = session.admin.role !== 'reviewer';
 
@@ -93,7 +98,7 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
       .dictionaries()
       .then(setDictionaries)
       .catch((error: unknown) => message.error(errorText(error)));
-  }, [message]);
+  }, [message, dictionaryReloadKey]);
 
   useEffect(() => {
     let active = true;
@@ -324,6 +329,16 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
           </div>
         </Space>
         <Space size={12}>
+          {session.admin.role === 'super_admin' && (
+            <Button size="small" onClick={() => setDictionaryOpen(true)}>
+              字典
+            </Button>
+          )}
+          {session.admin.role !== 'reviewer' && (
+            <Button size="small" onClick={() => setAuditOpen(true)}>
+              审计
+            </Button>
+          )}
           <Tag>{ROLE_LABEL[session.admin.role] ?? session.admin.role}</Tag>
           <Typography.Text className="header-user">{session.admin.username}</Typography.Text>
           <Button size="small" onClick={onLogout}>
@@ -465,6 +480,26 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
         }}
         onExpired={onExpired}
       />
+      {session.admin.role === 'super_admin' && (
+        <DictionaryDrawer
+          open={dictionaryOpen}
+          session={session}
+          onClose={() => {
+            setDictionaryOpen(false);
+          }}
+          onChanged={() => setDictionaryReloadKey((value) => value + 1)}
+          onExpired={onExpired}
+        />
+      )}
+      {session.admin.role !== 'reviewer' && (
+        <AuditLogDrawer
+          open={auditOpen}
+          onClose={() => {
+            setAuditOpen(false);
+          }}
+          onExpired={onExpired}
+        />
+      )}
     </Layout>
   );
 }
