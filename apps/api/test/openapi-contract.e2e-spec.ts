@@ -190,6 +190,24 @@ describe('OpenAPI contract', () => {
     ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
   });
 
+  it('documents Excel import, template, job status and error report endpoints', () => {
+    const template = document.paths['/api/v1/admin/spots/import-template']?.get;
+    const importSpots = document.paths['/api/v1/admin/spots/import']?.post;
+    const job = document.paths['/api/v1/admin/imports/{id}']?.get;
+    const errors = document.paths['/api/v1/admin/imports/{id}/errors']?.get;
+    expect(template).toBeDefined();
+    expect(importSpots).toBeDefined();
+    expect(job).toBeDefined();
+    expect(errors).toBeDefined();
+    expect(
+      importSpots?.responses?.['400']?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
+    expect(
+      job?.responses?.['404']?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
+    expect(document.components?.schemas?.ImportJobDto).toBeDefined();
+  });
+
   it('documents the admin media upload with CSRF and client headers', () => {
     const upload = document.paths['/api/v1/admin/uploads']?.post;
     expect(upload).toBeDefined();

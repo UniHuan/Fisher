@@ -3,7 +3,8 @@ import { copyFile, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { StorageAdapter, StorageArea } from './storage.types';
 
-const STORAGE_KEY_PATTERN = /^spots\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp$/;
+const STORAGE_KEY_PATTERN =
+  /^(spots\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp|imports\/[A-Za-z0-9]{26}\/[A-Za-z0-9-]+\.(xlsx|csv))$/;
 
 function assertStorageKey(key: string): void {
   if (!STORAGE_KEY_PATTERN.test(key)) {

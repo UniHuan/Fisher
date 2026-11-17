@@ -242,6 +242,7 @@ export async function cleanupAuthTestData(): Promise<void> {
   if (createdAdminIds.length > 0) {
     await prisma.auditLog.deleteMany({ where: { admin_id: { in: createdAdminIds } } });
     await prisma.idempotencyKey.deleteMany({ where: { actor_id: { in: createdAdminIds } } });
+    await prisma.importJob.deleteMany({ where: { admin_id: { in: createdAdminIds } } });
     await prisma.adminUser.deleteMany({ where: { admin_id: { in: createdAdminIds } } });
     createdAdminIds.length = 0;
   }

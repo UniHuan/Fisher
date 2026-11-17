@@ -873,6 +873,83 @@ paths:
       security: *a28
       summary: Create a spot draft
       tags: *a29
+  /api/v1/admin/spots/import-template:
+    get:
+      operationId: AdminSpotsController_importTemplate
+      parameters:
+        - *a22
+        - *a23
+      responses:
+        "200":
+          description: Excel template
+        "400": *a24
+        "401": *a25
+        "403": *a26
+        "500": *a27
+      security: *a28
+      summary: Download the Excel import template
+      tags: *a29
+  /api/v1/admin/spots/import:
+    post:
+      operationId: AdminSpotsController_importSpots
+      parameters:
+        - *a22
+        - *a23
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Import job created; poll the job endpoint for progress
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ImportJobDto"
+        "400":
+          description: Invalid Excel or too many rows (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401": *a25
+        "403": *a26
+        "413":
+          description: Import file exceeds 20 MB (41301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a27
+        "503":
+          description: Import storage unavailable (50301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: *a28
+      summary: Upload an Excel import and create draft spots asynchronously
+      tags: *a29
   /api/v1/admin/spots/{id}:
     get:
       operationId: AdminSpotsController_detail
@@ -1659,6 +1736,107 @@ paths:
       summary: Upload and compress a spot image
       tags:
         - admin uploads
+  /api/v1/admin/imports/{id}:
+    get:
+      operationId: ImportsController_job
+      parameters:
+        - &a36
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a37
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: id
+          required: true
+          in: path
+          description: Import job ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: Import job status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ImportJobDto"
+        "401": &a38
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403": &a39
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Import job does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": &a40
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: &a41
+        - admin-cookie: []
+      summary: Get an import job status and counts
+      tags: &a42
+        - admin imports
+  /api/v1/admin/imports/{id}/errors:
+    get:
+      operationId: ImportsController_errors
+      parameters:
+        - *a36
+        - *a37
+        - name: id
+          required: true
+          in: path
+          description: Import job ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: CSV report
+        "401": *a38
+        "403": *a39
+        "404":
+          description: Import or report does not exist (40401)
+          content:
+            text/csv:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a40
+      security: *a41
+      summary: Download the import error and warning CSV
+      tags: *a42
 info:
   title: SZFisher API
   description: "Shenzhen fishing assistant API. Base path: /api/v1."
@@ -2274,6 +2452,53 @@ components:
         - page_size
         - total
         - has_more
+    ImportJobDto:
+      type: object
+      properties:
+        job_id:
+          type: string
+          example: 01HX0000000000000000000000
+        status:
+          type: string
+          enum:
+            - pending
+            - processing
+            - completed
+            - failed
+          example: completed
+        total_rows:
+          type: integer
+          example: 100
+        success_rows:
+          type: integer
+          example: 97
+        failed_rows:
+          type: integer
+          example: 3
+        has_error_report:
+          type: boolean
+          example: true
+        error_report_url:
+          type: string
+          nullable: true
+          example: /api/v1/admin/imports/01HX.../errors
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - job_id
+        - status
+        - total_rows
+        - success_rows
+        - failed_rows
+        - has_error_report
+        - error_report_url
+        - created_at
+        - finished_at
     AdminSpotDetailDto:
       type: object
       properties:
@@ -2527,7 +2752,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: &a36
+          example: &a43
             - luofei
             - jiyu
           type: array
@@ -2555,7 +2780,7 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: &a37
+          example: &a44
             - tai_diao
             - lu_ya
           type: array
@@ -2563,7 +2788,7 @@ components:
             type: string
         open_status:
           type: string
-          enum: &a38
+          enum: &a45
             - open
             - paused
             - banned
@@ -2589,7 +2814,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: &a39
+          example: &a46
             - spots/a.jpg
           type: array
           items:
@@ -2607,7 +2832,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: &a40
+          enum: &a47
             - official
             - operation
             - user_report
@@ -2661,7 +2886,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: *a36
+          example: *a43
           type: array
           items:
             type: string
@@ -2687,13 +2912,13 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: *a37
+          example: *a44
           type: array
           items:
             type: string
         open_status:
           type: string
-          enum: *a38
+          enum: *a45
           nullable: true
           example: open
         ban_note:
@@ -2716,7 +2941,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: *a39
+          example: *a46
           type: array
           items:
             type: string
@@ -2733,7 +2958,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: *a40
+          enum: *a47
           nullable: true
           description: Defaults to operation
     AdminSpotDeleteResponseDto:
@@ -2826,7 +3051,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: &a41
+          example: &a48
             - luofei
             - jiyu
           type: array
@@ -2846,7 +3071,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: &a42
+          enum: &a49
             - open
             - paused
             - banned
@@ -2867,7 +3092,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: &a43
+          enum: &a50
             - fresh
             - stale
             - expired
@@ -3130,7 +3355,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: *a41
+          example: *a48
           type: array
           items:
             type: string
@@ -3148,7 +3373,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: *a42
+          enum: *a49
           example: open
         is_core:
           type: boolean
@@ -3166,7 +3391,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: *a43
+          enum: *a50
           example: fresh
         distance_m:
           type: integer

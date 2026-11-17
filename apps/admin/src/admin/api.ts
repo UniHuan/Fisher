@@ -12,6 +12,7 @@ export type AdminSpotPage = components['schemas']['AdminSpotPageDto'];
 export type AdminSpotWrite = components['schemas']['AdminSpotWriteResponseDto'];
 export type DuplicateWarning = components['schemas']['DuplicateWarningDto'];
 export type UploadResponse = components['schemas']['UploadImageResponseDto'];
+export type ImportJob = components['schemas']['ImportJobDto'];
 export type PublicDictionaries = components['schemas']['PublicDictionariesDto'];
 export type CreateSpotBody = components['schemas']['CreateSpotDto'];
 export type UpdateSpotBody = components['schemas']['UpdateSpotDto'];
@@ -57,6 +58,26 @@ interface RequestOptions {
   csrf?: string;
   headers?: Record<string, string>;
   formData?: FormData;
+}
+
+async function requestBlob(path: string, csrf?: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      'X-Client-Type': 'admin',
+      'X-Client-Version': CLIENT_VERSION,
+      ...(csrf === undefined ? {} : { 'X-CSRF-Token': csrf }),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ErrorEnvelope;
+    throw new ApiError(
+      payload.message ?? `下载失败 (${response.status})`,
+      payload.code,
+      payload.details,
+    );
+  }
+  return response.blob();
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -207,5 +228,23 @@ export const api = {
       formData,
       csrf,
     });
+  },
+  importSpots(file: File, csrf: string): Promise<ImportJob> {
+    const formData = new FormData();
+    formData.set('file', file);
+    return request<ImportJob>('/admin/spots/import', {
+      method: 'POST',
+      formData,
+      csrf,
+    });
+  },
+  getImportJob(jobId: string): Promise<ImportJob> {
+    return request<ImportJob>(`/admin/imports/${jobId}`);
+  },
+  downloadImportTemplate(): Promise<Blob> {
+    return requestBlob('/admin/spots/import-template');
+  },
+  downloadImportErrors(jobId: string): Promise<Blob> {
+    return requestBlob(`/admin/imports/${jobId}/errors`);
   },
 };

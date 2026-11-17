@@ -11,16 +11,25 @@ import {
   Put,
   Query,
   Req,
+  Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBody,
+  ApiConsumes,
   ApiCookieAuth,
   ApiHeader,
   ApiOperation,
   ApiParam,
+  ApiProduces,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ADMIN_ROLE, ERROR_CODES } from '@szfisher/shared';
+import type { Response } from 'express';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -31,6 +40,8 @@ import {
   ApiErrorResponse,
 } from '../../common/openapi/api-response.decorators';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
+import { ImportJobDto } from '../imports/dto/import-job.dto';
+import { ImportsService, type UploadedImportFile } from '../imports/imports.service';
 import { AdminSpotsService } from './admin-spots.service';
 import { AdminSpotListQueryDto } from './dto/admin-spot-list-query.dto';
 import {
@@ -75,13 +86,67 @@ const SPOT_ID_PARAM = {
 @Roles(ADMIN_ROLE.SUPER_ADMIN, ADMIN_ROLE.OPERATOR, ADMIN_ROLE.REVIEWER)
 @UseGuards(RolesGuard)
 export class AdminSpotsController {
-  constructor(private readonly spots: AdminSpotsService) {}
+  constructor(
+    private readonly spots: AdminSpotsService,
+    private readonly imports: ImportsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List spots for admin management' })
   @ApiEnvelopeResponse(AdminSpotPageDto, { description: 'Paginated admin spot rows' })
   list(@Query() query: AdminSpotListQueryDto) {
     return this.spots.list(query);
+  }
+
+  @Get('import-template')
+  @Roles(ADMIN_ROLE.SUPER_ADMIN, ADMIN_ROLE.OPERATOR)
+  @ApiOperation({ summary: 'Download the Excel import template' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  @ApiResponse({ status: HttpStatus.OK, description: 'Excel template' })
+  async importTemplate(@Res() response: Response): Promise<void> {
+    const buffer = await this.imports.getTemplate();
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    response.setHeader(
+      'Content-Disposition',
+      'attachment; filename="spot-import-template.xlsx"',
+    );
+    response.setHeader('Cache-Control', 'no-store');
+    response.send(buffer);
+  }
+
+  @Post('import')
+  @Roles(ADMIN_ROLE.SUPER_ADMIN, ADMIN_ROLE.OPERATOR)
+  @ApiOperation({ summary: 'Upload an Excel import and create draft spots asynchronously' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiHeader(CSRF_HEADER)
+  @ApiEnvelopeResponse(ImportJobDto, {
+    status: HttpStatus.CREATED,
+    description: 'Import job created; poll the job endpoint for progress',
+  })
+  @ApiErrorResponse(HttpStatus.BAD_REQUEST, 'Invalid Excel or too many rows (40001)')
+  @ApiErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE, 'Import file exceeds 20 MB (41301)')
+  @ApiErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, 'Import storage unavailable (50301)')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+    }),
+  )
+  importSpots(
+    @UploadedFile() file: UploadedImportFile | undefined,
+    @CurrentAdmin() admin: AdminContext,
+    @Req() request: RequestWithContext,
+  ) {
+    return this.imports.upload(file, admin, request);
   }
 
   @Get(':id')
