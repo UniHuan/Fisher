@@ -152,6 +152,12 @@ jobs:
         run: docker build -f infra/docker/Dockerfile.api -t szfisher-api:ci .
       - name: Build admin static image
         run: docker build -f infra/docker/Dockerfile.admin -t szfisher-admin:ci .
+      - name: Verify license files in images
+        run: |
+          docker run --rm --entrypoint sh szfisher-api:ci \
+            -c 'test -f /app/LICENSE && test -f /app/NOTICE'
+          docker run --rm --entrypoint sh szfisher-admin:ci \
+            -c 'test -f /usr/share/doc/szfisher/LICENSE && test -f /usr/share/doc/szfisher/NOTICE'
       - name: Validate Nginx config
         run: |
           docker run --rm \
