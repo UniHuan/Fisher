@@ -7,6 +7,8 @@ import { AuditLogModule } from './modules/audit/audit-log.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
 import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { HealthController } from './modules/health/health.controller';
+import { StorageModule } from './modules/storage/storage.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -28,6 +30,8 @@ export class AppModule {
         DictionariesModule,
         AdminSpotsModule,
         ClientConfigModule,
+        StorageModule,
+        UploadsModule,
       ],
       controllers: [HealthController, ...extraControllers],
     };

@@ -84,6 +84,17 @@ function httpExceptionMessage(exception: HttpException): string {
   return exception.message;
 }
 
+function isMulterLimitError(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) {
+    return false;
+  }
+  const candidate = exception as { name?: unknown; code?: unknown };
+  return (
+    candidate.name === 'MulterError' &&
+    (candidate.code === 'LIMIT_FILE_SIZE' || candidate.code === 'LIMIT_FILE_COUNT')
+  );
+}
+
 function rawHttpStatus(exception: unknown): number | undefined {
   if (typeof exception !== 'object' || exception === null) {
     return undefined;
@@ -127,6 +138,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code: exception.code,
         message: exception.message,
         details: asValidationIssues(exception.details),
+      };
+    }
+
+    if (isMulterLimitError(exception)) {
+      return {
+        status: HttpStatus.PAYLOAD_TOO_LARGE,
+        code: ERROR_CODES.PAYLOAD_TOO_LARGE,
+        message: 'Payload too large',
       };
     }
 

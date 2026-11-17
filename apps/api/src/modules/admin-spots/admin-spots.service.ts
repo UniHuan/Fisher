@@ -12,6 +12,7 @@ import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
 import { AuditLogService } from '../audit/audit-log.service';
 import { DictionariesRepository } from '../dictionaries/dictionaries.repository';
+import { StorageService } from '../storage/storage.service';
 import {
   DEFAULT_SPOT_SOURCE,
   DUPLICATE_DISTANCE_M,
@@ -137,6 +138,7 @@ export class AdminSpotsService {
     private readonly dictionaries: DictionariesRepository,
     private readonly auditLogs: AuditLogService,
     private readonly idempotency: IdempotencyService,
+    private readonly storage: StorageService,
   ) {}
 
   async list(query: AdminSpotListQueryDto): Promise<{
@@ -161,7 +163,7 @@ export class AdminSpotsService {
     };
     const { rows, total } = await this.spots.findPage(filters);
     return {
-      items: rows.map(toAdminSpotListItem),
+      items: await Promise.all(rows.map((row) => this.presentListItem(row))),
       page,
       page_size: pageSize,
       total,
@@ -174,7 +176,7 @@ export class AdminSpotsService {
     if (row === null) {
       this.throwNotFound();
     }
-    return toAdminSpotDetail(row);
+    return this.presentDetail(row);
   }
 
   async create(
@@ -192,7 +194,7 @@ export class AdminSpotsService {
       status: SPOT_STATUS.DRAFT,
       ...this.toCreateData(values),
     });
-    const detail = toAdminSpotDetail(row);
+    const detail = await this.presentDetail(row);
     const warnings = await this.duplicateWarnings(detail.spot_id, values);
     await this.recordAudit(admin, request, 'spot.create', detail.spot_id, null, detail);
     return { spot: detail, warnings };
@@ -214,6 +216,8 @@ export class AdminSpotsService {
     this.assertDraftValid(values, dictionaries);
     if (existing.status === SPOT_STATUS.PUBLISHED) {
       this.assertPublishValid(values, existing.verified_at);
+      // New images on an already-published spot must reach the public bucket too.
+      await this.storage.publishImages(values.images);
     }
 
     const updated = await this.updateRow(
@@ -236,7 +240,7 @@ export class AdminSpotsService {
     if (row === null) {
       this.throwNotFound();
     }
-    const detail = toAdminSpotDetail(row);
+    const detail = await this.presentDetail(row);
     const warnings = await this.duplicateWarnings(spotId, values);
     await this.recordAudit(
       admin,
@@ -262,7 +266,7 @@ export class AdminSpotsService {
       body: null,
       operation: () => this.publishOperation(spotId, admin, request),
     });
-    return result.data;
+    return this.withImageUrls(result.data);
   }
 
   async offline(
@@ -278,7 +282,7 @@ export class AdminSpotsService {
       body: null,
       operation: () => this.offlineOperation(spotId, admin, request),
     });
-    return result.data;
+    return this.withImageUrls(result.data);
   }
 
   async delete(
@@ -331,7 +335,7 @@ export class AdminSpotsService {
     if (row === null) {
       this.throwNotFound();
     }
-    const detail = toAdminSpotDetail(row);
+    const detail = await this.presentDetail(row);
     await this.recordAudit(admin, request, 'spot.verify', spotId, toAdminSpotDetail(existing), {
       ...detail,
       method: input.method ?? null,
@@ -350,6 +354,8 @@ export class AdminSpotsService {
       this.throwNotFound();
     }
     this.assertPublishValid(this.valuesFromSpot(existing), existing.verified_at);
+    // Copy working images to the published bucket before the visibility change.
+    await this.storage.publishImages(existing.images);
 
     const changed = await this.spots.transitionStatus(
       spotId,
@@ -976,6 +982,45 @@ export class AdminSpotsService {
       }
     }
     return warnings;
+  }
+
+  private async presentListItem(row: Spot): Promise<AdminSpotListItem> {
+    const item = toAdminSpotListItem(row);
+    return {
+      ...item,
+      cover_image_url: await this.safeImageUrl(
+        row.cover_image_key,
+        row.status === SPOT_STATUS.PUBLISHED,
+      ),
+    };
+  }
+
+  private presentDetail(row: Spot): Promise<AdminSpotDetail> {
+    return this.withImageUrls(toAdminSpotDetail(row));
+  }
+
+  private async withImageUrls(detail: AdminSpotDetail): Promise<AdminSpotDetail> {
+    const published = detail.status === SPOT_STATUS.PUBLISHED;
+    const imageUrls = await Promise.all(
+      detail.images.map(async (key) => (await this.safeImageUrl(key, published)) ?? ''),
+    );
+    const coverKey = detail.cover_image_key ?? detail.images[0] ?? null;
+    return {
+      ...detail,
+      image_urls: imageUrls,
+      cover_image_url: await this.safeImageUrl(coverKey, published),
+    };
+  }
+
+  private async safeImageUrl(key: string | null, published: boolean): Promise<string | null> {
+    if (key === null) {
+      return null;
+    }
+    try {
+      return await this.storage.getImageUrl(key, published);
+    } catch {
+      return null;
+    }
   }
 
   private async createRow(data: Prisma.SpotUncheckedCreateInput): Promise<Spot> {

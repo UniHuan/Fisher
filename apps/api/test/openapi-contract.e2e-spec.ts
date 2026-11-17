@@ -156,6 +156,18 @@ describe('OpenAPI contract', () => {
     ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
   });
 
+  it('documents the admin media upload with CSRF and client headers', () => {
+    const upload = document.paths['/api/v1/admin/uploads']?.post;
+    expect(upload).toBeDefined();
+    const names = (upload?.parameters ?? []).map((parameter) => parameter.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['X-Client-Type', 'X-Client-Version', 'X-CSRF-Token']),
+    );
+    expect(
+      upload?.responses?.['413']?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
+  });
+
   it('generated client accepts minimal create and documented partial updates', () => {
     expect(minimalCreateSpot.spot_name).toBe('深圳湾测试钓点');
     expect(partialUpdateSpot.description).toBe('新的钓位说明');

@@ -1246,6 +1246,116 @@ paths:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
       tags:
         - config
+  /api/v1/admin/uploads:
+    post:
+      operationId: UploadsController_create
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - spot_id
+                - purpose
+                - file
+              properties:
+                spot_id:
+                  type: string
+                  example: 01HX0000000000000000000000
+                purpose:
+                  type: string
+                  enum:
+                    - cover
+                    - detail
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Compressed WebP image and short-lived preview URL
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UploadImageResponseDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Spot does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "413":
+          description: Image exceeds 10 MB (41301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "503":
+          description: Storage unavailable (50301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - admin-cookie: []
+      summary: Upload and compress a spot image
+      tags:
+        - admin uploads
 info:
   title: SZFisher API
   description: "Shenzhen fishing assistant API. Base path: /api/v1."
@@ -1813,6 +1923,10 @@ components:
           type: string
           nullable: true
           example: spots/a.jpg
+        cover_image_url:
+          type: string
+          nullable: true
+          example: https://fish-static.unihuan.com/spots/...
         verified_at:
           type: string
           format: date-time
@@ -1829,6 +1943,7 @@ components:
         - is_core
         - address
         - cover_image_key
+        - cover_image_url
         - verified_at
         - updated_at
     AdminSpotPageDto:
@@ -1959,10 +2074,20 @@ components:
           type: array
           items:
             type: string
+        image_urls:
+          example:
+            - https://fish-static.unihuan.com/spots/...
+          type: array
+          items:
+            type: string
         cover_image_key:
           type: string
           nullable: true
           example: spots/a.jpg
+        cover_image_url:
+          type: string
+          nullable: true
+          example: https://fish-static.unihuan.com/spots/...
         sort_weight:
           type: integer
           example: 0
@@ -2016,7 +2141,9 @@ components:
         - description
         - tips
         - images
+        - image_urls
         - cover_image_key
+        - cover_image_url
         - sort_weight
         - is_core
         - status
@@ -2137,6 +2264,7 @@ components:
             - open
             - paused
             - banned
+          nullable: true
           example: open
         ban_note:
           type: string
@@ -2263,6 +2391,7 @@ components:
         open_status:
           type: string
           enum: *a32
+          nullable: true
           example: open
         ban_note:
           type: string
@@ -2380,3 +2509,38 @@ components:
         - map
         - features
         - data_freshness
+    UploadImageResponseDto:
+      type: object
+      properties:
+        key:
+          type: string
+          example: spots/01HX0000000000000000000000/01HX0000000000000000000001.webp
+        preview_url:
+          type: string
+          example: /api/v1/uploads/preview?key=...&expires=...&signature=...
+        expires_at:
+          type: string
+          format: date-time
+        width:
+          type: integer
+          example: 1600
+        height:
+          type: integer
+          example: 1067
+        size_bytes:
+          type: integer
+          example: 184320
+        purpose:
+          type: string
+          enum:
+            - cover
+            - detail
+          example: detail
+      required:
+        - key
+        - preview_url
+        - expires_at
+        - width
+        - height
+        - size_bytes
+        - purpose

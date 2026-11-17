@@ -26,6 +26,13 @@ export class AdminSpotListItemDto {
   @ApiProperty({ type: String, nullable: true, example: 'spots/a.jpg' })
   cover_image_key!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'https://fish-static.unihuan.com/spots/...',
+  })
+  cover_image_url!: string | null;
+
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   verified_at!: string | null;
 
@@ -126,8 +133,18 @@ export class AdminSpotDetailDto {
   @ApiProperty({ type: [String], example: ['spots/a.jpg'] })
   images!: string[];
 
+  @ApiProperty({ type: [String], example: ['https://fish-static.unihuan.com/spots/...'] })
+  image_urls!: string[];
+
   @ApiProperty({ type: String, nullable: true, example: 'spots/a.jpg' })
   cover_image_key!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'https://fish-static.unihuan.com/spots/...',
+  })
+  cover_image_url!: string | null;
 
   @ApiProperty({ type: 'integer', example: 0 })
   sort_weight!: number;

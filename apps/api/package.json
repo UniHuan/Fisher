@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "dev": "nest start --watch",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests --testMatch \"**/src/**/*.spec.ts\"",

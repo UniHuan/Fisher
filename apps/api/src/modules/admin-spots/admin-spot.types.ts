@@ -9,6 +9,7 @@ export interface AdminSpotListItem {
   is_core: boolean;
   address: string | null;
   cover_image_key: string | null;
+  cover_image_url: string | null;
   verified_at: string | null;
   updated_at: string;
 }
@@ -39,7 +40,9 @@ export interface AdminSpotDetail {
   description: string | null;
   tips: string | null;
   images: string[];
+  image_urls: string[];
   cover_image_key: string | null;
+  cover_image_url: string | null;
   sort_weight: number;
   is_core: boolean;
   status: SpotStatus;

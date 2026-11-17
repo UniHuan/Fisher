@@ -335,6 +335,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload and compress a spot image */
+        post: operations["UploadsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -603,6 +620,8 @@ export interface components {
             address: string | null;
             /** @example spots/a.jpg */
             cover_image_key: string | null;
+            /** @example https://fish-static.unihuan.com/spots/... */
+            cover_image_url: string | null;
             /** Format: date-time */
             verified_at: string | null;
             /** Format: date-time */
@@ -679,8 +698,16 @@ export interface components {
              *     ]
              */
             images: string[];
+            /**
+             * @example [
+             *       "https://fish-static.unihuan.com/spots/..."
+             *     ]
+             */
+            image_urls: string[];
             /** @example spots/a.jpg */
             cover_image_key: string | null;
+            /** @example https://fish-static.unihuan.com/spots/... */
+            cover_image_url: string | null;
             /** @example 0 */
             sort_weight: number;
             /** @example false */
@@ -762,9 +789,9 @@ export interface components {
             fishing_method?: string[];
             /**
              * @example open
-             * @enum {string}
+             * @enum {string|null}
              */
-            open_status?: "open" | "paused" | "banned";
+            open_status?: "open" | "paused" | "banned" | null;
             /** @example 禁止垂钓 */
             ban_note?: string | null;
             /** @example 06:00 至 22:00 */
@@ -839,9 +866,9 @@ export interface components {
             fishing_method?: string[];
             /**
              * @example open
-             * @enum {string}
+             * @enum {string|null}
              */
-            open_status?: "open" | "paused" | "banned";
+            open_status?: "open" | "paused" | "banned" | null;
             /** @example 禁止垂钓 */
             ban_note?: string | null;
             /** @example 06:00 至 22:00 */
@@ -901,6 +928,25 @@ export interface components {
             map: components["schemas"]["MapConfigDto"];
             features: components["schemas"]["FeatureFlagsDto"];
             data_freshness: components["schemas"]["DataFreshnessDto"];
+        };
+        UploadImageResponseDto: {
+            /** @example spots/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            key: string;
+            /** @example /api/v1/uploads/preview?key=...&expires=...&signature=... */
+            preview_url: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @example 1600 */
+            width: number;
+            /** @example 1067 */
+            height: number;
+            /** @example 184320 */
+            size_bytes: number;
+            /**
+             * @example detail
+             * @enum {string}
+             */
+            purpose: "cover" | "detail";
         };
     };
     responses: never;
@@ -2922,6 +2968,109 @@ export interface operations {
             };
             /** @description Internal server error (50001) */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    UploadsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @example 01HX0000000000000000000000 */
+                    spot_id: string;
+                    /** @enum {string} */
+                    purpose: "cover" | "detail";
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Compressed WebP image and short-lived preview URL */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["UploadImageResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Image exceeds 10 MB (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Storage unavailable (50301) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

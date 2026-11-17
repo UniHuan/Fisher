@@ -16,6 +16,7 @@ export function toAdminSpotListItem(row: Spot): AdminSpotListItem {
     is_core: row.is_core,
     address: row.address,
     cover_image_key: row.cover_image_key,
+    cover_image_url: null,
     verified_at: row.verified_at?.toISOString() ?? null,
     updated_at: row.updated_at.toISOString(),
   };
@@ -48,7 +49,9 @@ export function toAdminSpotDetail(row: Spot): AdminSpotDetail {
     description: row.description,
     tips: row.tips,
     images: row.images,
+    image_urls: [],
     cover_image_key: row.cover_image_key,
+    cover_image_url: null,
     sort_weight: row.sort_weight,
     is_core: row.is_core,
     status: row.status as SpotStatus,

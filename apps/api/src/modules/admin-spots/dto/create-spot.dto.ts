@@ -121,7 +121,11 @@ export class CreateSpotDto {
   @Length(1, 32, { each: true })
   fishing_method?: string[];
 
-  @ApiPropertyOptional({ enum: Object.values(OPEN_STATUS), example: 'open' })
+  @ApiPropertyOptional({
+    enum: Object.values(OPEN_STATUS),
+    nullable: true,
+    example: 'open',
+  })
   @IsOptional()
   @IsIn(Object.values(OPEN_STATUS))
   open_status?: string | null;

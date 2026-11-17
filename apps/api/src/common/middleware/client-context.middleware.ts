@@ -6,6 +6,7 @@ import type { RequestWithContext } from '../types/request-context';
 
 const CLIENT_TYPES: readonly string[] = Object.values(CLIENT_TYPE);
 const PUBLIC_PATHS = new Set(['/health', '/ready']);
+const PUBLIC_ASSET_PREFIXES = ['/api/v1/uploads/preview', '/api/v1/uploads/public/'];
 
 function isClientType(value: unknown): value is ClientType {
   return typeof value === 'string' && CLIENT_TYPES.includes(value);
@@ -14,7 +15,10 @@ function isClientType(value: unknown): value is ClientType {
 @Injectable()
 export class ClientContextMiddleware implements NestMiddleware {
   use(req: RequestWithContext, _res: Response, next: NextFunction): void {
-    if (PUBLIC_PATHS.has(req.path)) {
+    if (
+      PUBLIC_PATHS.has(req.path) ||
+      PUBLIC_ASSET_PREFIXES.some((prefix) => req.path.startsWith(prefix))
+    ) {
       next();
       return;
     }

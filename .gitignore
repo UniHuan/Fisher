@@ -8,6 +8,8 @@ next-env.d.ts
 .env
 .env.*
 !.env.example
+apps/api/storage/
+apps/admin/AGENTS.md
 apps/miniprogram/miniprogram_npm/
 .superpowers/
 .DS_Store
