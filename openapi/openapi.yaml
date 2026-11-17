@@ -1246,6 +1246,309 @@ paths:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
       tags:
         - config
+  /api/v1/spots:
+    get:
+      operationId: PublicSpotsController_list
+      parameters:
+        - &a30
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a31
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: district
+          required: false
+          in: query
+          schema:
+            maxLength: 32
+            example: 南山区
+            type: string
+        - name: fish_types
+          required: false
+          in: query
+          description: Comma-separated fish type keys
+          schema:
+            example: luofei,jiyu
+            type: string
+        - name: fee_status
+          required: false
+          in: query
+          schema:
+            example: free
+            type: string
+        - name: water_type
+          required: false
+          in: query
+          description: Comma-separated water type keys
+          schema:
+            example: sea,river
+            type: string
+        - name: venue_type
+          required: false
+          in: query
+          description: Comma-separated venue type keys
+          schema:
+            example: wild,park
+            type: string
+        - name: open_status
+          required: false
+          in: query
+          description: Comma-separated open statuses; defaults to open,paused
+          schema:
+            example: open,paused
+            type: string
+        - name: include_banned
+          required: false
+          in: query
+          schema:
+            default: false
+            type: boolean
+        - name: keyword
+          required: false
+          in: query
+          schema:
+            maxLength: 40
+            example: 深圳湾
+            type: string
+        - name: latitude
+          required: false
+          in: query
+          schema:
+            minimum: -90
+            maximum: 90
+            example: 22.5431
+            type: number
+        - name: longitude
+          required: false
+          in: query
+          schema:
+            minimum: -180
+            maximum: 180
+            example: 114.0579
+            type: number
+        - name: sort
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - distance
+              - recommended
+              - updated_at
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: integer
+        - name: page_size
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 50
+            default: 20
+            type: integer
+      responses:
+        "200":
+          description: Paginated published spots
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PublicSpotPageDto"
+        "400": &a32
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404": &a33
+          description: Not found (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": &a34
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      summary: List published spots with filters, search and sorting
+      tags: &a35
+        - public spots
+  /api/v1/spots/map:
+    get:
+      operationId: PublicSpotsController_map
+      parameters:
+        - *a30
+        - *a31
+        - name: north
+          required: false
+          in: query
+          schema:
+            minimum: -90
+            maximum: 90
+            type: number
+        - name: south
+          required: false
+          in: query
+          schema:
+            minimum: -90
+            maximum: 90
+            type: number
+        - name: east
+          required: false
+          in: query
+          schema:
+            minimum: -180
+            maximum: 180
+            type: number
+        - name: west
+          required: false
+          in: query
+          schema:
+            minimum: -180
+            maximum: 180
+            type: number
+        - name: zoom
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 20
+            default: 12
+            type: integer
+        - name: include_banned
+          required: false
+          in: query
+          schema:
+            default: false
+            type: boolean
+      responses:
+        "200":
+          description: Map points or grid clusters
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PublicMapResponseDto"
+        "400": *a32
+        "404": *a33
+        "500": *a34
+      summary: Return lightweight published spot map points or clusters
+      tags: *a35
+  /api/v1/spots/{id}:
+    get:
+      operationId: PublicSpotsController_detail
+      parameters:
+        - *a30
+        - *a31
+        - name: id
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: Published spot detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PublicSpotDetailDto"
+        "400": *a32
+        "404":
+          description: Spot is not published or does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a34
+      summary: Get a published spot detail
+      tags: *a35
+  /api/v1/spots/{id}/pois:
+    get:
+      operationId: PublicSpotsController_pois
+      parameters:
+        - *a30
+        - *a31
+        - name: id
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: poi_type
+          required: false
+          in: query
+          schema:
+            example: food
+            type: string
+            enum:
+              - food
+              - parking
+              - toilet
+              - supply
+              - entertainment
+              - lodging
+      responses:
+        "200":
+          description: POIs ordered by distance
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PublicPoiListDto"
+        "400": *a32
+        "404":
+          description: Spot is not published or does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a34
+      summary: List nearby POIs for a published spot
+      tags: *a35
   /api/v1/admin/uploads:
     post:
       operationId: UploadsController_create
@@ -2224,7 +2527,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: &a30
+          example: &a36
             - luofei
             - jiyu
           type: array
@@ -2252,7 +2555,7 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: &a31
+          example: &a37
             - tai_diao
             - lu_ya
           type: array
@@ -2260,7 +2563,7 @@ components:
             type: string
         open_status:
           type: string
-          enum: &a32
+          enum: &a38
             - open
             - paused
             - banned
@@ -2286,7 +2589,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: &a33
+          example: &a39
             - spots/a.jpg
           type: array
           items:
@@ -2304,7 +2607,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: &a34
+          enum: &a40
             - official
             - operation
             - user_report
@@ -2358,7 +2661,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: *a30
+          example: *a36
           type: array
           items:
             type: string
@@ -2384,13 +2687,13 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: *a31
+          example: *a37
           type: array
           items:
             type: string
         open_status:
           type: string
-          enum: *a32
+          enum: *a38
           nullable: true
           example: open
         ban_note:
@@ -2413,7 +2716,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: *a33
+          example: *a39
           type: array
           items:
             type: string
@@ -2430,7 +2733,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: *a34
+          enum: *a40
           nullable: true
           description: Defaults to operation
     AdminSpotDeleteResponseDto:
@@ -2509,6 +2812,480 @@ components:
         - map
         - features
         - data_freshness
+    PublicSpotListItemDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        spot_name:
+          type: string
+          example: 深圳湾公园东门钓点
+        district:
+          type: string
+          nullable: true
+          example: 南山区
+        fish_types:
+          example: &a41
+            - luofei
+            - jiyu
+          type: array
+          items:
+            type: string
+        fee_status:
+          type: string
+          nullable: true
+          example: free
+        water_type:
+          type: string
+          nullable: true
+          example: sea
+        venue_type:
+          type: string
+          nullable: true
+          example: park
+        open_status:
+          type: string
+          enum: &a42
+            - open
+            - paused
+            - banned
+          example: open
+        is_core:
+          type: boolean
+          example: false
+        cover_image_url:
+          type: string
+          nullable: true
+          example: https://fish-static.unihuan.com/spots/...
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+        freshness:
+          type: string
+          enum: &a43
+            - fresh
+            - stale
+            - expired
+          example: fresh
+        distance_m:
+          type: integer
+          example: 1830
+      required:
+        - spot_id
+        - spot_name
+        - district
+        - fish_types
+        - fee_status
+        - water_type
+        - venue_type
+        - open_status
+        - is_core
+        - cover_image_url
+        - verified_at
+        - updated_at
+        - freshness
+    PublicSpotPageDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicSpotListItemDto"
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+        has_more:
+          type: boolean
+          example: true
+      required:
+        - items
+        - page
+        - page_size
+        - total
+        - has_more
+    PublicMapItemDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        spot_name:
+          type: string
+          example: 深圳湾公园东门钓点
+        district:
+          type: string
+          nullable: true
+        latitude:
+          type: string
+          example: "22.517600"
+        longitude:
+          type: string
+          example: "113.952300"
+        fee_status:
+          type: string
+          nullable: true
+        open_status:
+          type: string
+          enum:
+            - open
+            - paused
+            - banned
+          example: open
+        is_core:
+          type: boolean
+          example: false
+        cover_image_url:
+          type: string
+          nullable: true
+      required:
+        - spot_id
+        - spot_name
+        - district
+        - latitude
+        - longitude
+        - fee_status
+        - open_status
+        - is_core
+        - cover_image_url
+    PublicMapBoundsDto:
+      type: object
+      properties:
+        north:
+          type: string
+          example: "22.600000"
+        south:
+          type: string
+          example: "22.400000"
+        east:
+          type: string
+          example: "114.100000"
+        west:
+          type: string
+          example: "113.900000"
+      required:
+        - north
+        - south
+        - east
+        - west
+    PublicMapClusterDto:
+      type: object
+      properties:
+        latitude:
+          type: string
+          example: "22.500000"
+        longitude:
+          type: string
+          example: "114.000000"
+        count:
+          type: integer
+          example: 12
+        bounds:
+          $ref: "#/components/schemas/PublicMapBoundsDto"
+      required:
+        - latitude
+        - longitude
+        - count
+        - bounds
+    PublicMapResponseDto:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - points
+            - clusters
+          example: points
+        total:
+          type: integer
+          example: 100
+        zoom:
+          type: integer
+          example: 12
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicMapItemDto"
+        clusters:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicMapClusterDto"
+      required:
+        - mode
+        - total
+        - zoom
+        - items
+        - clusters
+    PublicNavigationDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 深圳湾公园东门钓点
+        latitude:
+          type: string
+          example: "22.517600"
+        longitude:
+          type: string
+          example: "113.952300"
+        address:
+          type: string
+          nullable: true
+          example: 深圳市南山区深圳湾公园东门
+      required:
+        - name
+        - latitude
+        - longitude
+        - address
+    PublicPoiItemDto:
+      type: object
+      properties:
+        poi_id:
+          type: string
+          example: 01HX0000000000000000000002
+        poi_name:
+          type: string
+          example: 深圳湾公园停车场
+        poi_type:
+          type: string
+          example: parking
+        latitude:
+          type: string
+          example: "22.517900"
+        longitude:
+          type: string
+          example: "113.953000"
+        address:
+          type: string
+          nullable: true
+        rating:
+          type: string
+          nullable: true
+          example: "4.6"
+        open_time:
+          type: string
+          nullable: true
+        distance_m:
+          type: integer
+          example: 120
+        source:
+          type: string
+          example: tencent
+        source_label:
+          type: string
+          example: 腾讯位置服务
+        navigation:
+          $ref: "#/components/schemas/PublicNavigationDto"
+      required:
+        - poi_id
+        - poi_name
+        - poi_type
+        - latitude
+        - longitude
+        - address
+        - rating
+        - open_time
+        - distance_m
+        - source
+        - source_label
+        - navigation
+    PublicPoiGroupDto:
+      type: object
+      properties:
+        poi_type:
+          type: string
+          example: parking
+        count:
+          type: integer
+          example: 4
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPoiItemDto"
+      required:
+        - poi_type
+        - count
+        - items
+    PublicSpotDetailDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        spot_name:
+          type: string
+          example: 深圳湾公园东门钓点
+        district:
+          type: string
+          nullable: true
+          example: 南山区
+        fish_types:
+          example: *a41
+          type: array
+          items:
+            type: string
+        fee_status:
+          type: string
+          nullable: true
+          example: free
+        water_type:
+          type: string
+          nullable: true
+          example: sea
+        venue_type:
+          type: string
+          nullable: true
+          example: park
+        open_status:
+          type: string
+          enum: *a42
+          example: open
+        is_core:
+          type: boolean
+          example: false
+        cover_image_url:
+          type: string
+          nullable: true
+          example: https://fish-static.unihuan.com/spots/...
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+        freshness:
+          type: string
+          enum: *a43
+          example: fresh
+        distance_m:
+          type: integer
+          example: 1830
+        city_code:
+          type: string
+          example: "440300"
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: string
+          example: "22.517600"
+        longitude:
+          type: string
+          example: "113.952300"
+        fee_unit:
+          type: string
+          nullable: true
+        fee_detail:
+          type: string
+          nullable: true
+        fishing_method:
+          example:
+            - tai_diao
+            - lu_ya
+          type: array
+          items:
+            type: string
+        ban_note:
+          type: string
+          nullable: true
+        open_hours:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        tips:
+          type: string
+          nullable: true
+        images:
+          example:
+            - https://fish-static.unihuan.com/spots/...
+          type: array
+          items:
+            type: string
+        image_count:
+          type: integer
+          example: 3
+        navigation:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PublicNavigationDto"
+        is_banned:
+          type: boolean
+          example: false
+        verified_days_ago:
+          type: integer
+          nullable: true
+          example: 12
+        poi_summary:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPoiGroupDto"
+      required:
+        - spot_id
+        - spot_name
+        - district
+        - fish_types
+        - fee_status
+        - water_type
+        - venue_type
+        - open_status
+        - is_core
+        - cover_image_url
+        - verified_at
+        - updated_at
+        - freshness
+        - city_code
+        - address
+        - latitude
+        - longitude
+        - fee_unit
+        - fee_detail
+        - fishing_method
+        - ban_note
+        - open_hours
+        - description
+        - tips
+        - images
+        - image_count
+        - navigation
+        - is_banned
+        - verified_days_ago
+        - poi_summary
+    PublicPoiListDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPoiItemDto"
+        data_source:
+          type: string
+          example: 腾讯位置服务
+        poi_type:
+          type: string
+          nullable: true
+          example: parking
+      required:
+        - spot_id
+        - items
+        - data_source
+        - poi_type
     UploadImageResponseDto:
       type: object
       properties:

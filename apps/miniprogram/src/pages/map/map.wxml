@@ -1,0 +1,38 @@
+<view class="map-page">
+  <view class="map-wrap">
+    <map
+      class="map"
+      latitude="{{latitude}}"
+      longitude="{{longitude}}"
+      scale="{{scale}}"
+      markers="{{markers}}"
+      bindmarkertap="onMarkerTap"
+      bindregionchange="onRegionChange"
+      enable-zoom
+      enable-scroll
+    />
+    <view class="map-locate" bindtap="locate">定位</view>
+    <view wx:if="{{loading}}" class="map-hint">正在加载点位…</view>
+    <view wx:if="{{error}}" class="map-hint map-error">
+      <text>{{error}}</text>
+      <text class="map-retry" bindtap="retry">重试</text>
+    </view>
+  </view>
+
+  <view wx:if="{{selected}}" class="map-card card">
+    <image wx:if="{{selected.cover}}" class="map-cover" src="{{selected.cover}}" mode="aspectFill" />
+    <view wx:else class="map-cover map-cover-empty">暂无图片</view>
+    <view class="map-card-body">
+      <view class="map-card-title">{{selected.spot_name}}</view>
+      <view class="map-card-meta">{{selected.district}}</view>
+      <view class="map-tags">
+        <text class="tag">{{selected.feeLabel}}</text>
+        <text class="tag {{selected.openTone}}">{{selected.openLabel}}</text>
+      </view>
+      <button class="primary-button map-detail-button" bindtap="openDetail">查看详情</button>
+    </view>
+  </view>
+  <view wx:else class="map-empty card">
+    <text>{{mode === 'clusters' ? '点位较多，点击聚合点或放大地图查看' : '点击地图上的钓点查看信息'}}</text>
+  </view>
+</view>

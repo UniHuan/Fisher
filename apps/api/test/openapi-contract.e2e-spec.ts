@@ -156,6 +156,40 @@ describe('OpenAPI contract', () => {
     ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
   });
 
+  it('documents public spot list, map, detail and POI operations', () => {
+    const list = document.paths['/api/v1/spots']?.get;
+    const map = document.paths['/api/v1/spots/map']?.get;
+    const detail = document.paths['/api/v1/spots/{id}']?.get;
+    const pois = document.paths['/api/v1/spots/{id}/pois']?.get;
+    expect(list).toBeDefined();
+    expect(map).toBeDefined();
+    expect(detail).toBeDefined();
+    expect(pois).toBeDefined();
+    expect((list?.parameters ?? []).map((parameter) => parameter.name)).toEqual(
+      expect.arrayContaining([
+        'district',
+        'fish_types',
+        'fee_status',
+        'water_type',
+        'venue_type',
+        'open_status',
+        'include_banned',
+        'keyword',
+        'latitude',
+        'longitude',
+        'sort',
+        'page',
+        'page_size',
+      ]),
+    );
+    expect((map?.parameters ?? []).map((parameter) => parameter.name)).toEqual(
+      expect.arrayContaining(['north', 'south', 'east', 'west', 'zoom']),
+    );
+    expect(
+      detail?.responses?.['404']?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/ApiErrorEnvelopeDto');
+  });
+
   it('documents the admin media upload with CSRF and client headers', () => {
     const upload = document.paths['/api/v1/admin/uploads']?.post;
     expect(upload).toBeDefined();

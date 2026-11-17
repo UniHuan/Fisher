@@ -1,0 +1,187 @@
+.hero {
+  padding: 18rpx 8rpx 28rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-kicker {
+  color: #0f6b5c;
+  font-size: 22rpx;
+  letter-spacing: 0.12em;
+}
+
+.hero-title {
+  margin-top: 10rpx;
+  font-size: 54rpx;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.hero-sub {
+  margin-top: 14rpx;
+  max-width: 560rpx;
+  color: #68736f;
+  font-size: 25rpx;
+  line-height: 1.65;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 18rpx 20rpx;
+}
+
+.search-mark {
+  width: 38rpx;
+  height: 38rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4rpx;
+  background: #e7f1ee;
+  color: #0f6b5c;
+  font-size: 20rpx;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+}
+
+.search-placeholder {
+  color: #9aa5a1;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin: 18rpx 0 8rpx;
+}
+
+.filter-pill {
+  padding: 12rpx 20rpx;
+  border: 1rpx solid #dfe5e2;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #4b5854;
+  font-size: 24rpx;
+  line-height: 1.2;
+}
+
+.switch-pill {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.switch-pill switch {
+  transform: scale(0.75);
+}
+
+.location-pill {
+  color: #0f6b5c;
+  border-color: #c9dfd9;
+  background: #e7f1ee;
+}
+
+.result-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 8rpx 18rpx;
+  font-size: 24rpx;
+  color: #4b5854;
+}
+
+.spot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.spot-card {
+  display: flex;
+  gap: 18rpx;
+  padding: 16rpx;
+}
+
+.spot-cover {
+  flex: 0 0 210rpx;
+  width: 210rpx;
+  height: 158rpx;
+  border-radius: 8rpx;
+  background: #eef1ef;
+}
+
+.spot-cover-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa5a1;
+  font-size: 22rpx;
+}
+
+.spot-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.spot-top {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.spot-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spot-meta {
+  color: #68736f;
+  font-size: 24rpx;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.freshness {
+  font-size: 22rpx;
+  padding: 4rpx 0;
+}
+
+.freshness.tag-warn {
+  color: #8a5a00;
+}
+
+.freshness.tag-danger {
+  color: #a33a2c;
+}
+
+.load-more {
+  padding: 28rpx;
+  text-align: center;
+  color: #9aa5a1;
+  font-size: 24rpx;
+}
+
+.retry-button {
+  margin-top: 24rpx;
+  font-size: 26rpx;
+}

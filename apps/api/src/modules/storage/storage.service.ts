@@ -22,6 +22,10 @@ export class StorageService {
     return this.adapter.getSignedUrl(key, PREVIEW_URL_TTL_SECONDS);
   }
 
+  getPublicUrl(key: string): string {
+    return this.adapter.getPublicUrl(key);
+  }
+
   getImageUrl(key: string, published: boolean): Promise<string> {
     return published ? Promise.resolve(this.adapter.getPublicUrl(key)) : this.getPreviewUrl(key);
   }

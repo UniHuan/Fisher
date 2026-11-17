@@ -1,0 +1,39 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/map/map",
+    "pages/detail/detail"
+  ],
+  "window": {
+    "navigationBarTitleText": "深圳钓鱼助手",
+    "navigationBarBackgroundColor": "#0a3f38",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f0f3f1",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#68736f",
+    "selectedColor": "#0f6b5c",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "找钓点"
+      },
+      {
+        "pagePath": "pages/map/map",
+        "text": "地图"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于按距离展示附近钓点"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "sitemapLocation": "sitemap.json"
+}

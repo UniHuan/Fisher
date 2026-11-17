@@ -335,6 +335,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List published spots with filters, search and sorting */
+        get: operations["PublicSpotsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spots/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return lightweight published spot map points or clusters */
+        get: operations["PublicSpotsController_map"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spots/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a published spot detail */
+        get: operations["PublicSpotsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spots/{id}/pois": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List nearby POIs for a published spot */
+        get: operations["PublicSpotsController_pois"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/uploads": {
         parameters: {
             query?: never;
@@ -928,6 +996,234 @@ export interface components {
             map: components["schemas"]["MapConfigDto"];
             features: components["schemas"]["FeatureFlagsDto"];
             data_freshness: components["schemas"]["DataFreshnessDto"];
+        };
+        PublicSpotListItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /** @example 深圳湾公园东门钓点 */
+            spot_name: string;
+            /** @example 南山区 */
+            district: string | null;
+            /**
+             * @example [
+             *       "luofei",
+             *       "jiyu"
+             *     ]
+             */
+            fish_types: string[];
+            /** @example free */
+            fee_status: string | null;
+            /** @example sea */
+            water_type: string | null;
+            /** @example park */
+            venue_type: string | null;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            open_status: "open" | "paused" | "banned";
+            /** @example false */
+            is_core: boolean;
+            /** @example https://fish-static.unihuan.com/spots/... */
+            cover_image_url: string | null;
+            /** Format: date-time */
+            verified_at: string | null;
+            /** Format: date-time */
+            updated_at: string;
+            /**
+             * @example fresh
+             * @enum {string}
+             */
+            freshness: "fresh" | "stale" | "expired";
+            /** @example 1830 */
+            distance_m?: number;
+        };
+        PublicSpotPageDto: {
+            items: components["schemas"]["PublicSpotListItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 100 */
+            total: number;
+            /** @example true */
+            has_more: boolean;
+        };
+        PublicMapItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /** @example 深圳湾公园东门钓点 */
+            spot_name: string;
+            district: string | null;
+            /** @example 22.517600 */
+            latitude: string;
+            /** @example 113.952300 */
+            longitude: string;
+            fee_status: string | null;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            open_status: "open" | "paused" | "banned";
+            /** @example false */
+            is_core: boolean;
+            cover_image_url: string | null;
+        };
+        PublicMapBoundsDto: {
+            /** @example 22.600000 */
+            north: string;
+            /** @example 22.400000 */
+            south: string;
+            /** @example 114.100000 */
+            east: string;
+            /** @example 113.900000 */
+            west: string;
+        };
+        PublicMapClusterDto: {
+            /** @example 22.500000 */
+            latitude: string;
+            /** @example 114.000000 */
+            longitude: string;
+            /** @example 12 */
+            count: number;
+            bounds: components["schemas"]["PublicMapBoundsDto"];
+        };
+        PublicMapResponseDto: {
+            /**
+             * @example points
+             * @enum {string}
+             */
+            mode: "points" | "clusters";
+            /** @example 100 */
+            total: number;
+            /** @example 12 */
+            zoom: number;
+            items: components["schemas"]["PublicMapItemDto"][];
+            clusters: components["schemas"]["PublicMapClusterDto"][];
+        };
+        PublicNavigationDto: {
+            /** @example 深圳湾公园东门钓点 */
+            name: string;
+            /** @example 22.517600 */
+            latitude: string;
+            /** @example 113.952300 */
+            longitude: string;
+            /** @example 深圳市南山区深圳湾公园东门 */
+            address: string | null;
+        };
+        PublicPoiItemDto: {
+            /** @example 01HX0000000000000000000002 */
+            poi_id: string;
+            /** @example 深圳湾公园停车场 */
+            poi_name: string;
+            /** @example parking */
+            poi_type: string;
+            /** @example 22.517900 */
+            latitude: string;
+            /** @example 113.953000 */
+            longitude: string;
+            address: string | null;
+            /** @example 4.6 */
+            rating: string | null;
+            open_time: string | null;
+            /** @example 120 */
+            distance_m: number;
+            /** @example tencent */
+            source: string;
+            /** @example 腾讯位置服务 */
+            source_label: string;
+            navigation: components["schemas"]["PublicNavigationDto"];
+        };
+        PublicPoiGroupDto: {
+            /** @example parking */
+            poi_type: string;
+            /** @example 4 */
+            count: number;
+            items: components["schemas"]["PublicPoiItemDto"][];
+        };
+        PublicSpotDetailDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /** @example 深圳湾公园东门钓点 */
+            spot_name: string;
+            /** @example 南山区 */
+            district: string | null;
+            /**
+             * @example [
+             *       "luofei",
+             *       "jiyu"
+             *     ]
+             */
+            fish_types: string[];
+            /** @example free */
+            fee_status: string | null;
+            /** @example sea */
+            water_type: string | null;
+            /** @example park */
+            venue_type: string | null;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            open_status: "open" | "paused" | "banned";
+            /** @example false */
+            is_core: boolean;
+            /** @example https://fish-static.unihuan.com/spots/... */
+            cover_image_url: string | null;
+            /** Format: date-time */
+            verified_at: string | null;
+            /** Format: date-time */
+            updated_at: string;
+            /**
+             * @example fresh
+             * @enum {string}
+             */
+            freshness: "fresh" | "stale" | "expired";
+            /** @example 1830 */
+            distance_m?: number;
+            /** @example 440300 */
+            city_code: string;
+            address: string | null;
+            /** @example 22.517600 */
+            latitude: string;
+            /** @example 113.952300 */
+            longitude: string;
+            fee_unit: string | null;
+            fee_detail: string | null;
+            /**
+             * @example [
+             *       "tai_diao",
+             *       "lu_ya"
+             *     ]
+             */
+            fishing_method: string[];
+            ban_note: string | null;
+            open_hours: string | null;
+            description: string | null;
+            tips: string | null;
+            /**
+             * @example [
+             *       "https://fish-static.unihuan.com/spots/..."
+             *     ]
+             */
+            images: string[];
+            /** @example 3 */
+            image_count: number;
+            navigation: components["schemas"]["PublicNavigationDto"] | null;
+            /** @example false */
+            is_banned: boolean;
+            /** @example 12 */
+            verified_days_ago: number | null;
+            poi_summary: components["schemas"]["PublicPoiGroupDto"][];
+        };
+        PublicPoiListDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            items: components["schemas"]["PublicPoiItemDto"][];
+            /** @example 腾讯位置服务 */
+            data_source: string;
+            /** @example parking */
+            poi_type: string | null;
         };
         UploadImageResponseDto: {
             /** @example spots/01HX0000000000000000000000/01HX0000000000000000000001.webp */
@@ -2959,6 +3255,255 @@ export interface operations {
             };
             /** @description Bad request (40001) */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PublicSpotsController_list: {
+        parameters: {
+            query?: {
+                district?: string;
+                /** @description Comma-separated fish type keys */
+                fish_types?: string;
+                fee_status?: string;
+                /** @description Comma-separated water type keys */
+                water_type?: string;
+                /** @description Comma-separated venue type keys */
+                venue_type?: string;
+                /** @description Comma-separated open statuses; defaults to open,paused */
+                open_status?: string;
+                include_banned?: boolean;
+                keyword?: string;
+                latitude?: number;
+                longitude?: number;
+                sort?: "distance" | "recommended" | "updated_at";
+                page?: number;
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated published spots */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicSpotPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PublicSpotsController_map: {
+        parameters: {
+            query?: {
+                north?: number;
+                south?: number;
+                east?: number;
+                west?: number;
+                zoom?: number;
+                include_banned?: boolean;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Map points or grid clusters */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicMapResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PublicSpotsController_detail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published spot detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicSpotDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot is not published or does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PublicSpotsController_pois: {
+        parameters: {
+            query?: {
+                poi_type?: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description POIs ordered by distance */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicPoiListDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot is not published or does not exist (40401) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

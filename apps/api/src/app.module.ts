@@ -7,6 +7,7 @@ import { AuditLogModule } from './modules/audit/audit-log.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
 import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { HealthController } from './modules/health/health.controller';
+import { PublicSpotsModule } from './modules/public-spots/public-spots.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -30,6 +31,7 @@ export class AppModule {
         DictionariesModule,
         AdminSpotsModule,
         ClientConfigModule,
+        PublicSpotsModule,
         StorageModule,
         UploadsModule,
       ],
