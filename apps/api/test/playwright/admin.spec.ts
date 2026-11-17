@@ -152,6 +152,13 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
   await page.getByLabel('钓点经度').fill('113.952300');
   await page.getByLabel('导航纬度').fill('22.517600');
   await page.getByLabel('导航经度').fill('113.952300');
+  await page.getByRole('button', { name: '地图选点' }).click();
+  await expect(page.getByText('未配置腾讯地图 JS Key')).toBeVisible();
+  await page
+    .locator('.ant-modal')
+    .getByRole('button', { name: /取\s*消/ })
+    .click();
+  await expect(page.getByText('未配置腾讯地图 JS Key')).toHaveCount(0);
   await selectMultiple(page, '可钓鱼种', '罗非');
   await selectOption(page, '收费状态', '免费');
   await selectOption(page, '水域类型', '海域');
