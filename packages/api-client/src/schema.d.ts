@@ -231,6 +231,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/spots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List spots for admin management */
+        get: operations["AdminSpotsController_list"];
+        put?: never;
+        /** Create a spot draft */
+        post: operations["AdminSpotsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one spot, including drafts and offline rows */
+        get: operations["AdminSpotsController_detail"];
+        /** Update a draft or published spot */
+        put: operations["AdminSpotsController_update"];
+        post?: never;
+        /** Soft-delete a draft or offline spot */
+        delete: operations["AdminSpotsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish a draft or offline spot */
+        post: operations["AdminSpotsController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}/offline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a published spot offline */
+        post: operations["AdminSpotsController_offline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a spot verified */
+        post: operations["AdminSpotsController_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/config": {
         parameters: {
             query?: never;
@@ -494,6 +582,298 @@ export interface components {
             sort_order?: number;
             enabled?: boolean;
             parent_key?: string | null;
+        };
+        AdminSpotListItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /** @example 深圳湾公园钓点 */
+            spot_name: string;
+            /** @example 南山区 */
+            district: string | null;
+            /**
+             * @example draft
+             * @enum {string}
+             */
+            status: "draft" | "published" | "offline";
+            /** @example open */
+            open_status: string | null;
+            /** @example false */
+            is_core: boolean;
+            /** @example 深圳市南山区… */
+            address: string | null;
+            /** @example spots/a.jpg */
+            cover_image_key: string | null;
+            /** Format: date-time */
+            verified_at: string | null;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminSpotPageDto: {
+            items: components["schemas"]["AdminSpotListItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 100 */
+            total: number;
+            /** @example true */
+            has_more: boolean;
+        };
+        AdminSpotDetailDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /** @example 深圳湾公园钓点 */
+            spot_name: string;
+            /** @example 440300 */
+            city_code: string;
+            /** @example 南山区 */
+            district: string | null;
+            /** @example 22.517600 */
+            latitude: string | null;
+            /** @example 113.952300 */
+            longitude: string | null;
+            /** @example 22.517600 */
+            nav_latitude: string | null;
+            /** @example 113.952300 */
+            nav_longitude: string | null;
+            parking_latitude: string | null;
+            parking_longitude: string | null;
+            /** @example 深圳市南山区… */
+            address: string | null;
+            /**
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_types: string[];
+            /** @example free */
+            fee_status: string | null;
+            /** @example day */
+            fee_unit: string | null;
+            /** @example 80 元一天 */
+            fee_detail: string | null;
+            /** @example sea */
+            water_type: string | null;
+            /** @example wild */
+            venue_type: string | null;
+            /**
+             * @example [
+             *       "tai_diao"
+             *     ]
+             */
+            fishing_method: string[];
+            /** @example open */
+            open_status: string | null;
+            /** @example null */
+            ban_note: string | null;
+            /** @example 06:00 至 22:00 */
+            open_hours: string | null;
+            /** @example null */
+            spot_score: string | null;
+            /** @example 深圳湾公园内 */
+            description: string | null;
+            tips: string | null;
+            /**
+             * @example [
+             *       "spots/a.jpg"
+             *     ]
+             */
+            images: string[];
+            /** @example spots/a.jpg */
+            cover_image_key: string | null;
+            /** @example 0 */
+            sort_weight: number;
+            /** @example false */
+            is_core: boolean;
+            /**
+             * @example draft
+             * @enum {string}
+             */
+            status: "draft" | "published" | "offline";
+            /** @example operation */
+            source: string | null;
+            /** Format: date-time */
+            verified_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        DuplicateWarningDto: {
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /** @example 深圳湾公园钓鱼点 */
+            spot_name: string;
+            /** @example 14 */
+            distance_m: number;
+        };
+        AdminSpotWriteResponseDto: {
+            spot: components["schemas"]["AdminSpotDetailDto"];
+            warnings: components["schemas"]["DuplicateWarningDto"][];
+        };
+        CreateSpotDto: {
+            /** @example 深圳湾公园钓点 */
+            spot_name: string;
+            /** @example 南山区 */
+            district?: string | null;
+            /**
+             * @description GCJ-02 latitude string
+             * @example 22.517600
+             */
+            latitude?: string | null;
+            /**
+             * @description GCJ-02 longitude string
+             * @example 113.952300
+             */
+            longitude?: string | null;
+            /** @example 22.517600 */
+            nav_latitude?: string | null;
+            /** @example 113.952300 */
+            nav_longitude?: string | null;
+            /** @example 22.517600 */
+            parking_latitude?: string | null;
+            /** @example 113.952300 */
+            parking_longitude?: string | null;
+            /** @example 深圳市南山区… */
+            address?: string | null;
+            /**
+             * @example [
+             *       "luofei",
+             *       "jiyu"
+             *     ]
+             */
+            fish_types?: string[];
+            /** @example free */
+            fee_status?: string | null;
+            /** @example day */
+            fee_unit?: string | null;
+            /** @example 80 元一天 */
+            fee_detail?: string | null;
+            /** @example sea */
+            water_type?: string | null;
+            /** @example wild */
+            venue_type?: string | null;
+            /**
+             * @example [
+             *       "tai_diao",
+             *       "lu_ya"
+             *     ]
+             */
+            fishing_method?: string[];
+            /**
+             * @example open
+             * @enum {string}
+             */
+            open_status?: "open" | "paused" | "banned";
+            /** @example 禁止垂钓 */
+            ban_note?: string | null;
+            /** @example 06:00 至 22:00 */
+            open_hours?: string | null;
+            description?: string | null;
+            tips?: string | null;
+            /**
+             * @example [
+             *       "spots/a.jpg"
+             *     ]
+             */
+            images?: string[];
+            cover_image_key?: string | null;
+            /** @description Defaults to 0 */
+            sort_weight?: number;
+            /** @description Defaults to false */
+            is_core?: boolean;
+            /**
+             * @description Defaults to operation
+             * @enum {string|null}
+             */
+            source?: "official" | "operation" | "user_report" | "third_party" | null;
+        };
+        UpdateSpotDto: {
+            /** @example 深圳湾公园钓点 */
+            spot_name?: string;
+            /** @example 南山区 */
+            district?: string | null;
+            /**
+             * @description GCJ-02 latitude string
+             * @example 22.517600
+             */
+            latitude?: string | null;
+            /**
+             * @description GCJ-02 longitude string
+             * @example 113.952300
+             */
+            longitude?: string | null;
+            /** @example 22.517600 */
+            nav_latitude?: string | null;
+            /** @example 113.952300 */
+            nav_longitude?: string | null;
+            /** @example 22.517600 */
+            parking_latitude?: string | null;
+            /** @example 113.952300 */
+            parking_longitude?: string | null;
+            /** @example 深圳市南山区… */
+            address?: string | null;
+            /**
+             * @example [
+             *       "luofei",
+             *       "jiyu"
+             *     ]
+             */
+            fish_types?: string[];
+            /** @example free */
+            fee_status?: string | null;
+            /** @example day */
+            fee_unit?: string | null;
+            /** @example 80 元一天 */
+            fee_detail?: string | null;
+            /** @example sea */
+            water_type?: string | null;
+            /** @example wild */
+            venue_type?: string | null;
+            /**
+             * @example [
+             *       "tai_diao",
+             *       "lu_ya"
+             *     ]
+             */
+            fishing_method?: string[];
+            /**
+             * @example open
+             * @enum {string}
+             */
+            open_status?: "open" | "paused" | "banned";
+            /** @example 禁止垂钓 */
+            ban_note?: string | null;
+            /** @example 06:00 至 22:00 */
+            open_hours?: string | null;
+            description?: string | null;
+            tips?: string | null;
+            /**
+             * @example [
+             *       "spots/a.jpg"
+             *     ]
+             */
+            images?: string[];
+            cover_image_key?: string | null;
+            /** @description Defaults to 0 */
+            sort_weight?: number;
+            /** @description Defaults to false */
+            is_core?: boolean;
+            /**
+             * @description Defaults to operation
+             * @enum {string|null}
+             */
+            source?: "official" | "operation" | "user_report" | "third_party" | null;
+        };
+        AdminSpotDeleteResponseDto: {
+            /** @example true */
+            deleted: boolean;
+        };
+        VerifySpotDto: {
+            /** @example 现场 */
+            method?: string;
+            /** @example 水情稳定 */
+            note?: string;
         };
         MapConfigDto: {
             /** @example 22.5431 */
@@ -1809,6 +2189,677 @@ export interface operations {
                 };
             };
             /** @description Dictionary row does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_list: {
+        parameters: {
+            query?: {
+                status?: "draft" | "published" | "offline";
+                district?: string;
+                /** @description Normalized spot name keyword, clamped by the service */
+                keyword?: string;
+                /** @description Inclusive lower bound on updated_at (ISO 8601) */
+                updated_from?: string;
+                /** @description Inclusive upper bound on updated_at (ISO 8601) */
+                updated_to?: string;
+                /** @description Page number, starting at 1; defaults to 1 */
+                page?: number;
+                /** @description Page size; defaults to 20 */
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated admin spot rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpotDto"];
+            };
+        };
+        responses: {
+            /** @description Created draft and duplicate warnings */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotWriteResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_detail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin spot detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_update: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSpotDto"];
+            };
+        };
+        responses: {
+            /** @description Updated spot and duplicate warnings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotWriteResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot changed concurrently (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Published invariant would be broken (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_remove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Spot soft-deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotDeleteResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Published spot cannot be deleted (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_publish: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Optional 24-hour idempotency key for publish and offline */
+                "Idempotency-Key"?: string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published spot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State or idempotency conflict (40901/40902) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Publish validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_offline: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Optional 24-hour idempotency key for publish and offline */
+                "Idempotency-Key"?: string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offline spot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State or idempotency conflict (40901/40902) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminSpotsController_verify: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifySpotDto"];
+            };
+        };
+        responses: {
+            /** @description Verified spot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
             404: {
                 headers: {
                     [name: string]: unknown;

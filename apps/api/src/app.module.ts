@@ -1,6 +1,7 @@
 import { Module, type DynamicModule, type Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
+import { AdminSpotsModule } from './modules/admin-spots/admin-spots.module';
 import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { AuditLogModule } from './modules/audit/audit-log.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
@@ -25,6 +26,7 @@ export class AppModule {
         AdminAuthModule,
         AuditLogModule,
         DictionariesModule,
+        AdminSpotsModule,
         ClientConfigModule,
       ],
       controllers: [HealthController, ...extraControllers],
