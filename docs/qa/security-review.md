@@ -52,6 +52,7 @@
 - 公开接口只返回已发布钓点，禁钓规则和隐藏 POI 有测试
 - Prisma 参数化查询，没有拼接 SQL
 - 上传有大小限制、magic bytes、Sharp 重编码和存储 key 白名单
+- 公开图片响应显式设置 `Cross-Origin-Resource-Policy: cross-origin`，允许 admin 与 CDN 跨源展示；Playwright 已验证图片真实渲染
 - 审计日志脱敏，分析事件仅写白名单字段
 - 日志不记录查询字符串，签名预览 URL 不进入 access log
 

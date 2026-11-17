@@ -2,7 +2,7 @@
 
 日期：2026-11-17  
 测试文件：`apps/api/test/playwright/admin.spec.ts`  
-结果：1 个场景通过，耗时约 14 秒
+结果：1 个场景通过，耗时约 18 秒
 
 ## 覆盖内容
 
@@ -36,6 +36,6 @@ Playwright 会自动构建 admin 静态导出，用 Python 静态服务器托管
 ## 已知边界
 
 - 仅覆盖 Chromium，1280 像素桌面视口
-- 未覆盖图片上传、Excel 导入和地图选点，这三项需要单独测试数据或腾讯 JS Key
+- 未覆盖地图选点，需要腾讯 JS Key 和域名白名单
 - 未接入 GitHub Actions；CI 接入需要 PostgreSQL service、Playwright 浏览器缓存和 3010/3011 端口
 - 首次运行需要测试库已迁移；全局 setup 只负责种子，不执行 `migrate reset`
