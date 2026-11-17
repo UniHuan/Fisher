@@ -30,6 +30,7 @@ RUN pnpm --filter @szfisher/shared build \
 # Unprivileged Nginx listens on 8080; the CDN/WAF reaches this origin over HTTPS.
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY infra/nginx/admin.conf /etc/nginx/conf.d/default.conf
+COPY LICENSE NOTICE /usr/share/doc/szfisher/
 COPY --from=build /app/apps/admin/out /usr/share/nginx/html
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

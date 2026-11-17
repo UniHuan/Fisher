@@ -2,6 +2,7 @@
   "name": "@szfisher/admin",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "pnpm --filter @szfisher/api-client build && next dev -p 3000",
     "lint": "eslint .",

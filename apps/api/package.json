@@ -2,6 +2,7 @@
   "name": "@szfisher/api",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "nest start --watch",
     "lint": "eslint .",

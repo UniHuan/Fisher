@@ -15,3 +15,15 @@ apps/admin/AGENTS.md
 apps/miniprogram/miniprogram_npm/
 .superpowers/
 .DS_Store
+
+# Local secret material and database artifacts
+*.dump
+*.log
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.bak
+backups/

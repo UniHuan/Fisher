@@ -3,6 +3,7 @@
 # Build stage: frozen workspace install, shared build, Prisma Client and API build.
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
+COPY LICENSE NOTICE ./
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
