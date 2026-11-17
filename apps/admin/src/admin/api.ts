@@ -13,6 +13,14 @@ export type AdminSpotWrite = components['schemas']['AdminSpotWriteResponseDto'];
 export type DuplicateWarning = components['schemas']['DuplicateWarningDto'];
 export type UploadResponse = components['schemas']['UploadImageResponseDto'];
 export type ImportJob = components['schemas']['ImportJobDto'];
+export type AdminPoiItem = components['schemas']['AdminPoiItemDto'];
+export type AdminPoiPage = components['schemas']['AdminPoiPageDto'];
+export type AdminSpotPoiItem = components['schemas']['AdminSpotPoiItemDto'];
+export type AdminSpotPoiList = components['schemas']['AdminSpotPoiListDto'];
+export type PoiSyncRun = components['schemas']['PoiSyncRunDto'];
+export type CreatePoiBody = components['schemas']['CreatePoiDto'];
+export type UpdatePoiBody = components['schemas']['UpdatePoiDto'];
+export type BindPoiBody = components['schemas']['BindPoiDto'];
 export type PublicDictionaries = components['schemas']['PublicDictionariesDto'];
 export type CreateSpotBody = components['schemas']['CreateSpotDto'];
 export type UpdateSpotBody = components['schemas']['UpdateSpotDto'];
@@ -31,6 +39,14 @@ export interface Session {
 export interface SpotListQuery {
   status?: string;
   district?: string;
+  keyword?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface PoiListQuery {
+  poi_type?: string;
+  status?: string;
   keyword?: string;
   page?: number;
   page_size?: number;
@@ -246,5 +262,51 @@ export const api = {
   },
   downloadImportErrors(jobId: string): Promise<Blob> {
     return requestBlob(`/admin/imports/${jobId}/errors`);
+  },
+  listPois(query: PoiListQuery): Promise<AdminPoiPage> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== '') {
+        params.set(key, String(value));
+      }
+    }
+    const suffix = params.size === 0 ? '' : `?${params.toString()}`;
+    return request<AdminPoiPage>(`/admin/pois${suffix}`);
+  },
+  createPoi(body: CreatePoiBody, csrf: string): Promise<AdminPoiItem> {
+    return request<AdminPoiItem>('/admin/pois', { method: 'POST', body, csrf });
+  },
+  updatePoi(id: string, body: UpdatePoiBody, csrf: string): Promise<AdminPoiItem> {
+    return request<AdminPoiItem>(`/admin/pois/${id}`, {
+      method: 'PUT',
+      body,
+      csrf,
+    });
+  },
+  listSpotPois(spotId: string): Promise<AdminSpotPoiList> {
+    return request<AdminSpotPoiList>(`/admin/spots/${spotId}/pois`);
+  },
+  bindPoi(spotId: string, body: BindPoiBody, csrf: string): Promise<AdminSpotPoiItem> {
+    return request<AdminSpotPoiItem>(`/admin/spots/${spotId}/pois`, {
+      method: 'POST',
+      body,
+      csrf,
+    });
+  },
+  unbindPoi(
+    spotId: string,
+    poiId: string,
+    csrf: string,
+  ): Promise<{ spot_id: string; poi_id: string; unbound: true }> {
+    return request<{ spot_id: string; poi_id: string; unbound: true }>(
+      `/admin/spots/${spotId}/pois/${poiId}`,
+      { method: 'DELETE', csrf },
+    );
+  },
+  syncSpotPois(spotId: string, csrf: string): Promise<PoiSyncRun> {
+    return request<PoiSyncRun>(`/admin/spots/${spotId}/pois/sync`, {
+      method: 'POST',
+      csrf,
+    });
   },
 };

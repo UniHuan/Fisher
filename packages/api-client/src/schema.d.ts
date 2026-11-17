@@ -437,6 +437,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/pois": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List POIs in the shared POI library */
+        get: operations["PoisController_list"];
+        put?: never;
+        /** Create a manually entered POI */
+        post: operations["PoisController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pois/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Correct or hide a POI */
+        put: operations["PoisController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}/pois": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a spot POI bindings, including hidden POIs and last sync */
+        get: operations["PoisController_listSpotPois"];
+        put?: never;
+        /** Bind an existing POI to a spot */
+        post: operations["PoisController_bind"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}/pois/{poi_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unbind a POI from a spot */
+        delete: operations["PoisController_unbind"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/spots/{id}/pois/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync nearby POIs from the configured provider */
+        post: operations["PoisController_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/uploads": {
         parameters: {
             query?: never;
@@ -1315,6 +1402,183 @@ export interface components {
             data_source: string;
             /** @example parking */
             poi_type: string | null;
+        };
+        AdminPoiItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            poi_id: string;
+            /** @example tencent-123 */
+            external_poi_id: string | null;
+            /** @example 深圳湾公园停车场 */
+            poi_name: string;
+            /**
+             * @example parking
+             * @enum {string}
+             */
+            poi_type: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+            /** @example 22.518000 */
+            latitude: string;
+            /** @example 113.953000 */
+            longitude: string;
+            /** @example 深圳市南山区… */
+            address: string | null;
+            /** @example 4.5 */
+            rating: string | null;
+            /** @example 全天 */
+            open_time: string | null;
+            /** @example manual */
+            source: string;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "hidden";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminPoiPageDto: {
+            items: components["schemas"]["AdminPoiItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 100 */
+            total: number;
+            /** @example true */
+            has_more: boolean;
+        };
+        CreatePoiDto: {
+            /** @example 深圳湾公园停车场 */
+            poi_name: string;
+            /**
+             * @example parking
+             * @enum {string}
+             */
+            poi_type: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+            /**
+             * @description GCJ-02 latitude string
+             * @example 22.518000
+             */
+            latitude: string;
+            /**
+             * @description GCJ-02 longitude string
+             * @example 113.953000
+             */
+            longitude: string;
+            address?: string | null;
+            /** @example 4.5 */
+            rating?: string | null;
+            /** @example 全天 */
+            open_time?: string | null;
+        };
+        UpdatePoiDto: {
+            poi_name?: string;
+            /** @enum {string} */
+            poi_type?: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+            /** @example 22.518000 */
+            latitude?: string;
+            /** @example 113.953000 */
+            longitude?: string;
+            address?: string | null;
+            /** @example 4.5 */
+            rating?: string | null;
+            open_time?: string | null;
+            /**
+             * @example hidden
+             * @enum {string}
+             */
+            status?: "active" | "hidden";
+        };
+        AdminSpotPoiItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            poi_id: string;
+            /** @example tencent-123 */
+            external_poi_id: string | null;
+            /** @example 深圳湾公园停车场 */
+            poi_name: string;
+            /**
+             * @example parking
+             * @enum {string}
+             */
+            poi_type: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+            /** @example 22.518000 */
+            latitude: string;
+            /** @example 113.953000 */
+            longitude: string;
+            /** @example 深圳市南山区… */
+            address: string | null;
+            /** @example 4.5 */
+            rating: string | null;
+            /** @example 全天 */
+            open_time: string | null;
+            /** @example manual */
+            source: string;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "hidden";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /**
+             * @example parking
+             * @enum {string}
+             */
+            effective_type: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+            /** @enum {string|null} */
+            poi_type_override: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging" | null;
+            /** @example null */
+            sort_order: number | null;
+            /** @example 126 */
+            distance_m: number;
+        };
+        PoiSyncRunDto: {
+            /** @example 01HX0000000000000000000000 */
+            sync_id: string;
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /**
+             * @example success
+             * @enum {string}
+             */
+            status: "running" | "success" | "failed";
+            /** @example 12 */
+            poi_count: number;
+            /** @example null */
+            error_message: string | null;
+            /** @example 6 */
+            quota_used: number;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at: string | null;
+        };
+        AdminSpotPoiListDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            items: components["schemas"]["AdminSpotPoiItemDto"][];
+            last_sync: components["schemas"]["PoiSyncRunDto"] | null;
+        };
+        BindPoiDto: {
+            /** @example 01HX0000000000000000000000 */
+            poi_id: string;
+            /**
+             * @description Optional type override in this spot context
+             * @enum {string|null}
+             */
+            poi_type_override?: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging" | null;
+            sort_order?: number;
+        };
+        AdminSpotPoiUnbindDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /** @example 01HX0000000000000000000000 */
+            poi_id: string;
+            /** @example true */
+            unbound: boolean;
         };
         UploadImageResponseDto: {
             /** @example spots/01HX0000000000000000000000/01HX0000000000000000000001.webp */
@@ -3753,6 +4017,557 @@ export interface operations {
             };
             /** @description Internal server error (50001) */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_list: {
+        parameters: {
+            query?: {
+                poi_type?: "food" | "parking" | "toilet" | "supply" | "entertainment" | "lodging";
+                status?: "active" | "hidden";
+                keyword?: string;
+                /** @description Page number, starting at 1; defaults to 1 */
+                page?: number;
+                /** @description Page size; defaults to 20 */
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated POI rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPoiPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePoiDto"];
+            };
+        };
+        responses: {
+            /** @description Created POI */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPoiItemDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_update: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description POI ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePoiDto"];
+            };
+        };
+        responses: {
+            /** @description Updated POI */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPoiItemDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description POI does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_listSpotPois: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Spot POI bindings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotPoiListDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_bind: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindPoiDto"];
+            };
+        };
+        responses: {
+            /** @description Created POI binding */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotPoiItemDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot or POI does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description POI is already bound (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_unbind: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+                /** @description POI ULID */
+                poi_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description POI unbound */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminSpotPoiUnbindDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot or binding does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    PoisController_sync: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finished POI sync run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PoiSyncRunDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description POI provider unavailable (50301) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

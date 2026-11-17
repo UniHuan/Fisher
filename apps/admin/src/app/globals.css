@@ -357,6 +357,70 @@ select {
   letter-spacing: -0.03em;
 }
 
+.poi-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.poi-group {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.poi-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+.poi-group-head .ant-tag {
+  margin: 0;
+}
+
+.poi-group .ant-list-item.poi-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.poi-row-main {
+  min-width: 0;
+}
+
+.poi-row-main .muted-text {
+  margin-top: 3px;
+  line-height: 1.6;
+}
+
+.poi-row-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.poi-distance {
+  min-width: 64px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.poi-row-meta .ant-tag {
+  margin: 0;
+}
+
 @media (max-width: 900px) {
   .login-shell {
     grid-template-columns: 1fr;

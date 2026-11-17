@@ -13,6 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:test:prepare": "node scripts/prepare-test-database.mjs",
+    "poi:sync": "tsx src/jobs/sync-pois.job.ts",
+    "poi:sync:prod": "node dist/jobs/sync-pois.job.js",
     "openapi:generate": "tsc -p tsconfig.openapi.json && tsx dist/openapi/scripts/generate-openapi.js && openapi-typescript ../../openapi/openapi.yaml -o ../../packages/api-client/src/schema.d.ts"
   },
   "prisma": {

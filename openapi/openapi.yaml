@@ -1626,6 +1626,400 @@ paths:
         "500": *a34
       summary: List nearby POIs for a published spot
       tags: *a35
+  /api/v1/admin/pois:
+    get:
+      operationId: PoisController_list
+      parameters:
+        - &a36
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a37
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: poi_type
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - food
+              - parking
+              - toilet
+              - supply
+              - entertainment
+              - lodging
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - hidden
+        - name: keyword
+          required: false
+          in: query
+          schema:
+            maxLength: 40
+            example: 停车场
+            type: string
+        - name: page
+          required: false
+          in: query
+          description: Page number, starting at 1; defaults to 1
+          schema:
+            minimum: 1
+            type: integer
+        - name: page_size
+          required: false
+          in: query
+          description: Page size; defaults to 20
+          schema:
+            minimum: 1
+            maximum: 100
+            type: integer
+      responses:
+        "200":
+          description: Paginated POI rows
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminPoiPageDto"
+        "400": &a38
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401": &a39
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403": &a40
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": &a41
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: &a42
+        - admin-cookie: []
+      summary: List POIs in the shared POI library
+      tags: &a43
+        - admin pois
+    post:
+      operationId: PoisController_create
+      parameters:
+        - *a36
+        - *a37
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePoiDto"
+      responses:
+        "201":
+          description: Created POI
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminPoiItemDto"
+        "400": *a38
+        "401": *a39
+        "403": *a40
+        "500": *a41
+      security: *a42
+      summary: Create a manually entered POI
+      tags: *a43
+  /api/v1/admin/pois/{id}:
+    put:
+      operationId: PoisController_update
+      parameters:
+        - *a36
+        - *a37
+        - name: id
+          required: true
+          in: path
+          description: POI ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePoiDto"
+      responses:
+        "200":
+          description: Updated POI
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminPoiItemDto"
+        "400": *a38
+        "401": *a39
+        "403": *a40
+        "404":
+          description: POI does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a41
+      security: *a42
+      summary: Correct or hide a POI
+      tags: *a43
+  /api/v1/admin/spots/{id}/pois:
+    get:
+      operationId: PoisController_listSpotPois
+      parameters:
+        - *a36
+        - *a37
+        - name: id
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: Spot POI bindings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminSpotPoiListDto"
+        "400": *a38
+        "401": *a39
+        "403": *a40
+        "404":
+          description: Spot does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a41
+      security: *a42
+      summary: List a spot POI bindings, including hidden POIs and last sync
+      tags: *a43
+    post:
+      operationId: PoisController_bind
+      parameters:
+        - *a36
+        - *a37
+        - name: id
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BindPoiDto"
+      responses:
+        "201":
+          description: Created POI binding
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminSpotPoiItemDto"
+        "400": *a38
+        "401": *a39
+        "403": *a40
+        "404":
+          description: Spot or POI does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "409":
+          description: POI is already bound (40901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a41
+      security: *a42
+      summary: Bind an existing POI to a spot
+      tags: *a43
+  /api/v1/admin/spots/{id}/pois/{poi_id}:
+    delete:
+      operationId: PoisController_unbind
+      parameters:
+        - *a36
+        - *a37
+        - name: id
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: poi_id
+          required: true
+          in: path
+          description: POI ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: POI unbound
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminSpotPoiUnbindDto"
+        "400": *a38
+        "401": *a39
+        "403": *a40
+        "404":
+          description: Spot or binding does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a41
+      security: *a42
+      summary: Unbind a POI from a spot
+      tags: *a43
+  /api/v1/admin/spots/{id}/pois/sync:
+    post:
+      operationId: PoisController_sync
+      parameters:
+        - *a36
+        - *a37
+        - name: id
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Finished POI sync run
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PoiSyncRunDto"
+        "400": *a38
+        "401": *a39
+        "403": *a40
+        "404":
+          description: Spot does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a41
+        "503":
+          description: POI provider unavailable (50301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: *a42
+      summary: Sync nearby POIs from the configured provider
+      tags: *a43
   /api/v1/admin/uploads:
     post:
       operationId: UploadsController_create
@@ -1740,7 +2134,7 @@ paths:
     get:
       operationId: ImportsController_job
       parameters:
-        - &a36
+        - &a44
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -1752,7 +2146,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a37
+        - &a45
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -1780,13 +2174,13 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/ImportJobDto"
-        "401": &a38
+        "401": &a46
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a39
+        "403": &a47
           description: Forbidden (40301)
           content:
             application/json:
@@ -1798,23 +2192,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a40
+        "500": &a48
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a41
+      security: &a49
         - admin-cookie: []
       summary: Get an import job status and counts
-      tags: &a42
+      tags: &a50
         - admin imports
   /api/v1/admin/imports/{id}/errors:
     get:
       operationId: ImportsController_errors
       parameters:
-        - *a36
-        - *a37
+        - *a44
+        - *a45
         - name: id
           required: true
           in: path
@@ -1825,18 +2219,18 @@ paths:
       responses:
         "200":
           description: CSV report
-        "401": *a38
-        "403": *a39
+        "401": *a46
+        "403": *a47
         "404":
           description: Import or report does not exist (40401)
           content:
             text/csv:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a40
-      security: *a41
+        "500": *a48
+      security: *a49
       summary: Download the import error and warning CSV
-      tags: *a42
+      tags: *a50
 info:
   title: SZFisher API
   description: "Shenzhen fishing assistant API. Base path: /api/v1."
@@ -2752,7 +3146,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: &a43
+          example: &a51
             - luofei
             - jiyu
           type: array
@@ -2780,7 +3174,7 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: &a44
+          example: &a52
             - tai_diao
             - lu_ya
           type: array
@@ -2788,7 +3182,7 @@ components:
             type: string
         open_status:
           type: string
-          enum: &a45
+          enum: &a53
             - open
             - paused
             - banned
@@ -2814,7 +3208,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: &a46
+          example: &a54
             - spots/a.jpg
           type: array
           items:
@@ -2832,7 +3226,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: &a47
+          enum: &a55
             - official
             - operation
             - user_report
@@ -2886,7 +3280,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: *a43
+          example: *a51
           type: array
           items:
             type: string
@@ -2912,13 +3306,13 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: *a44
+          example: *a52
           type: array
           items:
             type: string
         open_status:
           type: string
-          enum: *a45
+          enum: *a53
           nullable: true
           example: open
         ban_note:
@@ -2941,7 +3335,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: *a46
+          example: *a54
           type: array
           items:
             type: string
@@ -2958,7 +3352,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: *a47
+          enum: *a55
           nullable: true
           description: Defaults to operation
     AdminSpotDeleteResponseDto:
@@ -3051,7 +3445,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: &a48
+          example: &a56
             - luofei
             - jiyu
           type: array
@@ -3071,7 +3465,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: &a49
+          enum: &a57
             - open
             - paused
             - banned
@@ -3092,7 +3486,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: &a50
+          enum: &a58
             - fresh
             - stale
             - expired
@@ -3355,7 +3749,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: *a48
+          example: *a56
           type: array
           items:
             type: string
@@ -3373,7 +3767,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: *a49
+          enum: *a57
           example: open
         is_core:
           type: boolean
@@ -3391,7 +3785,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: *a50
+          enum: *a58
           example: fresh
         distance_m:
           type: integer
@@ -3511,6 +3905,378 @@ components:
         - items
         - data_source
         - poi_type
+    AdminPoiItemDto:
+      type: object
+      properties:
+        poi_id:
+          type: string
+          example: 01HX0000000000000000000000
+        external_poi_id:
+          type: string
+          nullable: true
+          example: tencent-123
+        poi_name:
+          type: string
+          example: 深圳湾公园停车场
+        poi_type:
+          type: string
+          enum: &a59
+            - food
+            - parking
+            - toilet
+            - supply
+            - entertainment
+            - lodging
+          example: parking
+        latitude:
+          type: string
+          example: "22.518000"
+        longitude:
+          type: string
+          example: "113.953000"
+        address:
+          type: string
+          nullable: true
+          example: 深圳市南山区…
+        rating:
+          type: string
+          nullable: true
+          example: "4.5"
+        open_time:
+          type: string
+          nullable: true
+          example: 全天
+        source:
+          type: string
+          example: manual
+        status:
+          type: string
+          enum: &a60
+            - active
+            - hidden
+          example: active
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - poi_id
+        - external_poi_id
+        - poi_name
+        - poi_type
+        - latitude
+        - longitude
+        - address
+        - rating
+        - open_time
+        - source
+        - status
+        - created_at
+        - updated_at
+    AdminPoiPageDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPoiItemDto"
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+        has_more:
+          type: boolean
+          example: true
+      required:
+        - items
+        - page
+        - page_size
+        - total
+        - has_more
+    CreatePoiDto:
+      type: object
+      properties:
+        poi_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          example: 深圳湾公园停车场
+        poi_type:
+          type: string
+          enum:
+            - food
+            - parking
+            - toilet
+            - supply
+            - entertainment
+            - lodging
+          example: parking
+        latitude:
+          type: string
+          example: "22.518000"
+          description: GCJ-02 latitude string
+        longitude:
+          type: string
+          example: "113.953000"
+          description: GCJ-02 longitude string
+        address:
+          type: string
+          nullable: true
+          maxLength: 120
+        rating:
+          type: string
+          nullable: true
+          example: "4.5"
+        open_time:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: 全天
+      required:
+        - poi_name
+        - poi_type
+        - latitude
+        - longitude
+    UpdatePoiDto:
+      type: object
+      properties:
+        poi_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        poi_type:
+          type: string
+          enum:
+            - food
+            - parking
+            - toilet
+            - supply
+            - entertainment
+            - lodging
+        latitude:
+          type: string
+          example: "22.518000"
+        longitude:
+          type: string
+          example: "113.953000"
+        address:
+          type: string
+          nullable: true
+          maxLength: 120
+        rating:
+          type: string
+          nullable: true
+          example: "4.5"
+        open_time:
+          type: string
+          nullable: true
+          maxLength: 100
+        status:
+          type: string
+          enum:
+            - active
+            - hidden
+          example: hidden
+    AdminSpotPoiItemDto:
+      type: object
+      properties:
+        poi_id:
+          type: string
+          example: 01HX0000000000000000000000
+        external_poi_id:
+          type: string
+          nullable: true
+          example: tencent-123
+        poi_name:
+          type: string
+          example: 深圳湾公园停车场
+        poi_type:
+          type: string
+          enum: *a59
+          example: parking
+        latitude:
+          type: string
+          example: "22.518000"
+        longitude:
+          type: string
+          example: "113.953000"
+        address:
+          type: string
+          nullable: true
+          example: 深圳市南山区…
+        rating:
+          type: string
+          nullable: true
+          example: "4.5"
+        open_time:
+          type: string
+          nullable: true
+          example: 全天
+        source:
+          type: string
+          example: manual
+        status:
+          type: string
+          enum: *a60
+          example: active
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        effective_type:
+          type: string
+          enum:
+            - food
+            - parking
+            - toilet
+            - supply
+            - entertainment
+            - lodging
+          example: parking
+        poi_type_override:
+          type: string
+          nullable: true
+          enum:
+            - food
+            - parking
+            - toilet
+            - supply
+            - entertainment
+            - lodging
+        sort_order:
+          type: integer
+          nullable: true
+          example: null
+        distance_m:
+          type: integer
+          example: 126
+      required:
+        - poi_id
+        - external_poi_id
+        - poi_name
+        - poi_type
+        - latitude
+        - longitude
+        - address
+        - rating
+        - open_time
+        - source
+        - status
+        - created_at
+        - updated_at
+        - effective_type
+        - poi_type_override
+        - sort_order
+        - distance_m
+    PoiSyncRunDto:
+      type: object
+      properties:
+        sync_id:
+          type: string
+          example: 01HX0000000000000000000000
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        status:
+          type: string
+          enum:
+            - running
+            - success
+            - failed
+          example: success
+        poi_count:
+          type: integer
+          example: 12
+        error_message:
+          type: string
+          nullable: true
+          example: null
+        quota_used:
+          type: integer
+          example: 6
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - sync_id
+        - spot_id
+        - status
+        - poi_count
+        - error_message
+        - quota_used
+        - started_at
+        - finished_at
+    AdminSpotPoiListDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminSpotPoiItemDto"
+        last_sync:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PoiSyncRunDto"
+      required:
+        - spot_id
+        - items
+        - last_sync
+    BindPoiDto:
+      type: object
+      properties:
+        poi_id:
+          type: string
+          example: 01HX0000000000000000000000
+        poi_type_override:
+          type: string
+          enum:
+            - food
+            - parking
+            - toilet
+            - supply
+            - entertainment
+            - lodging
+          nullable: true
+          description: Optional type override in this spot context
+        sort_order:
+          type: integer
+          minimum: -1000000
+          maximum: 1000000
+      required:
+        - poi_id
+    AdminSpotPoiUnbindDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        poi_id:
+          type: string
+          example: 01HX0000000000000000000000
+        unbound:
+          type: boolean
+          example: true
+      required:
+        - spot_id
+        - poi_id
+        - unbound
     UploadImageResponseDto:
       type: object
       properties:

@@ -28,6 +28,7 @@ import {
   type Session,
 } from './api';
 import { ImportDrawer } from './ImportDrawer';
+import { PoiDrawer } from './PoiDrawer';
 import { SpotEditor } from './SpotEditor';
 
 interface SpotsWorkspaceProps {
@@ -83,6 +84,7 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorSpotId, setEditorSpotId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [poiSpot, setPoiSpot] = useState<{ spot_id: string; spot_name: string } | null>(null);
 
   const writable = session.admin.role !== 'reviewer';
 
@@ -241,7 +243,7 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
     {
       title: '操作',
       key: 'actions',
-      width: writable ? 260 : 90,
+      width: writable ? 306 : 130,
       render: (_value, row) => (
         <Space size={4} wrap>
           <Button
@@ -251,6 +253,14 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
             }}
           >
             查看
+          </Button>
+          <Button
+            size="small"
+            onClick={() => {
+              setPoiSpot({ spot_id: row.spot_id, spot_name: row.spot_name });
+            }}
+          >
+            周边
           </Button>
           {writable && (
             <>
@@ -443,6 +453,17 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
           setImportOpen(false);
         }}
         onImported={refresh}
+      />
+      <PoiDrawer
+        open={poiSpot !== null}
+        spotId={poiSpot?.spot_id ?? null}
+        spotName={poiSpot?.spot_name ?? ''}
+        session={session}
+        dictionaries={dictionaries}
+        onClose={() => {
+          setPoiSpot(null);
+        }}
+        onExpired={onExpired}
       />
     </Layout>
   );
