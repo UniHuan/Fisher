@@ -45,7 +45,7 @@ pnpm audit --prod
 
 ## 安全
 
-不要在仓库中提交任何真实密钥、生产数据或 `.env` 文件。环境变量模板必须保持空值。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要创建公开 Issue。
+不要在仓库中提交任何真实密钥、生产数据或 `.env` 文件。环境变量模板必须保持空值。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要创建公开 Issue。仓库管理员请按 [GitHub 安全设置](docs/ops/github-security.md) 配置分支保护和扫描功能。
 
 ## 贡献
 

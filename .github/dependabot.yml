@@ -52,9 +52,11 @@ updates:
       timezone: Asia/Shanghai
     open-pull-requests-limit: 5
     ignore:
+      # Node and Nginx base image upgrades follow the runtime release plan.
       - dependency-name: node
         update-types:
           - version-update:semver-major
       - dependency-name: nginxinc/nginx-unprivileged
         update-types:
+          - version-update:semver-minor
           - version-update:semver-major

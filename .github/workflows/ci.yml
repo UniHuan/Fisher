@@ -37,6 +37,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
       - run: pnpm --filter @szfisher/shared build
       - run: pnpm --filter @szfisher/api-client build
       - run: pnpm --filter @szfisher/api prisma:generate
