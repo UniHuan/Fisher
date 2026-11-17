@@ -166,7 +166,7 @@ export function LoginView({ onSession }: LoginViewProps) {
               type="warning"
               showIcon
               message="首次登录需要绑定 TOTP"
-              description="用认证器扫描二维码，或手动输入密钥，再填写当前动态码。"
+              description="认证器是生成 6 位动态码的应用，例如 Google Authenticator、Microsoft Authenticator 或 1Password。用认证器扫描二维码，或手动输入密钥，再填写当前动态码。"
               className="login-alert"
             />
             <div className="totp-bind">
