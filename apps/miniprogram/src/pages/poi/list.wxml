@@ -1,0 +1,103 @@
+<view class="page poi-page">
+  <view wx:if="{{loading}}" class="empty">正在加载周边场所…</view>
+
+  <view wx:elif="{{error}}" class="card empty">
+    <text>{{error}}</text>
+    <button class="primary-button retry-button" bindtap="retry">重试</button>
+  </view>
+
+  <block wx:elif="{{spot}}">
+    <view class="poi-hero card">
+      <text class="poi-spot-name">{{spot.spot_name}}</text>
+      <text class="poi-spot-address">{{spot.address || '地址未填'}}</text>
+      <view class="tag-row">
+        <text class="tag">{{openLabel}}</text>
+        <text wx:if="{{dataSource}}" class="tag tag-soft">{{dataSource}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!canNavigate}}" class="alert alert-danger">
+      该钓点为禁钓区域，周边场所仅供查看，不提供导航。
+    </view>
+
+    <scroll-view scroll-x class="poi-tabs" enhanced show-scrollbar="{{false}}">
+      <view
+        wx:for="{{typeTabs}}"
+        wx:key="key"
+        class="poi-tab {{selectedType === item.key ? 'is-active' : ''}}"
+        data-type="{{item.key}}"
+        bindtap="selectType"
+      >{{item.label}} {{item.count}}</view>
+    </scroll-view>
+
+    <view wx:if="{{visibleItems.length === 0}}" class="card empty">
+      该类型下暂未收录周边场所
+    </view>
+
+    <view wx:else class="poi-list">
+      <view
+        wx:for="{{visibleItems}}"
+        wx:key="poi_id"
+        class="poi-card card"
+        data-index="{{index}}"
+        bindtap="openPoi"
+      >
+        <view class="poi-card-head">
+          <text class="poi-name">{{item.name}}</text>
+          <text class="poi-distance">{{item.distanceText}}</text>
+        </view>
+        <text class="poi-address">{{item.address}}</text>
+        <view class="tag-row">
+          <text class="tag">{{item.typeLabel}}</text>
+          <text class="tag tag-soft">{{item.sourceLabel}}</text>
+          <text wx:if="{{item.ratingText}}" class="tag tag-soft">{{item.ratingText}}</text>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view
+    wx:if="{{sheetOpen}}"
+    class="poi-mask"
+    bindtap="closeSheet"
+    catchtouchmove="noop"
+  >
+    <view class="poi-sheet" catchtap="noop">
+      <view class="poi-sheet-head">
+        <view>
+          <text class="poi-sheet-name">{{selected.name}}</text>
+          <text class="poi-sheet-type">{{selected.typeLabel}} · {{selected.distanceText}}</text>
+        </view>
+        <text class="poi-sheet-close" bindtap="closeSheet">关闭</text>
+      </view>
+
+      <view class="poi-sheet-rows">
+        <view class="poi-sheet-row">
+          <text class="poi-sheet-label">地址</text>
+          <text class="poi-sheet-value">{{selected.address}}</text>
+        </view>
+        <view class="poi-sheet-row">
+          <text class="poi-sheet-label">营业时间</text>
+          <text class="poi-sheet-value">{{selected.openTime}}</text>
+        </view>
+        <view wx:if="{{selected.ratingText}}" class="poi-sheet-row">
+          <text class="poi-sheet-label">评分</text>
+          <text class="poi-sheet-value">{{selected.ratingText}}</text>
+        </view>
+        <view class="poi-sheet-row">
+          <text class="poi-sheet-label">数据来源</text>
+          <text class="poi-sheet-value">{{selected.sourceLabel}}</text>
+        </view>
+      </view>
+
+      <view class="poi-sheet-actions">
+        <button class="secondary-button" bindtap="copyAddress">复制地址</button>
+        <button
+          wx:if="{{canNavigate}}"
+          class="primary-button nav-button"
+          bindtap="navigate"
+        >导航到此处</button>
+      </view>
+    </view>
+  </view>
+</view>

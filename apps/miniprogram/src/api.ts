@@ -11,6 +11,7 @@ export type PublicMapResponse = components['schemas']['PublicMapResponseDto'];
 export type PublicMapItem = components['schemas']['PublicMapItemDto'];
 export type PublicMapCluster = components['schemas']['PublicMapClusterDto'];
 export type PublicPoiItem = components['schemas']['PublicPoiItemDto'];
+export type PublicPoiList = components['schemas']['PublicPoiListDto'];
 export type PublicDictionaries = components['schemas']['PublicDictionariesDto'];
 
 interface ApiEnvelope<T> {
@@ -100,6 +101,12 @@ export function getMapSpots(params: MapBounds): Promise<PublicMapResponse> {
 
 export function getDictionaries(): Promise<PublicDictionaries> {
   return request<PublicDictionaries>('/dictionaries');
+}
+
+export function getSpotPois(spotId: string, poiType?: string): Promise<PublicPoiList> {
+  return request<PublicPoiList>(`/spots/${encodeURIComponent(spotId)}/pois`, {
+    poi_type: poiType,
+  });
 }
 
 export function mediaUrl(url: string | null | undefined): string {

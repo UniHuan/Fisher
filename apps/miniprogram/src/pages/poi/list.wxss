@@ -1,0 +1,218 @@
+.poi-page {
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.poi-hero {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.poi-spot-name {
+  font-size: 34rpx;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.poi-spot-address {
+  color: #68736f;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.poi-hero .tag-row {
+  margin-top: 8rpx;
+}
+
+.alert {
+  margin-top: 16rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.alert-danger {
+  background: #fbe9e6;
+  color: #a33a2c;
+}
+
+.poi-tabs {
+  white-space: nowrap;
+  margin: 20rpx -24rpx 16rpx;
+  padding: 0 24rpx;
+  width: calc(100% + 48rpx);
+}
+
+.poi-tab {
+  display: inline-block;
+  margin-right: 12rpx;
+  padding: 12rpx 22rpx;
+  border: 1rpx solid #dfe5e2;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #4b5854;
+  font-size: 24rpx;
+}
+
+.poi-tab.is-active {
+  border-color: #0f6b5c;
+  background: #e7f1ee;
+  color: #0a3f38;
+  font-weight: 600;
+}
+
+.poi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.poi-card {
+  padding: 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.poi-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.poi-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 29rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poi-distance {
+  flex: 0 0 auto;
+  color: #0f6b5c;
+  font-size: 23rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.poi-address {
+  color: #68736f;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.poi-card .tag-row {
+  margin-top: 2rpx;
+}
+
+.retry-button {
+  margin-top: 24rpx;
+  font-size: 26rpx;
+}
+
+.poi-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(23, 33, 30, 0.42);
+}
+
+.poi-sheet {
+  width: 100%;
+  padding: 28rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  border-radius: 20rpx 20rpx 0 0;
+  background: #ffffff;
+}
+
+.poi-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding-bottom: 18rpx;
+  border-bottom: 1rpx solid #dfe5e2;
+}
+
+.poi-sheet-name {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.poi-sheet-type {
+  display: block;
+  margin-top: 4rpx;
+  color: #68736f;
+  font-size: 23rpx;
+}
+
+.poi-sheet-close {
+  flex: 0 0 auto;
+  padding: 4rpx 0 4rpx 20rpx;
+  color: #68736f;
+  font-size: 25rpx;
+}
+
+.poi-sheet-rows {
+  padding: 8rpx 0;
+}
+
+.poi-sheet-row {
+  display: flex;
+  gap: 18rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid #f0f3f1;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.poi-sheet-row:last-child {
+  border-bottom: 0;
+}
+
+.poi-sheet-label {
+  flex: 0 0 120rpx;
+  color: #7d8a86;
+}
+
+.poi-sheet-value {
+  flex: 1;
+  min-width: 0;
+  color: #17211e;
+}
+
+.poi-sheet-actions {
+  display: flex;
+  gap: 16rpx;
+  padding-top: 10rpx;
+}
+
+.secondary-button {
+  flex: 0 0 220rpx;
+  border: 1rpx solid #c9dfd9;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #0f6b5c;
+  font-size: 27rpx;
+}
+
+.secondary-button::after {
+  border: 0;
+}
+
+.nav-button {
+  flex: 1;
+  font-size: 27rpx;
+}

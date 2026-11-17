@@ -25,6 +25,12 @@
       <text>含禁钓</text>
       <switch checked="{{includeBanned}}" color="#0f6b5c" bindchange="onBannedChange" />
     </view>
+    <view
+      class="filter-pill filter-trigger {{filterCount > 0 ? 'filter-trigger-active' : ''}}"
+      bindtap="openFilters"
+    >
+      筛选{{filterCount > 0 ? ' · ' + filterCount : ''}}
+    </view>
     <view class="filter-pill location-pill" bindtap="onLocationAction">
       {{location ? '已定位' : locationDenied ? '去设置' : '显示距离'}}
     </view>
@@ -86,5 +92,79 @@
 
     <view wx:if="{{loading}}" class="load-more">加载中…</view>
     <view wx:elif="{{!hasMore && spots.length > 0}}" class="load-more">没有更多了</view>
+  </view>
+
+  <view
+    wx:if="{{filterOpen}}"
+    class="filter-mask"
+    bindtap="closeFilters"
+    catchtouchmove="noop"
+  >
+    <view class="filter-sheet" catchtap="noop">
+      <view class="filter-sheet-head">
+        <text class="filter-sheet-title">筛选钓点</text>
+        <text class="filter-sheet-close" bindtap="closeFilters">关闭</text>
+      </view>
+      <scroll-view scroll-y class="filter-sheet-scroll">
+        <view wx:if="{{fishOptions.length}}" class="filter-section">
+          <text class="filter-section-title">鱼种</text>
+          <view class="filter-options">
+            <view
+              wx:for="{{fishOptions}}"
+              wx:key="key"
+              class="filter-chip {{item.selected ? 'is-active' : ''}}"
+              data-value="{{item.key}}"
+              bindtap="toggleFish"
+            >{{item.label}}</view>
+          </view>
+        </view>
+        <view wx:if="{{feeOptions.length}}" class="filter-section">
+          <text class="filter-section-title">收费</text>
+          <view class="filter-options">
+            <view
+              wx:for="{{feeOptions}}"
+              wx:key="key"
+              class="filter-chip {{item.selected ? 'is-active' : ''}}"
+              data-section="fee"
+              data-value="{{item.key}}"
+              bindtap="selectFilter"
+            >{{item.label}}</view>
+          </view>
+        </view>
+        <view wx:if="{{waterOptions.length}}" class="filter-section">
+          <text class="filter-section-title">水域</text>
+          <view class="filter-options">
+            <view
+              wx:for="{{waterOptions}}"
+              wx:key="key"
+              class="filter-chip {{item.selected ? 'is-active' : ''}}"
+              data-section="water"
+              data-value="{{item.key}}"
+              bindtap="selectFilter"
+            >{{item.label}}</view>
+          </view>
+        </view>
+        <view wx:if="{{venueOptions.length}}" class="filter-section">
+          <text class="filter-section-title">场所</text>
+          <view class="filter-options">
+            <view
+              wx:for="{{venueOptions}}"
+              wx:key="key"
+              class="filter-chip {{item.selected ? 'is-active' : ''}}"
+              data-section="venue"
+              data-value="{{item.key}}"
+              bindtap="selectFilter"
+            >{{item.label}}</view>
+          </view>
+        </view>
+        <view wx:if="{{!fishOptions.length && !feeOptions.length}}" class="filter-empty">
+          筛选项加载中，稍后再试
+        </view>
+      </scroll-view>
+      <view class="filter-sheet-actions">
+        <button class="filter-reset" bindtap="resetDraftFilters">重置</button>
+        <button class="primary-button filter-apply" bindtap="applyFilters">查看钓点</button>
+      </view>
+    </view>
   </view>
 </view>

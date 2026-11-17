@@ -140,8 +140,19 @@
   color: #17211e;
 }
 
+.poi-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
 .poi-count {
   color: #0f6b5c;
+}
+
+.poi-more {
+  color: #8a9691;
+  font-size: 22rpx;
 }
 
 .poi-names {
