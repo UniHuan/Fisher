@@ -8,7 +8,7 @@
 
 未发现硬编码真实密钥；核心认证、CSRF、CORS、RBAC、上传和审计控制已在代码与 API e2e 中覆盖。
 
-依赖审计仍有 1 个高危和 1 个中危，均来自第三方包。它们不是当前代码引入的自定义漏洞，但不能宣称“无高危依赖”。
+依赖审计当前无已知漏洞。此前 Prisma CLI 的 deepmerge-ts 与 ExcelJS 的 uuid 告警已通过 pnpm overrides 升级并完成迁移、种子、构建、e2e、Excel 导入和 Playwright 验证。
 
 ## 自动化检查
 
@@ -19,26 +19,29 @@
 | `pnpm build` | 通过 |
 | API e2e | 136 个通过 |
 | 后台 Playwright 主链路 | 通过 |
-| `pnpm audit --prod` | 1 high、1 moderate |
+| `pnpm audit --prod` | 无已知漏洞 |
 | 跟踪文件密钥 grep | 未发现真实密钥，仅有占位值 |
 | `.env` 忽略检查 | `.env` 与 `apps/api/.env` 已被 `.gitignore` 忽略 |
 
-## 依赖发现
+## 依赖处置
 
-### High：deepmerge-ts < 8.0.0
+已在根 `package.json` 增加：
 
-- 路径：`@prisma/client@6.19.3 > prisma@6.19.3 > @prisma/config > deepmerge-ts@7.1.5`
-- 公告：GHSA-ggr8-5vv4-36mx，恶意递归配置可导致栈耗尽
-- 影响面：Prisma CLI/config 加载，主要在构建、迁移和种子阶段，不在公开请求处理链
-- 当前处置：记录为待升级项。直接覆盖 deepmerge-ts 8 可能与 Prisma 6 的内部配置格式不兼容，未在发布分支盲改
-- 建议：升级 Prisma 到包含修复的版本，或先在独立分支验证 override 后跑完整迁移与测试
+```json
+"pnpm": {
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "uuid": "11.1.1"
+  }
+}
+```
 
-### Moderate：uuid < 11.1.1
+处置依据：
 
-- 路径：`apps/api > exceljs@4.4.0 > uuid@8.3.2`
-- 公告：GHSA-w5hq-g745-h8pq，仅在调用方传入自定义 buf 的 v3/v5/v6 路径触发
-- 影响面：Excel 导入解析。导入仅限已认证运营，文件大小和行数有上限，目前未见传入自定义 buf 的代码路径
-- 建议：关注 ExcelJS 上游升级；若强制 override uuid 11，需要单独验证 Excel 导入二进制兼容性
+- `deepmerge-ts 8.0.2` 修复 GHSA-ggr8-5vv4-36mx。验证了 `prisma generate`、`prisma migrate status`、`prisma db seed` 和 API 构建。
+- `uuid 11.1.1` 修复 GHSA-w5hq-g745-h8pq。验证了 ExcelJS 生成 workbook、Excel 导入 e2e 和 API 构建。
+- `pnpm audit --prod` 当前返回 `No known vulnerabilities found`。
+- 仍需在 staging 重新执行依赖、镜像和 SBOM 扫描，overrides 不能替代生产镜像扫描。
 
 ## 已核验控制
 
@@ -70,5 +73,6 @@ pnpm build
 pnpm --filter @szfisher/api test:e2e
 pnpm test:admin
 pnpm audit --prod
+# 当前应输出 No known vulnerabilities found
 git grep -nE "(JWT_ACCESS_SECRET|CSRF_SECRET|TOTP_ENCRYPTION_KEY|DATABASE_URL|TENCENT_MAP_SERVER_KEY|SEED_ADMIN_PASSWORD)=[^[:space:]]+" -- ':!*.example' ':!docs/*' ':!apps/api/prisma/migrations/*'
 ```
