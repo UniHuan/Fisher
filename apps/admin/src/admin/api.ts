@@ -21,6 +21,12 @@ export type PoiSyncRun = components['schemas']['PoiSyncRunDto'];
 export type CreatePoiBody = components['schemas']['CreatePoiDto'];
 export type UpdatePoiBody = components['schemas']['UpdatePoiDto'];
 export type BindPoiBody = components['schemas']['BindPoiDto'];
+export type AdminDictionaryItem = components['schemas']['AdminDictionaryItemDto'];
+export type AdminDictionaryList = components['schemas']['AdminDictionaryListDto'];
+export type CreateDictionaryBody = components['schemas']['CreateDictionaryDto'];
+export type UpdateDictionaryBody = components['schemas']['UpdateDictionaryDto'];
+export type AuditLogItem = components['schemas']['AuditLogItemDto'];
+export type AuditLogPage = components['schemas']['AuditLogPageDto'];
 export type PublicDictionaries = components['schemas']['PublicDictionariesDto'];
 export type CreateSpotBody = components['schemas']['CreateSpotDto'];
 export type UpdateSpotBody = components['schemas']['UpdateSpotDto'];
@@ -50,6 +56,26 @@ export interface PoiListQuery {
   keyword?: string;
   page?: number;
   page_size?: number;
+}
+
+export interface AuditLogQuery {
+  admin_id?: string;
+  action?: string;
+  entity_type?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  page_size?: number;
+}
+
+function querySuffix(query: object): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  return params.size === 0 ? '' : `?${params.toString()}`;
 }
 
 interface ErrorEnvelope {
@@ -308,5 +334,32 @@ export const api = {
       method: 'POST',
       csrf,
     });
+  },
+  listDictionaries(): Promise<AdminDictionaryList> {
+    return request<AdminDictionaryList>('/admin/dictionaries');
+  },
+  createDictionary(
+    body: CreateDictionaryBody,
+    csrf: string,
+  ): Promise<AdminDictionaryItem> {
+    return request<AdminDictionaryItem>('/admin/dictionaries', {
+      method: 'POST',
+      body,
+      csrf,
+    });
+  },
+  updateDictionary(
+    dictType: string,
+    dictKey: string,
+    body: UpdateDictionaryBody,
+    csrf: string,
+  ): Promise<AdminDictionaryItem> {
+    return request<AdminDictionaryItem>(
+      `/admin/dictionaries/${encodeURIComponent(dictType)}/${encodeURIComponent(dictKey)}`,
+      { method: 'PUT', body, csrf },
+    );
+  },
+  listAuditLogs(query: AuditLogQuery): Promise<AuditLogPage> {
+    return request<AuditLogPage>(`/admin/audit-logs${querySuffix(query)}`);
   },
 };
