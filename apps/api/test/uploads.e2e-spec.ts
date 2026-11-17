@@ -71,6 +71,7 @@ describe('uploads and media (e2e)', () => {
 
     const preview = await request(server).get(upload.preview_url).expect(200);
     expect(preview.headers['content-type']).toContain('image/webp');
+    expect(preview.headers['cross-origin-resource-policy']).toBe('cross-origin');
     expect(preview.body.length).toBeLessThanOrEqual(300 * 1024);
 
     const missingPublic = await request(server)
@@ -201,5 +202,6 @@ describe('uploads and media (e2e)', () => {
       .get(`/api/v1/uploads/public/${key}`)
       .expect(200);
     expect(publicImage.headers['content-type']).toContain('image/webp');
+    expect(publicImage.headers['cross-origin-resource-policy']).toBe('cross-origin');
   });
 });

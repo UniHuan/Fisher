@@ -40,6 +40,7 @@ export class UploadsPublicController {
       response.setHeader('Content-Disposition', 'inline');
       response.setHeader('Cache-Control', 'private, max-age=300');
       response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       response.send(body);
     } catch {
       throw new AppError(ERROR_CODES.NOT_FOUND, HttpStatus.NOT_FOUND, 'Not found');
@@ -59,6 +60,7 @@ export class UploadsPublicController {
       response.setHeader('Content-Disposition', 'inline');
       response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       response.send(body);
     } catch {
       throw new AppError(ERROR_CODES.NOT_FOUND, HttpStatus.NOT_FOUND, 'Not found');

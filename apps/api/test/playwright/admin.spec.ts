@@ -1,13 +1,19 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
 import { argon2id, hash } from 'argon2';
+import ExcelJS from 'exceljs';
+import { mkdirSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import { generateSync } from 'otplib';
 import { ulid } from 'ulid';
+import { IMPORT_COLUMNS } from '../../src/modules/imports/import.constants';
 
 const TEST_DATABASE_URL =
   'postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public';
 const SPOT_PREFIX = `PW-UI-${Date.now()}`;
 const POI_PREFIX = `PW-POI-${Date.now()}`;
+const IMPORT_PREFIX = `PW-IMPORT-${Date.now()}`;
+const IMPORT_FIXTURE = path.resolve('test-results/playwright-import.xlsx');
 const USERNAME = `pw_admin_${Date.now()}`;
 const PASSWORD = `Playwright-${Date.now()}-Strong!`;
 const prisma = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } });
@@ -40,7 +46,12 @@ async function selectMultiple(page: Page, label: string, option: string): Promis
 
 async function cleanupTestData(): Promise<void> {
   const spots = await prisma.spot.findMany({
-    where: { spot_name: { startsWith: SPOT_PREFIX } },
+    where: {
+      OR: [
+        { spot_name: { startsWith: SPOT_PREFIX } },
+        { spot_name: { startsWith: IMPORT_PREFIX } },
+      ],
+    },
     select: { spot_id: true },
   });
   const spotIds = spots.map((spot) => spot.spot_id);
@@ -50,6 +61,7 @@ async function cleanupTestData(): Promise<void> {
     await prisma.spot.deleteMany({ where: { spot_id: { in: spotIds } } });
   }
   await prisma.poi.deleteMany({ where: { poi_name: { startsWith: POI_PREFIX } } });
+  rmSync('/tmp/szfisher-playwright-storage', { recursive: true, force: true });
   if (adminId !== '') {
     await prisma.auditLog.deleteMany({ where: { admin_id: adminId } });
     await prisma.idempotencyKey.deleteMany({ where: { actor_id: adminId } });
@@ -63,6 +75,31 @@ test.beforeAll(async () => {
   if (dictionaryCount === 0) {
     throw new Error('Playwright database is not seeded; run pnpm db:test:prepare first');
   }
+  mkdirSync(path.dirname(IMPORT_FIXTURE), { recursive: true });
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('钓点导入');
+  sheet.addRow(IMPORT_COLUMNS.map((column) => column.label));
+  const importRow: Record<string, string> = {
+    spot_name: `${IMPORT_PREFIX}批量钓点`,
+    district: '南山区',
+    address: '深圳市南山区Playwright导入地址',
+    latitude: '22.518000',
+    longitude: '113.953000',
+    nav_latitude: '22.518000',
+    nav_longitude: '113.953000',
+    fish_types: '罗非',
+    fee_status: '免费',
+    water_type: '海域',
+    venue_type: '野钓',
+    open_status: '开放',
+    source: '运营',
+    verified_at: '2026-11-17',
+    sort_weight: '10',
+    is_core: '否',
+  };
+  sheet.addRow(IMPORT_COLUMNS.map((column) => importRow[column.key] ?? ''));
+  await workbook.xlsx.writeFile(IMPORT_FIXTURE);
+
   const admin = await prisma.adminUser.create({
     data: {
       admin_id: ulid(),
@@ -110,7 +147,21 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
   await selectOption(page, '收费状态', '免费');
   await selectOption(page, '水域类型', '海域');
   await selectOption(page, '场所类型', '野钓');
-  await page.getByRole('button', { name: /^保\s*存$/ }).click();
+  await page.locator('.editor-footer button').filter({ hasText: '保 存' }).click();
+  await expect(page.getByText('已保存')).toBeVisible();
+
+  await page.locator('input[type=file]').setInputFiles(
+    path.resolve('apps/miniprogram/src/assets/pin.png'),
+  );
+  await expect(page.getByText('图片已上传，保存后生效')).toBeVisible();
+  await expect(page.locator('.image-tile')).toHaveCount(1);
+  const uploadedImage = page.locator('.image-tile img').first();
+  await expect(uploadedImage).toBeVisible();
+  await uploadedImage.scrollIntoViewIfNeeded();
+  await expect
+    .poll(async () => uploadedImage.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0);
+  await page.locator('.editor-footer button').filter({ hasText: '保 存' }).click();
   await expect(page.getByText('已保存')).toBeVisible();
 
   await page.getByRole('button', { name: '标记核实', exact: true }).click();
@@ -147,6 +198,14 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
   await expect(page.getByText('审计日志')).toBeVisible();
   await expect(page.getByText('spot.publish').first()).toBeVisible();
   await page.locator('.ant-drawer-close').last().click();
+
+  await page.getByRole('button', { name: 'Excel 导入' }).click();
+  await page.locator('input[type=file]').last().setInputFiles(IMPORT_FIXTURE);
+  await page.getByRole('button', { name: '开始导入' }).click();
+  await expect(
+    page.getByText('全部行已处理，成功行已创建为草稿'),
+  ).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^关\s*闭$/ }).last().click();
 
   await page.reload();
   const publishedRow = page.locator('.ant-table-row').filter({ hasText: SPOT_PREFIX });
