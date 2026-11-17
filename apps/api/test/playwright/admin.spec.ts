@@ -44,6 +44,12 @@ async function selectMultiple(page: Page, label: string, option: string): Promis
   await page.keyboard.press('Escape');
 }
 
+async function expectSuccessMessage(page: Page, text: string): Promise<void> {
+  await expect(
+    page.locator('.ant-message-notice-title').filter({ hasText: text }).first(),
+  ).toBeVisible();
+}
+
 async function cleanupTestData(): Promise<void> {
   const spots = await prisma.spot.findMany({
     where: {
@@ -148,12 +154,12 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
   await selectOption(page, '水域类型', '海域');
   await selectOption(page, '场所类型', '野钓');
   await page.locator('.editor-footer button').filter({ hasText: '保 存' }).click();
-  await expect(page.getByText('已保存')).toBeVisible();
+  await expectSuccessMessage(page, '已保存');
 
   await page.locator('input[type=file]').setInputFiles(
     path.resolve('apps/miniprogram/src/assets/pin.png'),
   );
-  await expect(page.getByText('图片已上传，保存后生效')).toBeVisible();
+  await expectSuccessMessage(page, '图片已上传，保存后生效');
   await expect(page.locator('.image-tile')).toHaveCount(1);
   const uploadedImage = page.locator('.image-tile img').first();
   await expect(uploadedImage).toBeVisible();
@@ -162,18 +168,18 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
     .poll(async () => uploadedImage.evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBeGreaterThan(0);
   await page.locator('.editor-footer button').filter({ hasText: '保 存' }).click();
-  await expect(page.getByText('已保存')).toBeVisible();
+  await expectSuccessMessage(page, '已保存');
 
   await page.getByRole('button', { name: '标记核实', exact: true }).click();
   await page
     .locator('.ant-modal')
     .getByRole('button', { name: '确认核实', exact: true })
     .click();
-  await expect(page.getByText('已标记核实')).toBeVisible();
+  await expectSuccessMessage(page, '已标记核实');
   await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
 
   await page.locator('.editor-footer button.ant-btn-primary').click();
-  await expect(page.getByText('钓点已发布')).toBeVisible();
+  await expectSuccessMessage(page, '钓点已发布');
   await page.getByRole('button', { name: /^关\s*闭$/ }).click();
 
   const row = page.locator('.ant-table-row').filter({ hasText: SPOT_PREFIX });
@@ -186,7 +192,7 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
   await selectOption(page, '场所类型', '停车', poiModal);
   await poiModal.getByPlaceholder('选填').fill('深圳市南山区测试停车场');
   await poiModal.getByRole('button', { name: '保存并绑定' }).click();
-  await expect(page.getByText('POI 已新增并绑定')).toBeVisible();
+  await expectSuccessMessage(page, 'POI 已新增并绑定');
   await expect(page.getByText(`${POI_PREFIX}停车场`)).toBeVisible();
   await page.locator('.ant-drawer-close').last().click();
 
@@ -215,5 +221,5 @@ test('super admin can bind TOTP, create, publish and manage a spot', async ({ pa
     .locator('.ant-modal')
     .getByRole('button', { name: /^下\s*线$/ })
     .click();
-  await expect(page.getByText('钓点已下线')).toBeVisible();
+  await expectSuccessMessage(page, '钓点已下线');
 });
