@@ -232,3 +232,13 @@ docker compose --env-file /etc/szfisher/production.env \
 ```
 
 建议由 systemd timer 或云函数每天触发一次，任务会跳过 24 小时内已成功同步的钓点。
+
+分析明细保留 180 天，用同一套定时任务清理：
+
+```bash
+docker compose --env-file /etc/szfisher/production.env \
+  -f infra/docker/docker-compose.prod.yml exec -T api \
+  node apps/api/dist/jobs/purge-analytics.job.js
+```
+
+API 会把公开列表、搜索和详情结果写入 `analytics_event`，字段经过白名单过滤，不写入坐标、Token 或联系方式；客户端事件仍由微信自定义分析承载。

@@ -15,6 +15,8 @@
     "prisma:test:prepare": "node scripts/prepare-test-database.mjs",
     "poi:sync": "tsx src/jobs/sync-pois.job.ts",
     "poi:sync:prod": "node dist/jobs/sync-pois.job.js",
+    "analytics:purge": "tsx src/jobs/purge-analytics.job.ts",
+    "analytics:purge:prod": "node dist/jobs/purge-analytics.job.js",
     "openapi:generate": "tsc -p tsconfig.openapi.json && tsx dist/openapi/scripts/generate-openapi.js && openapi-typescript ../../openapi/openapi.yaml -o ../../packages/api-client/src/schema.d.ts"
   },
   "prisma": {
