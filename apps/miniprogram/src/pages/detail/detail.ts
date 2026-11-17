@@ -63,10 +63,15 @@ interface ImageTapEvent {
   currentTarget: { dataset: { index: string } };
 }
 
+interface PoiGroupTapEvent {
+  currentTarget: { dataset: { type: string } };
+}
+
 interface DetailMethods {
   load(spotId: string): Promise<void>;
   display(spot: PublicSpotDetail): void;
   previewImage(event: ImageTapEvent): void;
+  openPoiList(event: PoiGroupTapEvent): void;
   navigate(): void;
   copyAddress(): void;
   retry(): void;
@@ -210,6 +215,16 @@ Page<DetailData, DetailMethods>({
       return;
     }
     wx.previewImage({ current: images[index], urls: images });
+  },
+
+  openPoiList(event: PoiGroupTapEvent) {
+    if (currentSpotId === '') {
+      return;
+    }
+    const poiType = event.currentTarget.dataset.type;
+    wx.navigateTo({
+      url: `/pages/poi/list?spot_id=${encodeURIComponent(currentSpotId)}&poi_type=${encodeURIComponent(poiType)}`,
+    });
   },
 
   navigate() {

@@ -25,6 +25,12 @@ interface DisplaySpot {
   isCore: boolean;
 }
 
+interface FilterOption {
+  key: string;
+  label: string;
+  selected: boolean;
+}
+
 interface IndexData {
   dictionaries: PublicDictionaries | null;
   spots: DisplaySpot[];
@@ -41,6 +47,20 @@ interface IndexData {
   includeBanned: boolean;
   location: { latitude: number; longitude: number } | null;
   locationDenied: boolean;
+  filterOpen: boolean;
+  filterCount: number;
+  filterFish: string[];
+  filterFee: string;
+  filterWater: string;
+  filterVenue: string;
+  draftFish: string[];
+  draftFee: string;
+  draftWater: string;
+  draftVenue: string;
+  fishOptions: FilterOption[];
+  feeOptions: FilterOption[];
+  waterOptions: FilterOption[];
+  venueOptions: FilterOption[];
 }
 
 interface InputEvent {
@@ -59,6 +79,14 @@ interface TapEvent {
   currentTarget: { dataset: { id: string } };
 }
 
+interface FilterTapEvent {
+  currentTarget: { dataset: { value: string } };
+}
+
+interface SingleFilterEvent {
+  currentTarget: { dataset: { section: string; value: string } };
+}
+
 interface IndexMethods {
   loadDictionaries(): Promise<void>;
   loadSpots(reset: boolean): Promise<void>;
@@ -69,6 +97,14 @@ interface IndexMethods {
   onLocationTap(): void;
   onLocationAction(): void;
   openSettings(): void;
+  openFilters(): void;
+  closeFilters(): void;
+  toggleFish(event: FilterTapEvent): void;
+  selectFilter(event: SingleFilterEvent): void;
+  resetDraftFilters(): void;
+  applyFilters(): void;
+  refreshFilterOptions(): void;
+  noop(): void;
   resetFilters(): void;
   retry(): void;
   openDetail(event: TapEvent): void;
@@ -93,6 +129,20 @@ Page<IndexData, IndexMethods>({
     includeBanned: false,
     location: null,
     locationDenied: false,
+    filterOpen: false,
+    filterCount: 0,
+    filterFish: [],
+    filterFee: '',
+    filterWater: '',
+    filterVenue: '',
+    draftFish: [],
+    draftFee: '',
+    draftWater: '',
+    draftVenue: '',
+    fishOptions: [],
+    feeOptions: [],
+    waterOptions: [],
+    venueOptions: [],
   },
 
   async onLoad() {
@@ -171,6 +221,10 @@ Page<IndexData, IndexMethods>({
       const result = await listSpots({
         keyword: this.data.keyword.trim() || undefined,
         district,
+        fish_types: this.data.filterFish.join(',') || undefined,
+        fee_status: this.data.filterFee || undefined,
+        water_type: this.data.filterWater || undefined,
+        venue_type: this.data.filterVenue || undefined,
         include_banned: this.data.includeBanned,
         page: nextPage,
         page_size: this.data.pageSize,
@@ -253,13 +307,122 @@ Page<IndexData, IndexMethods>({
     });
   },
 
+  openFilters() {
+    this.setData({
+      filterOpen: true,
+      draftFish: this.data.filterFish.slice(),
+      draftFee: this.data.filterFee,
+      draftWater: this.data.filterWater,
+      draftVenue: this.data.filterVenue,
+    });
+    this.refreshFilterOptions();
+  },
+
+  closeFilters() {
+    this.setData({ filterOpen: false });
+  },
+
+  refreshFilterOptions() {
+    const dictionaries = this.data.dictionaries;
+    const fish = this.data.draftFish;
+    const singleOptions = (
+      keys: Array<{ key: string; label: string }> | undefined,
+      selected: string,
+    ): FilterOption[] => [
+      { key: '', label: '不限', selected: selected === '' },
+      ...(keys ?? []).map((item) => ({
+        key: item.key,
+        label: item.label,
+        selected: selected === item.key,
+      })),
+    ];
+    this.setData({
+      fishOptions: (dictionaries?.fish_types ?? []).map((item) => ({
+        key: item.key,
+        label: item.label,
+        selected: fish.indexOf(item.key) >= 0,
+      })),
+      feeOptions: singleOptions(dictionaries?.fee_status, this.data.draftFee),
+      waterOptions: singleOptions(dictionaries?.water_types, this.data.draftWater),
+      venueOptions: singleOptions(dictionaries?.venue_types, this.data.draftVenue),
+    });
+  },
+
+  toggleFish(event: FilterTapEvent) {
+    const value = event.currentTarget.dataset.value;
+    const next = this.data.draftFish.slice();
+    const index = next.indexOf(value);
+    if (index >= 0) {
+      next.splice(index, 1);
+    } else {
+      next.push(value);
+    }
+    this.setData({ draftFish: next });
+    this.refreshFilterOptions();
+  },
+
+  selectFilter(event: SingleFilterEvent) {
+    const { section, value } = event.currentTarget.dataset;
+    if (section === 'fee') {
+      this.setData({ draftFee: value });
+    } else if (section === 'water') {
+      this.setData({ draftWater: value });
+    } else if (section === 'venue') {
+      this.setData({ draftVenue: value });
+    }
+    this.refreshFilterOptions();
+  },
+
+  resetDraftFilters() {
+    this.setData({
+      draftFish: [],
+      draftFee: '',
+      draftWater: '',
+      draftVenue: '',
+    });
+    this.refreshFilterOptions();
+  },
+
+  applyFilters() {
+    const fish = this.data.draftFish.slice();
+    const filterCount =
+      fish.length +
+      [this.data.draftFee, this.data.draftWater, this.data.draftVenue].filter(
+        (value) => value !== '',
+      ).length;
+    this.setData({
+      filterOpen: false,
+      filterFish: fish,
+      filterFee: this.data.draftFee,
+      filterWater: this.data.draftWater,
+      filterVenue: this.data.draftVenue,
+      filterCount,
+    });
+    void this.loadSpots(true);
+  },
+
+  noop() {
+    // Stops taps inside the sheet from closing the mask.
+  },
+
   resetFilters() {
     this.setData({
       keyword: '',
       districtIndex: 0,
       includeBanned: false,
+      filterFish: [],
+      filterFee: '',
+      filterWater: '',
+      filterVenue: '',
+      draftFish: [],
+      draftFee: '',
+      draftWater: '',
+      draftVenue: '',
+      filterCount: 0,
+      filterOpen: false,
       spots: [],
     });
+    this.refreshFilterOptions();
     void this.loadSpots(true);
   },
 

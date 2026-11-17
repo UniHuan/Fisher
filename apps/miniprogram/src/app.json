@@ -2,7 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/map/map",
-    "pages/detail/detail"
+    "pages/detail/detail",
+    "pages/poi/list"
   ],
   "window": {
     "navigationBarTitleText": "深圳钓鱼助手",

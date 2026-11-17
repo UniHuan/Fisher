@@ -98,10 +98,19 @@
     <view class="section card">
       <view class="section-title">周边配套</view>
       <view wx:if="{{poiGroups.length}}" class="poi-groups">
-        <view wx:for="{{poiGroups}}" wx:key="poi_type" class="poi-group">
+        <view
+          wx:for="{{poiGroups}}"
+          wx:key="poi_type"
+          class="poi-group"
+          data-type="{{item.poi_type}}"
+          bindtap="openPoiList"
+        >
           <view class="poi-head">
             <text class="poi-label">{{item.label}}</text>
-            <text class="poi-count">{{item.count}} 个</text>
+            <view class="poi-head-meta">
+              <text class="poi-count">{{item.count}} 个</text>
+              <text class="poi-more">查看 ›</text>
+            </view>
           </view>
           <text class="poi-names">{{item.names}}</text>
         </view>
