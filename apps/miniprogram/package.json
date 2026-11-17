@@ -7,5 +7,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --passWithNoTests",
     "build": "node -e \"console.log('miniprogram: build is handled by WeChat DevTools')\""
+  },
+  "dependencies": {
+    "@szfisher/api-client": "workspace:*"
   }
 }

@@ -1,0 +1,117 @@
+<view wx:if="{{loading}}" class="empty">正在加载钓点…</view>
+
+<view wx:elif="{{error}}" class="page">
+  <view class="card empty">
+    <text>{{error}}</text>
+    <button class="primary-button detail-retry" bindtap="retry">重试</button>
+  </view>
+</view>
+
+<view wx:elif="{{spot}}" class="detail-page">
+  <view class="gallery">
+    <swiper wx:if="{{images.length}}" class="gallery-swiper" indicator-dots circular>
+      <swiper-item wx:for="{{images}}" wx:key="*this">
+        <image
+          class="gallery-image"
+          src="{{item}}"
+          mode="aspectFill"
+          data-index="{{index}}"
+          bindtap="previewImage"
+        />
+      </swiper-item>
+    </swiper>
+    <view wx:else class="gallery-empty">暂无实拍图</view>
+  </view>
+
+  <view class="detail-body">
+    <view class="detail-heading">
+      <text class="detail-title">{{spot.spot_name}}</text>
+      <view class="tag-row">
+        <text class="tag">{{spot.district || '区域未填'}}</text>
+        <text class="tag {{openTone}}">{{openLabel}}</text>
+        <text class="tag">{{feeLabel}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{spot.is_banned}}" class="alert alert-danger">
+      该水域为禁钓区，请勿垂钓。{{spot.ban_note || ''}}
+    </view>
+    <view wx:elif="{{spot.open_status === 'paused'}}" class="alert alert-warn">
+      该钓点暂停开放，出发前请通过官方渠道确认。
+    </view>
+    <view wx:if="{{freshnessText}}" class="alert {{freshnessTone === 'tag-danger' ? 'alert-danger' : 'alert-warn'}}">
+      {{freshnessText}}，建议出发前确认。
+    </view>
+
+    <view wx:if="{{markers.length}}" class="map-preview card">
+      <map
+        class="map-preview-map"
+        latitude="{{markers[0].latitude}}"
+        longitude="{{markers[0].longitude}}"
+        scale="15"
+        markers="{{markers}}"
+      />
+    </view>
+
+    <view class="info-card card">
+      <view class="info-row">
+        <text class="info-label">地址</text>
+        <text class="info-value">{{spot.address || '暂无地址'}}</text>
+      </view>
+      <view wx:if="{{waterLabel}}" class="info-row">
+        <text class="info-label">水域</text>
+        <text class="info-value">{{waterLabel}}</text>
+      </view>
+      <view wx:if="{{venueLabel}}" class="info-row">
+        <text class="info-label">场所</text>
+        <text class="info-value">{{venueLabel}}</text>
+      </view>
+      <view wx:if="{{methodText}}" class="info-row">
+        <text class="info-label">钓法</text>
+        <text class="info-value">{{methodText}}</text>
+      </view>
+      <view wx:if="{{spot.open_hours}}" class="info-row">
+        <text class="info-label">开放时间</text>
+        <text class="info-value">{{spot.open_hours}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">收费</text>
+        <text class="info-value">{{feeText}}</text>
+      </view>
+      <view wx:if="{{fishText}}" class="info-row">
+        <text class="info-label">鱼种</text>
+        <text class="info-value">{{fishText}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{spot.description}}" class="section card">
+      <view class="section-title">钓点简介</view>
+      <text class="section-text">{{spot.description}}</text>
+    </view>
+    <view wx:if="{{spot.tips}}" class="section card">
+      <view class="section-title">注意事项</view>
+      <text class="section-text">{{spot.tips}}</text>
+    </view>
+
+    <view class="verified-line">{{verifiedText}}</view>
+
+    <view class="section card">
+      <view class="section-title">周边配套</view>
+      <view wx:if="{{poiGroups.length}}" class="poi-groups">
+        <view wx:for="{{poiGroups}}" wx:key="poi_type" class="poi-group">
+          <view class="poi-head">
+            <text class="poi-label">{{item.label}}</text>
+            <text class="poi-count">{{item.count}} 个</text>
+          </view>
+          <text class="poi-names">{{item.names}}</text>
+        </view>
+      </view>
+      <view wx:else class="muted poi-empty">附近暂未收录，后续可通过用户上报补充</view>
+    </view>
+  </view>
+
+  <view class="action-bar">
+    <button class="secondary-button" bindtap="copyAddress">复制地址</button>
+    <button wx:if="{{canNavigate}}" class="primary-button nav-button" bindtap="navigate">导航</button>
+  </view>
+</view>

@@ -11,5 +11,7 @@ import { DictionariesService } from './dictionaries.service';
   imports: [PrismaModule, AdminAuthModule, AuditLogModule],
   controllers: [DictionariesController, AdminDictionariesController],
   providers: [DictionariesRepository, DictionariesService],
+  // Admin spot validation reuses the same enabled dictionary rows.
+  exports: [DictionariesRepository],
 })
 export class DictionariesModule {}

@@ -1,11 +1,15 @@
 import { Module, type DynamicModule, type Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
+import { AdminSpotsModule } from './modules/admin-spots/admin-spots.module';
 import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { AuditLogModule } from './modules/audit/audit-log.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
 import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { HealthController } from './modules/health/health.controller';
+import { PublicSpotsModule } from './modules/public-spots/public-spots.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -25,7 +29,11 @@ export class AppModule {
         AdminAuthModule,
         AuditLogModule,
         DictionariesModule,
+        AdminSpotsModule,
         ClientConfigModule,
+        PublicSpotsModule,
+        StorageModule,
+        UploadsModule,
       ],
       controllers: [HealthController, ...extraControllers],
     };

@@ -1,0 +1,90 @@
+<view class="page">
+  <view class="hero">
+    <text class="hero-kicker">深圳 · 钓鱼地图</text>
+    <text class="hero-title">今天去哪钓？</text>
+    <text class="hero-sub">按区域、鱼种和距离找到合适的钓点，出发前先看核实时间。</text>
+  </view>
+
+  <view class="search-row card">
+    <text class="search-mark">搜</text>
+    <input
+      class="search-input"
+      value="{{keyword}}"
+      placeholder="搜索钓点名称"
+      placeholder-class="search-placeholder"
+      confirm-type="search"
+      bindinput="onKeywordInput"
+    />
+  </view>
+
+  <view class="filter-row">
+    <picker mode="selector" range="{{districtLabels}}" value="{{districtIndex}}" bindchange="onDistrictChange">
+      <view class="filter-pill">{{districtLabels[districtIndex]}} ▾</view>
+    </picker>
+    <view class="filter-pill switch-pill">
+      <text>含禁钓</text>
+      <switch checked="{{includeBanned}}" color="#0f6b5c" bindchange="onBannedChange" />
+    </view>
+    <view class="filter-pill location-pill" bindtap="onLocationAction">
+      {{location ? '已定位' : locationDenied ? '去设置' : '显示距离'}}
+    </view>
+  </view>
+
+  <view class="result-meta">
+    <text>{{total}} 个钓点</text>
+    <text class="muted">{{location ? '按距离排序' : '按推荐排序'}}</text>
+  </view>
+
+  <view wx:if="{{error}}" class="card empty">
+    <text>{{error}}</text>
+    <button class="primary-button retry-button" bindtap="retry">重试</button>
+  </view>
+
+  <view wx:elif="{{!initialized && loading}}" class="empty">
+    <text>正在加载钓点…</text>
+  </view>
+
+  <view wx:elif="{{initialized && spots.length === 0}}" class="card empty">
+    <text>没有符合条件的钓点</text>
+    <button class="primary-button retry-button" bindtap="resetFilters">重置筛选</button>
+  </view>
+
+  <view wx:else class="spot-list">
+    <view
+      class="spot-card card"
+      wx:for="{{spots}}"
+      wx:key="spot_id"
+      data-id="{{item.spot_id}}"
+      bindtap="openDetail"
+    >
+      <image wx:if="{{item.cover}}" class="spot-cover" src="{{item.cover}}" mode="aspectFill" />
+      <view wx:else class="spot-cover spot-cover-empty">暂无图片</view>
+      <view class="spot-body">
+        <view class="spot-top">
+          <text class="spot-name">{{item.spot_name}}</text>
+          <text wx:if="{{item.isCore}}" class="tag tag-soft">核心</text>
+        </view>
+        <view class="spot-meta">
+          <text>{{item.districtLabel}}</text>
+          <text wx:if="{{item.distanceText}}"> · {{item.distanceText}}</text>
+        </view>
+        <view class="tag-row">
+          <text class="tag">{{item.feeLabel}}</text>
+          <text class="tag {{item.openTone}}">{{item.openLabel}}</text>
+          <text
+            wx:for="{{item.fishLabels}}"
+            wx:key="*this"
+            wx:for-item="fish"
+            class="tag tag-soft"
+          >{{fish}}</text>
+        </view>
+        <view wx:if="{{item.freshnessLabel}}" class="freshness {{item.freshnessTone}}">
+          {{item.freshnessLabel}}
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="load-more">加载中…</view>
+    <view wx:elif="{{!hasMore && spots.length > 0}}" class="load-more">没有更多了</view>
+  </view>
+</view>
