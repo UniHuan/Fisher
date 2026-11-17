@@ -1,3 +1,4 @@
+import { track } from '../../analytics';
 import {
   dictionaryLabel,
   distanceText,
@@ -76,7 +77,7 @@ interface SwitchEvent {
 }
 
 interface TapEvent {
-  currentTarget: { dataset: { id: string } };
+  currentTarget: { dataset: { id: string; index?: string } };
 }
 
 interface FilterTapEvent {
@@ -89,8 +90,10 @@ interface SingleFilterEvent {
 
 interface IndexMethods {
   loadDictionaries(): Promise<void>;
-  loadSpots(reset: boolean): Promise<void>;
+  loadSpots(reset: boolean, source?: 'filter' | 'search'): Promise<void>;
   displaySpot(item: PublicSpotListItem): DisplaySpot;
+  onShow(): void;
+  onSearchSubmit(): void;
   onKeywordInput(event: InputEvent): void;
   onDistrictChange(event: PickerEvent): void;
   onBannedChange(event: SwitchEvent): void;
@@ -150,6 +153,13 @@ Page<IndexData, IndexMethods>({
     await this.loadSpots(true);
   },
 
+  onShow() {
+    track('home_view', {
+      tab: 'list',
+      has_location: this.data.location !== null,
+    });
+  },
+
   onPullDownRefresh() {
     void this.loadSpots(true).finally(() => {
       wx.stopPullDownRefresh();
@@ -207,7 +217,7 @@ Page<IndexData, IndexMethods>({
     };
   },
 
-  async loadSpots(reset: boolean): Promise<void> {
+  async loadSpots(reset: boolean, source?: 'filter' | 'search'): Promise<void> {
     if (this.data.loading) {
       return;
     }
@@ -231,6 +241,25 @@ Page<IndexData, IndexMethods>({
         latitude: this.data.location?.latitude,
         longitude: this.data.location?.longitude,
       });
+      if (source === 'filter') {
+        track('filter_apply', {
+          district:
+            this.data.districtIndex > 0
+              ? (this.data.dictionaries?.districts[this.data.districtIndex - 1]?.key ?? '')
+              : '',
+          fish_types: this.data.filterFish,
+          fee_status: this.data.filterFee,
+          water_type: this.data.filterWater,
+          venue_type: this.data.filterVenue,
+          include_banned: this.data.includeBanned,
+          result_count: result.total,
+        });
+      } else if (source === 'search') {
+        track('search_submit', {
+          keyword: this.data.keyword.trim(),
+          result_count: result.total,
+        });
+      }
       const items = result.items.map((item) => this.displaySpot(item));
       this.setData({
         spots: reset ? items : this.data.spots.concat(items),
@@ -241,12 +270,22 @@ Page<IndexData, IndexMethods>({
         initialized: true,
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : '加载失败，请稍后重试';
+      track('error_event', { page: 'index', code: '', message });
       this.setData({
         loading: false,
         initialized: true,
-        error: error instanceof Error ? error.message : '加载失败，请稍后重试',
+        error: message,
       });
     }
+  },
+
+  onSearchSubmit() {
+    if (searchTimer !== undefined) {
+      clearTimeout(searchTimer);
+      searchTimer = undefined;
+    }
+    void this.loadSpots(true, 'search');
   },
 
   onKeywordInput(event: InputEvent) {
@@ -273,6 +312,7 @@ Page<IndexData, IndexMethods>({
     wx.getLocation({
       type: 'gcj02',
       success: (location) => {
+        track('location_permission', { result: 'granted', trigger: 'list' });
         this.setData({
           location: {
             latitude: location.latitude,
@@ -283,6 +323,7 @@ Page<IndexData, IndexMethods>({
         void this.loadSpots(true);
       },
       fail: () => {
+        track('location_permission', { result: 'denied', trigger: 'list' });
         this.setData({ locationDenied: true });
         wx.showToast({ title: '未获得定位权限', icon: 'none' });
       },
@@ -308,6 +349,7 @@ Page<IndexData, IndexMethods>({
   },
 
   openFilters() {
+    track('filter_open', { source: 'index' });
     this.setData({
       filterOpen: true,
       draftFish: this.data.filterFish.slice(),
@@ -374,6 +416,7 @@ Page<IndexData, IndexMethods>({
   },
 
   resetDraftFilters() {
+    track('filter_reset', {});
     this.setData({
       draftFish: [],
       draftFee: '',
@@ -398,7 +441,7 @@ Page<IndexData, IndexMethods>({
       filterVenue: this.data.draftVenue,
       filterCount,
     });
-    void this.loadSpots(true);
+    void this.loadSpots(true, 'filter');
   },
 
   noop() {
@@ -406,6 +449,7 @@ Page<IndexData, IndexMethods>({
   },
 
   resetFilters() {
+    track('filter_reset', {});
     this.setData({
       keyword: '',
       districtIndex: 0,
@@ -431,6 +475,11 @@ Page<IndexData, IndexMethods>({
   },
 
   openDetail(event: TapEvent) {
+    track('spot_card_click', {
+      spot_id: event.currentTarget.dataset.id,
+      position: Number(event.currentTarget.dataset.index ?? 0) + 1,
+      source: 'list',
+    });
     wx.navigateTo({
       url: `/pages/detail/detail?spot_id=${event.currentTarget.dataset.id}`,
     });

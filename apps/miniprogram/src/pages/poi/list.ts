@@ -1,3 +1,4 @@
+import { track } from '../../analytics';
 import {
   dictionaryLabel,
   distanceText,
@@ -12,6 +13,7 @@ import {
 
 interface DisplayPoi {
   poi_id: string;
+  poiType: string;
   name: string;
   typeLabel: string;
   address: string;
@@ -79,6 +81,7 @@ function displayPoi(
 ): DisplayPoi {
   return {
     poi_id: item.poi_id,
+    poiType: item.poi_type,
     name: item.poi_name,
     typeLabel:
       dictionaryLabel(dictionaries?.poi_types, item.poi_type) || item.poi_type,
@@ -153,9 +156,11 @@ Page<PoiListData, PoiListMethods>({
       });
       this.buildTabs(items, initialType);
     } catch (error) {
+      const message = error instanceof Error ? error.message : '周边场所加载失败';
+      track('error_event', { page: 'poi_list', code: '', message });
       this.setData({
         loading: false,
-        error: error instanceof Error ? error.message : '周边场所加载失败',
+        error: message,
       });
     }
   },
@@ -184,6 +189,12 @@ Page<PoiListData, PoiListMethods>({
 
   selectType(event: TypeTapEvent) {
     const selectedType = event.currentTarget.dataset.type;
+    if (selectedType !== '') {
+      track('poi_category_click', {
+        spot_id: currentSpotId,
+        poi_type: selectedType,
+      });
+    }
     this.setData({ selectedType, sheetOpen: false, selected: null });
     this.applyType(this.data.allItems, selectedType);
   },
@@ -205,6 +216,11 @@ Page<PoiListData, PoiListMethods>({
     if (selected === undefined) {
       return;
     }
+    track('poi_item_click', {
+      spot_id: currentSpotId,
+      poi_id: selected.poi_id,
+      poi_type: selected.poiType,
+    });
     this.setData({ selected, sheetOpen: true });
   },
 
@@ -221,6 +237,10 @@ Page<PoiListData, PoiListMethods>({
     wx.setClipboardData({
       data: address,
       success: () => {
+        track('nav_copy_address', {
+          spot_id: currentSpotId,
+          poi_id: this.data.selected?.poi_id ?? '',
+        });
         wx.showToast({ title: '地址已复制', icon: 'success' });
       },
     });
@@ -231,13 +251,31 @@ Page<PoiListData, PoiListMethods>({
     if (!this.data.canNavigate || selected === null || selected.navigation === null) {
       return;
     }
+    track('nav_button_click', {
+      spot_id: currentSpotId,
+      poi_id: selected.poi_id,
+      source: 'poi',
+    });
     wx.openLocation({
       latitude: Number(selected.navigation.latitude),
       longitude: Number(selected.navigation.longitude),
       name: selected.name,
       address: selected.address === '暂无地址' ? '' : selected.address,
       scale: 16,
-      fail: () => {
+      success: () => {
+        track('nav_open_location_result', {
+          spot_id: currentSpotId,
+          poi_id: selected.poi_id,
+          success: true,
+        });
+      },
+      fail: (error) => {
+        track('nav_open_location_result', {
+          spot_id: currentSpotId,
+          poi_id: selected.poi_id,
+          success: false,
+          error_code: error.errMsg,
+        });
         this.copyAddress();
       },
     });

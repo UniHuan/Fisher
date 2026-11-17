@@ -61,6 +61,30 @@ interface WxOpenSettingOptions {
   fail?: (error: { errMsg: string }) => void;
 }
 
+interface WxSystemInfo {
+  platform?: string;
+  system?: string;
+  version?: string;
+  SDKVersion?: string;
+}
+
+interface WxAccountInfo {
+  miniProgram?: {
+    version?: string;
+    envVersion?: string;
+  };
+}
+
+interface WxLaunchOptions {
+  scene?: number;
+  path?: string;
+  query?: Record<string, string>;
+}
+
+interface WxPageInstance {
+  route?: string;
+}
+
 declare const wx: {
   request(options: WxRequestOptions): void;
   getLocation(options: WxGetLocationOptions): void;
@@ -72,7 +96,12 @@ declare const wx: {
   switchTab(options: WxNavigateOptions): void;
   stopPullDownRefresh(): void;
   openSetting(options?: WxOpenSettingOptions): void;
+  reportAnalytics(eventName: string, data: Record<string, string | number>): void;
+  getSystemInfoSync(): WxSystemInfo;
+  getAccountInfoSync(): WxAccountInfo;
 };
+
+declare function getCurrentPages(): WxPageInstance[];
 
 interface PageInstance<TData> {
   data: TData;

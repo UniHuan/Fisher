@@ -14,6 +14,7 @@
       placeholder-class="search-placeholder"
       confirm-type="search"
       bindinput="onKeywordInput"
+      bindconfirm="onSearchSubmit"
     />
   </view>
 
@@ -61,6 +62,7 @@
       wx:for="{{spots}}"
       wx:key="spot_id"
       data-id="{{item.spot_id}}"
+      data-index="{{index}}"
       bindtap="openDetail"
     >
       <image wx:if="{{item.cover}}" class="spot-cover" src="{{item.cover}}" mode="aspectFill" />

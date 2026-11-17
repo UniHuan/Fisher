@@ -1,3 +1,4 @@
+import { track } from '../../analytics';
 import {
   dictionaryLabel,
   freshnessLabel,
@@ -126,10 +127,13 @@ Page<DetailData, DetailMethods>({
       this.setData({ dictionaries });
       this.display(spot);
       this.setData({ loading: false });
+      track('spot_detail_view', { spot_id: spot.spot_id, source: 'list' });
     } catch (error) {
+      const message = error instanceof Error ? error.message : '钓点加载失败';
+      track('error_event', { page: 'detail', code: '', message });
       this.setData({
         loading: false,
-        error: error instanceof Error ? error.message : '钓点加载失败',
+        error: message,
       });
     }
   },
@@ -222,6 +226,10 @@ Page<DetailData, DetailMethods>({
       return;
     }
     const poiType = event.currentTarget.dataset.type;
+    track('poi_category_click', {
+      spot_id: currentSpotId,
+      poi_type: poiType,
+    });
     wx.navigateTo({
       url: `/pages/poi/list?spot_id=${encodeURIComponent(currentSpotId)}&poi_type=${encodeURIComponent(poiType)}`,
     });
@@ -232,13 +240,22 @@ Page<DetailData, DetailMethods>({
     if (spot === null || spot.navigation === null || spot.is_banned) {
       return;
     }
+    track('nav_button_click', { spot_id: spot.spot_id, source: 'detail' });
     wx.openLocation({
       latitude: Number(spot.navigation.latitude),
       longitude: Number(spot.navigation.longitude),
       name: spot.spot_name,
       address: spot.address ?? '',
       scale: 16,
-      fail: () => {
+      success: () => {
+        track('nav_open_location_result', { spot_id: spot.spot_id, success: true });
+      },
+      fail: (error) => {
+        track('nav_open_location_result', {
+          spot_id: spot.spot_id,
+          success: false,
+          error_code: error.errMsg,
+        });
         this.copyAddress();
       },
     });
@@ -253,6 +270,7 @@ Page<DetailData, DetailMethods>({
     wx.setClipboardData({
       data: address,
       success: () => {
+        track('nav_copy_address', { spot_id: currentSpotId });
         wx.showToast({ title: '地址已复制', icon: 'success' });
       },
     });

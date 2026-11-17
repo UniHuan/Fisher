@@ -1,3 +1,4 @@
+import { track } from '../../analytics';
 import {
   dictionaryLabel,
   getDictionaries,
@@ -66,6 +67,7 @@ interface MarkerTapEvent {
 }
 
 interface MapMethods {
+  onShow(): void;
   loadDictionaries(): Promise<void>;
   loadMap(bounds?: {
     north: number;
@@ -99,6 +101,10 @@ Page<MapData, MapMethods>({
   async onLoad() {
     await this.loadDictionaries();
     await this.loadMap();
+  },
+
+  onShow() {
+    track('home_view', { tab: 'map', has_location: false });
   },
 
   async loadDictionaries(): Promise<void> {
@@ -185,9 +191,11 @@ Page<MapData, MapMethods>({
         loading: false,
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : '地图加载失败';
+      track('error_event', { page: 'map', code: '', message });
       this.setData({
         loading: false,
-        error: error instanceof Error ? error.message : '地图加载失败',
+        error: message,
       });
     }
   },
@@ -218,6 +226,13 @@ Page<MapData, MapMethods>({
       return;
     }
     const selected = this.data.mapSpots[event.detail.markerId] ?? null;
+    if (selected !== null) {
+      track('spot_card_click', {
+        spot_id: selected.spot_id,
+        position: event.detail.markerId + 1,
+        source: 'map',
+      });
+    }
     this.setData({ selected });
   },
 
@@ -225,6 +240,7 @@ Page<MapData, MapMethods>({
     wx.getLocation({
       type: 'gcj02',
       success: (location) => {
+        track('location_permission', { result: 'granted', trigger: 'map' });
         this.setData({
           latitude: location.latitude,
           longitude: location.longitude,
@@ -232,6 +248,7 @@ Page<MapData, MapMethods>({
         });
       },
       fail: () => {
+        track('location_permission', { result: 'denied', trigger: 'map' });
         wx.showToast({ title: '未获得定位权限', icon: 'none' });
       },
     });
