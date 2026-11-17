@@ -47,6 +47,10 @@ pnpm audit --prod
 
 不要在仓库中提交任何真实密钥、生产数据或 `.env` 文件。环境变量模板必须保持空值。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要创建公开 Issue。
 
+## 贡献
+
+欢迎提交 Issue 和 Pull Request。开始前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)，并遵守行为准则。
+
 ## 许可证
 
 本项目采用 [Apache License 2.0](LICENSE) 许可。版权归深圳市环与瑞创新科技有限公司 (UniHuan / 优丽环) 所有，详见 [NOTICE](NOTICE)。
