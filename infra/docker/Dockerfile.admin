@@ -3,10 +3,13 @@
 # The admin app is a static export. The API base URL is compiled into the bundle,
 # so staging and production build separate image tags from the same commit.
 FROM node:24-bookworm-slim AS build
+ARG NPM_REGISTRY=https://registry.npmjs.org
 WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV npm_config_registry=${NPM_REGISTRY}
+ENV COREPACK_NPM_REGISTRY=${NPM_REGISTRY}
 ARG NEXT_PUBLIC_API_BASE_URL=https://fish-api.unihuan.com/api/v1
 ARG NEXT_PUBLIC_TENCENT_MAP_JS_KEY=
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
