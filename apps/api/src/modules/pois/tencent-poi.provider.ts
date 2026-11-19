@@ -7,6 +7,9 @@ import type { ProviderPoiItem, ProviderPoiResult } from './poi.types';
 const TENCENT_SEARCH_URL = 'https://apis.map.qq.com/ws/place/v1/search';
 const REQUEST_TIMEOUT_MS = 8_000;
 const PAGE_SIZE = 20;
+// Tencent keys enforce a per-second request limit. A sync calls six POI types
+// in a row, so space the requests instead of hitting the per-key QPS ceiling.
+const REQUEST_INTERVAL_MS = 350;
 
 const TYPE_KEYWORDS: ReadonlyArray<{ type: string; keyword: string }> = [
   { type: POI_TYPE.FOOD, keyword: '美食' },
@@ -41,7 +44,17 @@ interface TencentResponse {
  */
 @Injectable()
 export class TencentPoiProvider implements PoiProvider {
+  private lastRequestAt = 0;
+
   constructor(private readonly config: ConfigService) {}
+
+  private async waitForRequestSlot(): Promise<void> {
+    const waitMs = this.lastRequestAt + REQUEST_INTERVAL_MS - Date.now();
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+    this.lastRequestAt = Date.now();
+  }
 
   async searchNearby(input: ProviderSearchInput): Promise<ProviderPoiResult> {
     const key = this.config.get<string>('TENCENT_MAP_SERVER_KEY');
@@ -111,6 +124,7 @@ export class TencentPoiProvider implements PoiProvider {
       key,
       output: 'json',
     });
+    await this.waitForRequestSlot();
     const response = await fetch(`${TENCENT_SEARCH_URL}?${query.toString()}`, {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
