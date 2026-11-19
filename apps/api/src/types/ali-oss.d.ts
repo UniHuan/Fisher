@@ -21,7 +21,7 @@ declare module 'ali-oss' {
   class OSS {
     constructor(options: OSSOptions);
     put(name: string, file: Buffer, options?: PutOptions): Promise<unknown>;
-    copy(name: string, sourceName: string): Promise<unknown>;
+    copy(name: string, sourceName: string, bucketName?: string): Promise<unknown>;
     delete(name: string): Promise<unknown>;
     signatureUrl(name: string, options: SignatureUrlOptions): string;
     get(name: string): Promise<GetResult>;

@@ -37,7 +37,9 @@ export class OssStorageAdapter implements StorageAdapter {
   }
 
   async copyObject(sourceKey: string, destKey: string): Promise<void> {
-    await this.publicClient.copy(destKey, `${this.workBucket}/${sourceKey}`);
+    // ali-oss treats the third argument as the source bucket; without it the
+    // source is resolved inside the destination bucket and returns NoSuchKey.
+    await this.publicClient.copy(destKey, sourceKey, this.workBucket);
   }
 
   async deleteObject(key: string): Promise<void> {
