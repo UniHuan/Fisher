@@ -1,7 +1,23 @@
 import type { components } from '@szfisher/api-client';
 
-export const API_BASE = 'http://localhost:3001/api/v1';
-export const API_ORIGIN = 'http://localhost:3001';
+function resolveApiOrigin(): string {
+  // Set to 'http://localhost:3001' to develop against a local API.
+  const localOverride = '';
+  if (localOverride.length > 0) {
+    return localOverride;
+  }
+  try {
+    const envVersion = wx.getAccountInfoSync().miniProgram?.envVersion ?? 'develop';
+    return envVersion === 'release'
+      ? 'https://fish-api.unihuan.com'
+      : 'https://fish-api-staging.unihuan.com';
+  } catch {
+    return 'https://fish-api-staging.unihuan.com';
+  }
+}
+
+export const API_ORIGIN = resolveApiOrigin();
+export const API_BASE = `${API_ORIGIN}/api/v1`;
 export const CLIENT_VERSION = '1.0.0';
 
 export type PublicSpotListItem = components['schemas']['PublicSpotListItemDto'];
