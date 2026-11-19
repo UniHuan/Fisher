@@ -2,18 +2,26 @@
 
 # Build stage: frozen workspace install, shared build, Prisma Client and API build.
 FROM node:24-bookworm-slim AS build
+ARG APT_MIRROR=deb.debian.org
+ARG NPM_REGISTRY=https://registry.npmjs.org
 WORKDIR /app
 COPY LICENSE NOTICE ./
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV npm_config_registry=${NPM_REGISTRY}
+ENV COREPACK_NPM_REGISTRY=${NPM_REGISTRY}
 # Inert placeholder: Prisma Client generation reads the datasource URL but never
 # connects. Runtime receives the real DATABASE_URL from the deployment environment.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates openssl python3 make g++ \
-  && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    if [ "$APT_MIRROR" != "deb.debian.org" ]; then \
+      sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates openssl python3 make g++; \
+    rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/admin/package.json apps/admin/package.json
@@ -31,11 +39,16 @@ RUN pnpm --filter @szfisher/shared build \
 
 # Runtime stage: compiled API plus the generated Prisma Client and native binaries.
 FROM node:24-bookworm-slim AS runtime
+ARG APT_MIRROR=deb.debian.org
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates openssl \
-  && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    if [ "$APT_MIRROR" != "deb.debian.org" ]; then \
+      sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates openssl; \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /app /app
 RUN mkdir -p /app/storage && chown node:node /app/storage
 USER node
