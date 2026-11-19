@@ -14,7 +14,7 @@ staging 必须与 production 使用同一套镜像、同一套迁移和同一套
 - [ ] staging 子域已规划：`fish-api-staging`、`fish-admin-staging`、`fish-static-staging`
 - [ ] 通配符证书或三个单域证书已签发，DNS 解析权限可用
 - [ ] ACR 命名空间和镜像仓库已创建
-- [ ] RDS PostgreSQL 15 已创建，未开放公网
+- [ ] RDS PostgreSQL 18 已创建，未开放公网
 - [ ] OSS 工作桶、发布桶、admin 桶已创建，默认私有
 - [ ] CDN、WAF、SLB、ECS 安全组已准备
 - [ ] 腾讯地图 staging JS Key 和 Server Key 已申请，域名与 IP 白名单已配置
