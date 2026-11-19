@@ -175,7 +175,7 @@ DATABASE_URL=... BACKUP_DIR=/var/backups/szfisher \
   scripts/backup-postgres.sh
 ```
 
-脚本使用 custom format、权限 `0600`、落盘前 `pg_restore --list` 校验，并保留 30 天。建议 cron 在凌晨低峰执行，备份目录挂载独立云盘并同步到 OSS。
+脚本使用 custom format、权限 `0600`、落盘前 `pg_restore --list` 校验，并保留 30 天。建议 cron 在凌晨低峰执行，备份目录挂载独立云盘并同步到 OSS。备份机需安装 PostgreSQL 18 的客户端工具，`pg_dump` 版本不能低于数据库主版本。
 
 恢复演练只在新建实例进行：
 

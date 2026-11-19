@@ -4,7 +4,7 @@ name: szfisher
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:18
     environment:
       POSTGRES_USER: szfisher
       POSTGRES_PASSWORD: szfisher
@@ -12,7 +12,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - szfisher_postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18 keeps PGDATA at /var/lib/postgresql/18/docker, so mount the parent.
+      - szfisher_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U szfisher -d szfisher"]
       interval: 5s

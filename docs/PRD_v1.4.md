@@ -9,6 +9,7 @@
 文档版本：v1.4 · 开发冻结稿
 
 编制日期：2026-11-13
+修订：2026-11-19 数据库版本标准由 PostgreSQL 15 升级为 PostgreSQL 18（ADR-011），其余不变
 
 适用范围：产品、设计、前端、后端、测试、运营、安全、合规
 
@@ -48,7 +49,7 @@
 | API 技术栈 | NestJS + TypeScript + Prisma；模块化单体，不上微服务与 K8s                                 | 与小程序、后台共用类型；结构清晰，后续可按模块拆分            | 已定            |
 | 运营后台    | Next.js + React + Ant Design，纯前端；所有数据经 API                                    | 后台不持有数据库凭据，攻击面更小                     | 已定            |
 | 域名与入口   | 官网 www.unihuan.com 保持不动；运营后台 fish-admin.unihuan.com；API fish-api.unihuan.com；静态资源 fish-static.unihuan.com；产品页与法律页 fish.unihuan.com（静态站点） | 后台与官网隔离；复用主域备案与 Cookie same-site             | 已定            |
-| 云与数据库   | 阿里云优先（复用官网账号、DNS 与备案）；标准 PostgreSQL 15 托管版；对象存储走适配层；腾讯云、华为云保留迁移路径                        | 复用现有官网与备案，减少接入等待；避免专有数据库锁定              | 已定 |
+| 云与数据库   | 阿里云优先（复用官网账号、DNS 与备案）；标准 PostgreSQL 18 托管版；对象存储走适配层；腾讯云、华为云保留迁移路径                        | 复用现有官网与备案，减少接入等待；避免专有数据库锁定              | 已定 |
 | 安全基线    | 管理端 `__Host-` HttpOnly Cookie + 同步器 CSRF；C 端 Bearer Token；RBAC、限流、参数校验、审计、密钥托管、WAF、备份加密     | 安全要求前置，避免上线前返工                       | 已定            |
 | 多端扩展    | API 版本化、OpenAPI 契约、客户端类型标识；iOS 预留 Sign in with Apple、账号注销、APNs 抽象             | 新增客户端不改服务端领域模型                       | 已定            |
 | POI 供应商 | 腾讯位置服务优先，高德备选；按钓点周边 3 公里同步，缓存 24 小时，配额 80% 告警                                 | 与微信地图生态一致，减少集成成本                     | 已锁定；第 0 周归档条款 |
@@ -68,7 +69,7 @@
 | ----------------- | ----------------------------------------------------------------------- | --------------------- | ----- | -------- |
 | POI 供应商、预算与数据条款   | 腾讯位置服务，按量付费；第 0 周归档允许落库、缓存与展示的条款                                   | 配额、成本与 M4 架构按已确认条款执行       | 业务负责人 | 第 0 周    |
 | 后端部署形态            | 独立 API 服务 + 托管 PostgreSQL；2 台 ECS 跨可用区 + SLB，单机用 Docker Compose 管理 | 不使用微信云开发；ECS、RDS、SLB 账号开通 | 技术负责人 | 第 0 周    |
-| 云厂商与地域            | 阿里云深圳；复用官网账号、DNS 与备案；标准 PostgreSQL 15、OSS、WAF、CDN                                      | 核验备案接入商、账号权限与预算       | 技术负责人 | 第 0 周    |
+| 云厂商与地域            | 阿里云深圳；复用官网账号、DNS 与备案；标准 PostgreSQL 18、OSS、WAF、CDN                                      | 核验备案接入商、账号权限与预算       | 技术负责人 | 第 0 周    |
 | 运营后台 UI 技术栈       | Next.js + React + Ant Design，静态导出；部署 fish-admin.unihuan.com，OSS + CDN 托管 | 静态导出与 CSP 按 10.9 与 10.11 执行 | 技术负责人 | 已定      |
 | 禁钓点收录政策           | 默认不展示，搜索需显式开启，详情页禁钓提示且不提供导航                                             | 法务复核文案与免责声明           | 产品与法务 | 第 1 周    |
 | 数据采集负责人、预算与现有资产盘点 | 按零基础采集 100 个点；地址可批量地理编码                                                 | 提交采集计划与预算          | 业务负责人 | 第 2 周    |
@@ -1369,7 +1370,7 @@ P0 范围为绑定、解绑、隐藏与同步状态查看；人工校正与批�
 ```text
 微信小程序 ─┐
 iOS App ───┼── HTTPS /api/v1 ──→ WAF ──→ SLB ──→ Nginx ──→ API 服务（NestJS）
-运营后台 ──┘                                                ├── PostgreSQL 15
+运营后台 ──┘                                                ├── PostgreSQL 18
                                                             ├── Redis（限流与缓存，可选）
                                                             ├── 对象存储（OSS / COS / OBS）
                                                   ├── 腾讯位置服务
@@ -1416,7 +1417,7 @@ iOS App ───┼── HTTPS /api/v1 ──→ WAF ──→ SLB ──→ N
 | iOS App | Swift + SwiftUI，iOS 15 及以上   | V2.0；通过 HTTPS 调用同一 API                                  |
 | API 服务  | NestJS + TypeScript          | 模块、Guard、Interceptor、OpenAPI 支持完整；团队 TypeScript 背景可直接上手 |
 | ORM     | Prisma                       | 迁移、类型安全、参数化查询；禁止无参数裸 SQL                                |
-| 数据库     | PostgreSQL 15 及以上            | 标准 SQL、JSONB、事务、时间点恢复；三家云均有托管版                          |
+| 数据库     | PostgreSQL 18 及以上            | 标准 SQL、JSONB、事务、时间点恢复；三家云均有托管版                          |
 | 缓存与限流   | Redis，可选                     | 全局配额、热点字典缓存、任务锁；V1.0 以边缘 WAF 做全局限流，需要全局配额或缓存时引入 |
 | 运营后台    | Next.js + React + Ant Design | 纯前端静态导出；不依赖 SSR、Server Actions；如团队更熟 Vite 可等价替换 |
 | 地图与 POI | 腾讯位置服务 + 微信 `<map>`          | 与微信生态一致；高德作为备选                                          |
@@ -1930,7 +1931,7 @@ DNS 记录基线：
 生产部署拓扑（阿里云深圳）：
 
 - 入口：DNS -> 阿里云 WAF -> SLB -> 2 台 ECS（不同可用区）-> Nginx -> API 容器；Worker 与 API 同镜像、独立容器，部署在其中一台或用独立小规格 ECS。后台静态入口为 DNS -> WAF -> CDN -> OSS 私有桶，WAF 负责 IP 白名单与防护，CDN 负责缓存与回源鉴权。
-- 数据库：RDS PostgreSQL 15 高可用版，多可用区，主备自动切换；仅允许 API 与 Worker 安全组访问，不开放公网。
+- 数据库：RDS PostgreSQL 18 高可用版，多可用区，主备自动切换；仅允许 API 与 Worker 安全组访问，不开放公网。
 - 对象存储：图片分发布桶与私有工作桶，OSS 均不开放公共读；已发布图片写入发布桶并经 CDN 回源鉴权分发，草稿、待审内容与导入文件留在私有工作桶；后台静态文件使用独立 Bucket，不与图片混用。
 - 镜像：阿里云 ACR，CI 构建、扫描、推送，ECS 只拉取指定 tag，不使用 `latest`。
 - 迁移：数据库迁移作为独立 Job 在发布前执行，API 容器启动时不自动迁移；迁移失败阻止发布。
@@ -2168,7 +2169,7 @@ CI/CD 流程：
 
 默认方案：阿里云，深圳地域。现有公司官网 `www.unihuan.com` 已部署在阿里云深圳（ECS `47.106.99.4`，Ubuntu + Nginx 1.24.0 + Next.js），当前解析与备案信息指向阿里云体系，备案号为粤ICP备2026069218号-2。第 0 周在阿里云 ICP 代备案系统确认接入商后，新增子域沿用主域备案，不需要更换接入商，避免接入备案带来的 1 至 3 周等待；OSS、RDS、WAF、SLB、CDN 与现有运维习惯一致。
 
-生产使用 2 台 ECS 跨可用区，前置 WAF 与 SLB；数据库使用 RDS PostgreSQL 15 高可用版；对象存储使用 OSS；镜像使用 ACR。轻量应用服务器仅用于测试或预发布，不作为生产入口。
+生产使用 2 台 ECS 跨可用区，前置 WAF 与 SLB；数据库使用 RDS PostgreSQL 18 高可用版；对象存储使用 OSS；镜像使用 ACR。轻量应用服务器仅用于测试或预发布，不作为生产入口。
 
 
 | 能力            | 阿里云（默认）              | 腾讯云（备选）                | 华为云（备选）           |
@@ -2204,7 +2205,7 @@ CI/CD 流程：
 
 数据库原则：
 
-- 引擎使用标准 PostgreSQL 15，不使用 GaussDB、PolarDB、TDSQL 的专有内核或专有语法。
+- 引擎使用标准 PostgreSQL 18，不使用 GaussDB、PolarDB、TDSQL 的专有内核或专有语法。
 - 使用托管高可用版，开启自动备份、时间点恢复、监控与告警；不自行编译数据库。
 - 生产开启多可用区；每日全量备份加 WAL 归档，备份保留 30 天，每季度做恢复演练。
 - 连接数按实例规格限制，API 连接池小于数据库上限的 70%；2 台 ECS 各 20 个连接，总量不超过实例上限的 70%。
@@ -2253,7 +2254,7 @@ CI/CD 流程：
 | API 框架  | NestJS + TypeScript                        | Spring Boot      | 团队语言背景与招聘      |
 | 后端部署    | 独立 API + 托管 PostgreSQL + 2 台 ECS 跨可用区      | 微信云开发            | 云开发省运维但多端与后台受限 |
 | 云厂商     | 阿里云深圳，复用官网账号、DNS 与备案                        | 腾讯云、华为云          | 备案、成本、生态与迁移    |
-| 数据库托管   | 托管 PostgreSQL 15 高可用版，多可用区                  | 自建 PostgreSQL    | 备份、可用性与运维成本    |
+| 数据库托管   | 托管 PostgreSQL 18 高可用版，多可用区                  | 自建 PostgreSQL    | 备份、可用性与运维成本    |
 | 后台 UI   | Next.js + React + Ant Design，静态导出          | shadcn/ui        | 后台开发工时与视觉      |
 | 后台托管    | OSS 私有桶 + CDN，独立于官网                     | 独立 Nginx 静态目录    | 隔离、发布与回滚       |
 | 小程序语言   | TypeScript                                 | JavaScript       | 类型安全与团队习惯      |
@@ -2294,7 +2295,7 @@ V1.0 保持模块化单体，按触发条件演进，不提前拆分。
 - 功能开关与灰度发布优先于长期分支。
 - 每次架构变更记录 ADR，写清背景、选项、决定与代价。
 
-V1.0 推荐落地组合：阿里云深圳 ECS（2 台跨可用区）+ RDS PostgreSQL 15 高可用版 + OSS + WAF + SLB；运营后台 Next.js 静态导出到 OSS + CDN；API 用 NestJS + Prisma；小程序用原生 TypeScript；部署用 Docker Compose + Nginx；CI 用 GitHub Actions，国内网络受限时用阿里云效。该组合能在 9 至 13 周内交付，并保留向腾讯云、华为云与 iOS 扩展的路径。
+V1.0 推荐落地组合：阿里云深圳 ECS（2 台跨可用区）+ RDS PostgreSQL 18 高可用版 + OSS + WAF + SLB；运营后台 Next.js 静态导出到 OSS + CDN；API 用 NestJS + Prisma；小程序用原生 TypeScript；部署用 Docker Compose + Nginx；CI 用 GitHub Actions，国内网络受限时用阿里云效。该组合能在 9 至 13 周内交付，并保留向腾讯云、华为云与 iOS 扩展的路径。
 
 ## 11. 埋点与指标
 
@@ -2734,7 +2735,7 @@ Web 安全：
 | D14  | 团队投入与硬上线日期           | 1 小程序 + 1 后端 + 0.5 后台前端 + 1 测试 + 0.5 设计 + 1 运营 + 0.5 合规与安全；9 至 13 周；无硬日期                         | 里程碑与范围                  | 业务负责人 | 第 0 周确认到岗 | 已定（开发冻结） |
 | D15  | 地图类目审核口径               | 工具类信息查询；准备移除地图 Tab 的降级方案                                                                                  | V1.0 范围与审核风险           | 合规负责人 | 第 0 周沟通     | 已定（开发冻结） |
 | D16  | `verified_at` 更新规则         | 仅「标记已核实」更新；普通编辑与 POI 同步不更新                                                                              | 时效展示与后台操作            | 产品负责人 | 第 3 周实现     | 已定（开发冻结） |
-| D17  | 云厂商与地域                   | 阿里云深圳；复用官网账号、DNS 与备案；标准 PostgreSQL 15；备选腾讯云、华为云                                                 | 备案、成本、迁移与可用性      | 技术负责人 | 第 0 周核验     | 已定（开发冻结） |
+| D17  | 云厂商与地域                   | 阿里云深圳；复用官网账号、DNS 与备案；标准 PostgreSQL 18；备选腾讯云、华为云                                                 | 备案、成本、迁移与可用性      | 技术负责人 | 第 0 周核验     | 已定（开发冻结） |
 | D18  | 认证与会话模型                 | 管理端 `__Host-` HttpOnly Cookie + 同步器 CSRF；C 端 Bearer；刷新轮换与复用检测；管理端封禁立即生效，C 端 60 秒内失效        | 安全、前端实现与多端一致性    | 技术负责人 | 第 2 至 3 周    | 已定（开发冻结） |
 | D19  | API 框架                       | NestJS + TypeScript + Prisma；OpenAPI 为契约唯一来源                                                                         | 团队背景与招聘                | 技术负责人 | 第 1 周搭建     | 已定（开发冻结） |
 | D20  | iOS 账号体系                   | Sign in with Apple 必选；手机号可选；微信登录可选；App 内注销                                                                | V2.0 审核与账号一致性         | 产品负责人 | V2.0 启动前     | 已定（开发冻结） |
@@ -3074,7 +3075,7 @@ ADR-000X：标题
 
 - ADR-001：采用 monorepo 与模块化单体，不拆微服务。
 - ADR-002：API 使用 NestJS + TypeScript，OpenAPI 为契约唯一来源。
-- ADR-003：数据库使用标准 PostgreSQL 15，不使用云厂商专有内核。
+- ADR-003：数据库使用标准 PostgreSQL 15，不使用云厂商专有内核（版本号部分已由 ADR-011 升级为 18；标准 PostgreSQL 与禁用专有内核的要求不变）。
 - ADR-004：管理端使用 `__Host-` HttpOnly Cookie 加同步器 CSRF，C 端使用 Bearer Token。
 - ADR-005：对象存储通过 StorageAdapter 访问，默认 OSS，保留 COS/OBS 适配。
 - ADR-006：V1.0 不引入 Redis，扩容触发后再引入。
@@ -3082,6 +3083,7 @@ ADR-000X：标题
 - ADR-008：生产采用 2 台 ECS 跨可用区 + 多可用区 RDS + SLB，目标 99.9%。
 - ADR-009：后台静态资源独立托管 OSS + CDN，不复用官网 Nginx 根目录。
 - ADR-010：默认阿里云深圳，复用现有账号、DNS 与 ICP 备案。
+- ADR-011：数据库版本标准升级为 PostgreSQL 18，仍使用标准 PostgreSQL，不使用云厂商专有内核。
 
 ### 附录 H：参考资料
 
@@ -3094,7 +3096,7 @@ ADR-000X：标题
 - MDN：`__Host-` Cookie 前缀、SameSite、CORS、CSP、HSTS。
 - OWASP：ASVS 4.0 Level 2、CSRF Prevention Cheat Sheet、File Upload Cheat Sheet。
 - 个人信息保护法、网络安全法、数据安全法及相关法规。
-- OpenAPI Specification 3.0.3、PostgreSQL 15、Prisma、NestJS 官方文档。
+- OpenAPI Specification 3.0.3、PostgreSQL 18、Prisma、NestJS 官方文档。
 - Apple App Store Review Guidelines、Sign in with Apple、APNs 与 App 备案相关说明。
 
 ---
