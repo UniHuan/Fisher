@@ -52,7 +52,11 @@
         <button class="primary-button retry-button" bindtap="retry">重试</button>
       </view>
 
-      <view wx:elif="{{reports.length === 0}}" class="card empty">{{emptyText}}</view>
+      <view wx:elif="{{reports.length === 0}}" class="card empty-state">
+        <view class="empty-mark">钓</view>
+        <text class="empty-title">{{emptyText}}</text>
+        <text class="empty-hint">{{emptyHint}}</text>
+      </view>
 
       <block wx:else>
         <view
@@ -108,7 +112,7 @@
       </block>
     </block>
 
-    <view class="legal-block">
+    <view class="settings-card">
       <view class="legal-links">
         <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
         <text class="legal-dot">·</text>
@@ -117,12 +121,8 @@
         <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
       </view>
       <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
+      <view wx:if="{{sessionReady}}" class="settings-divider"></view>
+      <button wx:if="{{sessionReady}}" class="settings-logout" bindtap="logout">退出登录</button>
     </view>
-
-    <button
-      wx:if="{{sessionReady}}"
-      class="secondary-button logout-button"
-      bindtap="logout"
-    >退出登录</button>
   </block>
 </view>

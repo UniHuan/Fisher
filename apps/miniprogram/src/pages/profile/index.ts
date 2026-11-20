@@ -50,6 +50,7 @@ interface ProfileData {
   filters: StatusFilterOption[];
   statusFilter: MyReportStatusFilter;
   emptyText: string;
+  emptyHint: string;
   reports: DisplayMyReport[];
   loading: boolean;
   loadingMore: boolean;
@@ -117,6 +118,14 @@ const EMPTY_TEXT: Record<MyReportStatusFilter, string> = {
   removed: '没有已下架的内容',
 };
 
+const EMPTY_HINT: Record<MyReportStatusFilter, string> = {
+  all: '在钓点详情页写下第一条评论、鱼获或情报。',
+  pending: '审核中的内容会显示在这里，通过后会出现在钓点详情页。',
+  published: '发布通过后会显示在这里。',
+  rejected: '被驳回的内容会显示在这里，可以点开查看原因。',
+  removed: '被下架或自己删除的内容会显示在这里。',
+};
+
 const PAGE_SIZE = 10;
 let firstShow = true;
 
@@ -132,6 +141,7 @@ Page<ProfileData, ProfileMethods>({
     filters: STATUS_FILTERS,
     statusFilter: 'all',
     emptyText: EMPTY_TEXT.all,
+    emptyHint: EMPTY_HINT.all,
     reports: [],
     loading: false,
     loadingMore: false,
@@ -337,6 +347,7 @@ Page<ProfileData, ProfileMethods>({
     this.setData({
       statusFilter: filter.key,
       emptyText: EMPTY_TEXT[filter.key],
+      emptyHint: EMPTY_HINT[filter.key],
     });
     void this.loadReports(true);
   },
@@ -484,6 +495,7 @@ Page<ProfileData, ProfileMethods>({
       loadingMore: false,
       statusFilter: 'all',
       emptyText: EMPTY_TEXT.all,
+      emptyHint: EMPTY_HINT.all,
     });
   },
 });

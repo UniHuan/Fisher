@@ -560,6 +560,26 @@ select {
   font-size: 12px;
 }
 
+.moderation-count {
+  margin-top: 4px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.moderation-modal .ant-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.moderation-modal .ant-modal-footer .ant-btn + .ant-btn {
+  margin-inline-start: 0;
+}
+
 @media (max-width: 900px) {
   .login-shell {
     grid-template-columns: 1fr;

@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/out/**',
       '**/coverage/**',
       '**/next-env.d.ts',
+      'apps/miniprogram/src/**/*.js',
+      'apps/miniprogram/src/**/*.js.map',
     ],
   },
   eslint.configs.recommended,
