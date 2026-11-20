@@ -1,5 +1,5 @@
 {
-  "appid": "touristappid",
+  "appid": "wx0d2443850022120f",
   "projectname": "szfisher-miniprogram",
   "description": "深圳钓鱼助手小程序",
   "compileType": "miniprogram",
@@ -8,6 +8,34 @@
     "es6": true,
     "postcss": true,
     "minified": true,
-    "urlCheck": false
-  }
+    "urlCheck": false,
+    "useCompilerPlugins": [
+      "typescript"
+    ],
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "libVersion": "3.18.0",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
 }

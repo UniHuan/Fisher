@@ -1,6 +1,6 @@
 page {
-  background: #f0f3f1;
-  color: #17211e;
+  background: #edf1ec;
+  color: #13211c;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif;
 }
 
@@ -17,55 +17,74 @@ input {
 }
 
 .card {
-  background: #ffffff;
-  border: 1rpx solid #dfe5e2;
-  border-radius: 12rpx;
+  background: #fbfcf8;
+  border: 1rpx solid #d7e0d9;
+  border-radius: 16rpx;
 }
 
 .muted {
-  color: #68736f;
+  color: #5e6b66;
 }
 
 .tag {
   display: inline-flex;
   align-items: center;
   padding: 4rpx 12rpx;
-  border-radius: 4rpx;
-  background: #e7f1ee;
-  color: #0f6b5c;
+  border-radius: 6rpx;
+  background: #e3eee8;
+  color: #0e6b5e;
   font-size: 22rpx;
   line-height: 1.4;
 }
 
 .tag-soft {
-  background: #f0f3f1;
-  color: #4b5854;
+  background: #eef2ee;
+  color: #5e6b66;
+}
+
+.tag-line {
+  background: transparent;
+  border: 1rpx solid #cfdcd4;
+  color: #4c5b55;
 }
 
 .tag-warn {
-  background: #fff4db;
+  background: #fff1dc;
   color: #8a5a00;
 }
 
 .tag-danger {
-  background: #fbe9e6;
-  color: #a33a2c;
+  background: #fbe7e1;
+  color: #b2412a;
 }
 
 .empty {
   padding: 100rpx 36rpx;
   text-align: center;
-  color: #68736f;
+  color: #5e6b66;
   font-size: 28rpx;
 }
 
 .primary-button {
-  background: #0f6b5c;
+  background: #0e6b5e;
   color: #ffffff;
-  border-radius: 8rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
 }
 
 .primary-button::after {
+  border: 0;
+}
+
+.secondary-button {
+  background: #fbfcf8;
+  color: #13211c;
+  border: 1rpx solid #cfdcd4;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.secondary-button::after {
   border: 0;
 }
 
@@ -73,4 +92,8 @@ input {
   font-size: 30rpx;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.card-pressed {
+  opacity: 0.92;
 }

@@ -35,6 +35,7 @@ interface FilterOption {
 interface IndexData {
   dictionaries: PublicDictionaries | null;
   spots: DisplaySpot[];
+  skeletons: number[];
   page: number;
   pageSize: number;
   total: number;
@@ -91,6 +92,7 @@ interface SingleFilterEvent {
 interface IndexMethods {
   loadDictionaries(): Promise<void>;
   loadSpots(reset: boolean, source?: 'filter' | 'search'): Promise<void>;
+  clearKeyword(): void;
   displaySpot(item: PublicSpotListItem): DisplaySpot;
   onShow(): void;
   onSearchSubmit(): void;
@@ -120,6 +122,7 @@ Page<IndexData, IndexMethods>({
   data: {
     dictionaries: null,
     spots: [],
+    skeletons: [1, 2, 3],
     page: 1,
     pageSize: 20,
     total: 0,
@@ -297,6 +300,15 @@ Page<IndexData, IndexMethods>({
     searchTimer = setTimeout(() => {
       void this.loadSpots(true);
     }, 300);
+  },
+
+  clearKeyword() {
+    if (searchTimer !== undefined) {
+      clearTimeout(searchTimer);
+      searchTimer = undefined;
+    }
+    this.setData({ keyword: '' });
+    void this.loadSpots(true);
   },
 
   onDistrictChange(event: PickerEvent) {

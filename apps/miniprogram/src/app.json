@@ -7,15 +7,15 @@
   ],
   "window": {
     "navigationBarTitleText": "深圳钓鱼助手",
-    "navigationBarBackgroundColor": "#0a3f38",
+    "navigationBarBackgroundColor": "#0b2b26",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f0f3f1",
+    "backgroundColor": "#edf1ec",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#68736f",
-    "selectedColor": "#0f6b5c",
-    "backgroundColor": "#ffffff",
+    "color": "#7a8782",
+    "selectedColor": "#0b2b26",
+    "backgroundColor": "#fbfcf8",
     "borderStyle": "black",
     "list": [
       {

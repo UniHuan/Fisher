@@ -13,6 +13,9 @@ next-env.d.ts
 apps/api/storage/
 apps/admin/AGENTS.md
 apps/miniprogram/miniprogram_npm/
+# WeChat DevTools compiles TypeScript in place
+apps/miniprogram/src/**/*.js
+apps/miniprogram/src/**/*.js.map
 .superpowers/
 .DS_Store
 
