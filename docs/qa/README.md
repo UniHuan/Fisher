@@ -9,6 +9,8 @@
 | 数据质量门槛 | 未通过，演示数据仅 1 个已发布钓点 | [data-quality.md](data-quality.md) |
 | 本地逻辑备份恢复 | 通过 | [backup-rehearsal.md](backup-rehearsal.md) |
 | 安全静态审查 | 通过，依赖审计无已知漏洞 | [security-review.md](security-review.md) |
+| V1.1 UGC staging 验收 | 待验收，staging 未部署 | [v1.1-ugc-acceptance.md](v1.1-ugc-acceptance.md) |
+| V1.1 公开 UGC 上线清单 | 待执行，含微信、法务和运营门禁 | [v1.1-ugc-launch-checklist.md](v1.1-ugc-launch-checklist.md) |
 
 ## 一键命令
 
