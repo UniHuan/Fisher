@@ -59,6 +59,20 @@ describe('Admin auth (e2e)', () => {
     return manualKey;
   }
 
+  it('forces every admin role to bind TOTP before issuing a session', async () => {
+    for (const role of [ADMIN_ROLE.REVIEWER, ADMIN_ROLE.OPERATOR, ADMIN_ROLE.SUPER_ADMIN]) {
+      const admin = await createAdmin(app, role);
+      const login = await loginWithPassword(app, admin);
+
+      expect(login.status).toBe(200);
+      expect(login.body.data).toMatchObject({
+        must_bind_totp: true,
+        mfa_token: expect.any(String),
+      });
+      expect(login.headers['set-cookie']).toBeUndefined();
+    }
+  });
+
   it('sets host-only secure cookies and never returns tokens', async () => {
     const session = await loginAs(app, 'operator');
 
@@ -78,7 +92,7 @@ describe('Admin auth (e2e)', () => {
       admin_id: session.admin.adminId,
       username: session.admin.username,
       role: 'operator',
-      totp_enabled: false,
+      totp_enabled: true,
     });
 
     const json = JSON.stringify(session.response.body);
@@ -403,7 +417,7 @@ describe('Admin auth (e2e)', () => {
         admin_id: session.admin.adminId,
         username: session.admin.username,
         role: 'operator',
-        totp_enabled: false,
+        totp_enabled: true,
       },
       permissions: [...PERMISSIONS[ADMIN_ROLE.OPERATOR]],
     });
@@ -493,7 +507,10 @@ describe('Admin auth (e2e)', () => {
     const admin = await createAdmin(app, 'operator');
     const response = await loginWithPassword(app, admin, 'https://admin-staging.szfisher.test');
     expect(response.status).toBe(200);
-    expect(response.body.data.admin.admin_id).toBe(admin.adminId);
+    expect(response.body.data).toMatchObject({
+      must_bind_totp: true,
+      mfa_token: expect.any(String),
+    });
     expect(ADMIN_ORIGIN).not.toBe('https://admin-staging.szfisher.test');
   });
 

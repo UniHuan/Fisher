@@ -26,6 +26,7 @@ let reviewerAccount: RoleAccount;
 interface RoleAccount {
   username: string;
   password: string;
+  totpSecret?: string;
 }
 
 async function createRoleAccount(role: 'operator' | 'reviewer'): Promise<RoleAccount> {
@@ -83,6 +84,24 @@ async function loginWithPassword(page: Page, account: RoleAccount): Promise<void
   await page.getByLabel('账号').fill(account.username);
   await page.getByLabel('密码').fill(account.password);
   await page.getByRole('button', { name: /^登\s*录$/ }).click();
+
+  if (account.totpSecret === undefined) {
+    await expect(page.getByText('首次登录需要绑定 TOTP')).toBeVisible();
+    const manualKey = await page.locator('.manual-key').innerText();
+    const secret = manualKey.match(/[A-Z2-7]{16,}/)?.[0];
+    expect(secret).toBeTruthy();
+    const totpSecret = secret as string;
+    account.totpSecret = totpSecret;
+    await page.getByLabel('动态码').fill(generateSync({ secret: totpSecret }));
+    await page.getByRole('button', { name: '完成绑定' }).click();
+    await expect(page.getByText('TOTP 已绑定')).toBeVisible();
+    await page.getByRole('button', { name: '我已保存，进入后台' }).click();
+    return;
+  }
+
+  await expect(page.getByText('请输入认证器中的 6 位动态码')).toBeVisible();
+  await page.getByLabel('动态码').fill(generateSync({ secret: account.totpSecret }));
+  await page.getByRole('button', { name: '验证并进入' }).click();
 }
 
 async function cleanupTestData(): Promise<void> {

@@ -139,18 +139,38 @@ export async function loginWithPassword(
     .send({ username: admin.username, password: admin.password });
 }
 
+/**
+ * Creates a new admin of any role and completes the forced TOTP binding flow.
+ * Every admin role must bind TOTP, so the first password login returns must_bind_totp.
+ */
 export async function loginAs(
   app: INestApplication,
   role: AdminRole,
   username?: string,
 ): Promise<AuthSession> {
   const admin = await createAdmin(app, role, username);
-  const response = await loginWithPassword(app, admin);
-  const body = readAuthBody(response);
+  const firstLogin = await loginWithPassword(app, admin);
+  const mfaToken = readAuthBody(firstLogin).mfa_token;
+  if (mfaToken === undefined) {
+    throw new Error(`expected must_bind_totp mfa_token for a new ${role} admin`);
+  }
+  const setup = await request(app.getHttpServer())
+    .post('/api/v1/admin/auth/totp/setup')
+    .set(adminHeaders())
+    .send({ mfa_token: mfaToken })
+    .expect(200);
+  const secret = setup.body.data.manual_key as string;
+  admin.totpSecret = secret;
+  const enable = await request(app.getHttpServer())
+    .post('/api/v1/admin/auth/totp/enable')
+    .set(adminHeaders())
+    .send({ mfa_token: mfaToken, code: generateSync({ secret }) })
+    .expect(200);
+  const body = readAuthBody(enable);
   return {
-    response,
+    response: enable,
     body,
-    cookie: cookieHeaderFrom(response),
+    cookie: cookieHeaderFrom(enable),
     csrf: body.csrf_token ?? '',
     admin,
   };
@@ -182,38 +202,8 @@ export async function loginWithTotp(
   };
 }
 
-/**
- * Creates a brand-new super admin and completes the forced TOTP binding flow.
- * New admins start without TOTP, so the first password login returns must_bind_totp.
- */
-export async function loginAsSuperAdmin(app: INestApplication): Promise<AuthSession> {
-  const server = app.getHttpServer();
-  const admin = await createAdmin(app, ADMIN_ROLE.SUPER_ADMIN);
-  const firstLogin = await loginWithPassword(app, admin);
-  const mfaToken = readAuthBody(firstLogin).mfa_token;
-  if (mfaToken === undefined) {
-    throw new Error('expected must_bind_totp mfa_token');
-  }
-  const setup = await request(server)
-    .post('/api/v1/admin/auth/totp/setup')
-    .set(adminHeaders())
-    .send({ mfa_token: mfaToken })
-    .expect(200);
-  const secret = setup.body.data.manual_key as string;
-  admin.totpSecret = secret;
-  const enable = await request(server)
-    .post('/api/v1/admin/auth/totp/enable')
-    .set(adminHeaders())
-    .send({ mfa_token: mfaToken, code: generateSync({ secret }) })
-    .expect(200);
-  const body = readAuthBody(enable);
-  return {
-    response: enable,
-    body,
-    cookie: cookieHeaderFrom(enable),
-    csrf: body.csrf_token ?? '',
-    admin,
-  };
+export function loginAsSuperAdmin(app: INestApplication): Promise<AuthSession> {
+  return loginAs(app, ADMIN_ROLE.SUPER_ADMIN);
 }
 
 export async function refresh(app: INestApplication, cookie: string): Promise<AuthSession> {
