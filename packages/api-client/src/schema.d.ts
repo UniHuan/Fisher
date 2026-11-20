@@ -413,6 +413,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload and compress a feedback screenshot
+         * @description Accepts JPG, PNG and WebP up to 5 MB, re-encodes to WebP and returns the private work-bucket key. At most 10 images per user per day.
+         */
+        post: operations["FeedbackController_uploadImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit trial feedback
+         * @description Stores 10 to 500 characters plus optional page, spot, version, device context and up to 3 owned pending images. At most 5 feedbacks per user per day.
+         */
+        post: operations["FeedbackController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List trial feedback
+         * @description Newest first by created_at and feedback_id. status and category filter before pagination; default 20, maximum 50.
+         */
+        get: operations["AdminFeedbackController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/feedback/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one feedback with signed screenshot URLs
+         * @description Returns the full content, contact, page, spot name, user nickname, device context and 15-minute signed image URLs. Never returns an openid.
+         */
+        get: operations["AdminFeedbackController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update feedback status and handling note
+         * @description Records the handling admin and time. The note is internal and never public.
+         */
+        patch: operations["AdminFeedbackController_update"];
+        trace?: never;
+    };
     "/api/v1/admin/reports": {
         parameters: {
             query?: never;
@@ -1511,6 +1595,183 @@ export interface components {
             sort_order?: number;
             enabled?: boolean;
             parent_key?: string | null;
+        };
+        UploadFeedbackImageResponseDto: {
+            /** @example feedback/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            key: string;
+            /** @example 1200 */
+            width: number;
+            /** @example 900 */
+            height: number;
+            /** @example 182734 */
+            size_bytes: number;
+        };
+        CreateFeedbackResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            feedback_id: string;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "reviewing" | "resolved" | "closed";
+        };
+        FeedbackDeviceInfoDto: {
+            /** @example iPhone 15 Pro */
+            model?: string;
+            /** @example iOS 18.1 */
+            system?: string;
+            /** @example 8.0.54 */
+            wechat_version?: string;
+            /** @example 3.7.1 */
+            sdk_version?: string;
+        };
+        CreateFeedbackDto: {
+            /**
+             * @example bug
+             * @enum {string}
+             */
+            category: "bug" | "suggestion" | "content" | "photo" | "other";
+            /**
+             * @description Plain text, 10 to 500 Unicode code points after trimming
+             * @example 钓点详情页的收藏按钮点击后没有反应。
+             */
+            content: string;
+            /** @description Optional contact for follow-up */
+            contact?: string;
+            /** @description Current page path */
+            page?: string;
+            /** @description Spot ULID the feedback refers to */
+            spot_id?: string;
+            /**
+             * @description Client version
+             * @example 1.0.0
+             */
+            app_version?: string;
+            device_info?: components["schemas"]["FeedbackDeviceInfoDto"];
+            /**
+             * @description Work-bucket keys returned by POST /feedback/images; at most 3 after deduplication, each owned by the current user
+             * @example [
+             *       "feedback/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            image_keys?: string[];
+        };
+        AdminFeedbackItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            feedback_id: string;
+            /**
+             * @example bug
+             * @enum {string}
+             */
+            category: "bug" | "suggestion" | "content" | "photo" | "other";
+            /** @example 钓点详情页的收藏按钮点击后没有反应。 */
+            content: string;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "reviewing" | "resolved" | "closed";
+            /** @example 钓友 A7K2 */
+            user_nickname: string | null;
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string | null;
+            /** @example 深圳湾公园 */
+            spot_name: string | null;
+            /** @example 2 */
+            image_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            handled_at: string | null;
+        };
+        AdminFeedbackPageDto: {
+            items: components["schemas"]["AdminFeedbackItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 12 */
+            total: number;
+        };
+        AdminFeedbackDetailDto: {
+            /** @example 01HX0000000000000000000000 */
+            feedback_id: string;
+            /**
+             * @example bug
+             * @enum {string}
+             */
+            category: "bug" | "suggestion" | "content" | "photo" | "other";
+            /** @example 钓点详情页的收藏按钮点击后没有反应。 */
+            content: string;
+            /** @example wx_feedback_test */
+            contact: string | null;
+            /** @example pages/detail/detail */
+            page: string | null;
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string | null;
+            /** @example 深圳湾公园 */
+            spot_name: string | null;
+            /** @example 1.0.0 */
+            app_version: string | null;
+            /**
+             * @description Only model, system, wechat_version and sdk_version are returned
+             * @example {
+             *       "model": "iPhone 15 Pro",
+             *       "system": "iOS 18.1"
+             *     }
+             */
+            device_info: {
+                [key: string]: string;
+            } | null;
+            /**
+             * @description Signed 15-minute preview URLs for the private work bucket
+             * @example [
+             *       "/api/v1/uploads/preview?key=feedback%2F..."
+             *     ]
+             */
+            images: string[];
+            /**
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "reviewing" | "resolved" | "closed";
+            /** @example 钓友 A7K2 */
+            user_nickname: string | null;
+            /** @example null */
+            handler_id: string | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            handled_at: string | null;
+            /** @example 已复现，安排修复 */
+            note: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminFeedbackUpdateResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            feedback_id: string;
+            /**
+             * @example reviewing
+             * @enum {string}
+             */
+            status: "open" | "reviewing" | "resolved" | "closed";
+        };
+        UpdateFeedbackDto: {
+            /**
+             * @example reviewing
+             * @enum {string}
+             */
+            status?: "open" | "reviewing" | "resolved" | "closed";
+            /**
+             * @description Internal handling note; never shown to the reporting user
+             * @example 已复现，安排修复
+             */
+            note?: string;
         };
         AdminReportAuthorDto: {
             /** @example 01HX0000000000000000000001 */
@@ -4882,6 +5143,413 @@ export interface operations {
                 };
             };
             /** @description Dictionary row does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    FeedbackController_uploadImage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Compressed WebP work-bucket key and dimensions */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["UploadFeedbackImageResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    FeedbackController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFeedbackDto"];
+            };
+        };
+        responses: {
+            /** @description Feedback stored as open */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["CreateFeedbackResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminFeedbackController_list: {
+        parameters: {
+            query?: {
+                status?: "open" | "reviewing" | "resolved" | "closed";
+                category?: "bug" | "suggestion" | "content" | "photo" | "other";
+                /** @description Opaque cursor: base64(created_at|feedback_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin feedback page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminFeedbackPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminFeedbackController_detail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Feedback ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One feedback detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminFeedbackDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminFeedbackController_update: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Feedback ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeedbackDto"];
+            };
+        };
+        responses: {
+            /** @description Feedback updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminFeedbackUpdateResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
             404: {
                 headers: {
                     [name: string]: unknown;
