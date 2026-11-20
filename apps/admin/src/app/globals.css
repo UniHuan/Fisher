@@ -1,13 +1,13 @@
 :root {
-  --ink: #17211e;
-  --muted: #68736f;
-  --line: #dfe5e2;
-  --canvas: #f0f3f1;
+  --ink: #1B2420;
+  --muted: #6B7772;
+  --line: #E1E6DE;
+  --canvas: #F0F3EE;
   --surface: #ffffff;
-  --brand: #0f6b5c;
-  --brand-deep: #0a3f38;
-  --brand-soft: #e7f1ee;
-  --danger: #a33a2c;
+  --brand: #1E6B57;
+  --brand-deep: #123B32;
+  --brand-soft: #E7EFE8;
+  --danger: #A93226;
 }
 
 * {
@@ -51,7 +51,7 @@ select {
 
 .login-brand {
   background: var(--brand-deep);
-  color: #f4faf8;
+  color: #F4F8F2;
   padding: 64px clamp(40px, 7vw, 104px);
   display: flex;
   flex-direction: column;
@@ -81,7 +81,7 @@ select {
   margin: 34px 0 8px;
   font-size: 13px;
   letter-spacing: 0.16em;
-  color: #a9cdc5;
+  color: #A9BDB4;
 }
 
 .login-brand h1 {
@@ -97,7 +97,7 @@ select {
   margin: 26px 0 0;
   font-size: 15px;
   line-height: 1.8;
-  color: #c8ddd8;
+  color: #CEDCD6;
 }
 
 .login-card {
@@ -128,7 +128,7 @@ select {
   margin-bottom: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fafbfa;
+  background: #FAFBF7;
 }
 
 .manual-key {
@@ -145,7 +145,7 @@ select {
   margin-bottom: 20px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fafbfa;
+  background: #FAFBF7;
 }
 
 .app-shell {
@@ -164,31 +164,31 @@ select {
 }
 
 .header-title {
-  color: #f5fbf9;
+  color: #F5F9F3;
   font-size: 15px;
 }
 
 .header-subtitle {
-  color: #a9cdc5;
+  color: #A9BDB4;
   font-size: 11px;
   letter-spacing: 0.08em;
   margin-top: 2px;
 }
 
 .header-user {
-  color: #d9e9e5;
+  color: #DCE9E2;
   font-size: 13px;
 }
 
 .app-header .ant-tag {
   margin: 0;
-  color: #cde5df;
+  color: #D2E5DC;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
 }
 
 .app-header .ant-btn {
-  color: #eef8f5;
+  color: #EDF3EC;
   border-color: rgba(255, 255, 255, 0.28);
   background: transparent;
 }
@@ -297,7 +297,7 @@ select {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
-  background: #fafbfa;
+  background: #FAFBF7;
 }
 
 .image-tile.is-cover {
@@ -342,7 +342,7 @@ select {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fafbfa;
+  background: #FAFBF7;
 }
 
 .import-stats > div {
@@ -455,7 +455,7 @@ select {
 }
 
 .map-suggestion-item:hover {
-  background: #f7f9f8;
+  background: #F7F9F5;
 }
 
 .audit-json {
@@ -465,7 +465,7 @@ select {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #f7f9f8;
+  background: #F7F9F5;
   color: var(--ink);
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 12px;

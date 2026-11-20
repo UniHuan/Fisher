@@ -10,14 +10,14 @@
 }
 
 .poi-spot-name {
-  color: #13211c;
+  color: #1B2420;
   font-size: 34rpx;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .poi-spot-address {
-  color: #5e6b66;
+  color: #5C6B64;
   font-size: 24rpx;
   line-height: 1.5;
 }
@@ -35,8 +35,8 @@
 }
 
 .alert-danger {
-  background: #fbe7e1;
-  color: #b2412a;
+  background: #FAE7E2;
+  color: #A93226;
 }
 
 .poi-tabs {
@@ -50,17 +50,17 @@
   display: inline-block;
   margin-right: 12rpx;
   padding: 12rpx 22rpx;
-  border: 1rpx solid #d7e0d9;
+  border: 1rpx solid #D8DFD8;
   border-radius: 999rpx;
-  background: #fbfcf8;
-  color: #4c5b55;
+  background: #F5F4EE;
+  color: #4C5B54;
   font-size: 24rpx;
 }
 
 .poi-tab.is-active {
-  border-color: #0e6b5e;
-  background: #e3eee8;
-  color: #0b2b26;
+  border-color: #1E6B57;
+  background: #E3EEE6;
+  color: #123B32;
   font-weight: 600;
 }
 
@@ -87,7 +87,7 @@
 .poi-name {
   flex: 1;
   min-width: 0;
-  color: #13211c;
+  color: #1B2420;
   font-size: 29rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -98,13 +98,13 @@
 
 .poi-distance {
   flex: 0 0 auto;
-  color: #0e6b5e;
+  color: #1E6B57;
   font-size: 23rpx;
   font-variant-numeric: tabular-nums;
 }
 
 .poi-address {
-  color: #5e6b66;
+  color: #5C6B64;
   font-size: 23rpx;
   line-height: 1.55;
 }
@@ -134,7 +134,7 @@
   width: 100%;
   padding: 28rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
   border-radius: 24rpx 24rpx 0 0;
-  background: #fbfcf8;
+  background: #F5F4EE;
 }
 
 .poi-sheet-head {
@@ -143,12 +143,12 @@
   justify-content: space-between;
   gap: 16rpx;
   padding-bottom: 18rpx;
-  border-bottom: 1rpx solid #d7e0d9;
+  border-bottom: 1rpx solid #D8DFD8;
 }
 
 .poi-sheet-name {
   display: block;
-  color: #13211c;
+  color: #1B2420;
   font-size: 32rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -157,14 +157,14 @@
 .poi-sheet-type {
   display: block;
   margin-top: 4rpx;
-  color: #5e6b66;
+  color: #5C6B64;
   font-size: 23rpx;
 }
 
 .poi-sheet-close {
   flex: 0 0 auto;
   padding: 4rpx 0 4rpx 20rpx;
-  color: #5e6b66;
+  color: #5C6B64;
   font-size: 25rpx;
 }
 
@@ -176,7 +176,7 @@
   display: flex;
   gap: 18rpx;
   padding: 14rpx 0;
-  border-bottom: 1rpx solid #e7ede8;
+  border-bottom: 1rpx solid #E3E8E1;
   font-size: 25rpx;
   line-height: 1.55;
 }
@@ -187,13 +187,13 @@
 
 .poi-sheet-label {
   flex: 0 0 120rpx;
-  color: #7a8782;
+  color: #6B7772;
 }
 
 .poi-sheet-value {
   flex: 1;
   min-width: 0;
-  color: #13211c;
+  color: #1B2420;
 }
 
 .poi-sheet-actions {
@@ -204,10 +204,10 @@
 
 .secondary-button {
   flex: 0 0 220rpx;
-  border: 1rpx solid #cfdcd4;
+  border: 1rpx solid #D2DAD2;
   border-radius: 12rpx;
-  background: #fbfcf8;
-  color: #13211c;
+  background: #F5F4EE;
+  color: #1B2420;
   font-size: 27rpx;
 }
 

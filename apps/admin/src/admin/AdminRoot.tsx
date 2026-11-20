@@ -34,8 +34,8 @@ export function AdminRoot() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#0f6b5c',
-          colorInfo: '#0f6b5c',
+          colorPrimary: '#1E6B57',
+          colorInfo: '#1E6B57',
           borderRadius: 6,
           fontFamily:
             '"PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif',

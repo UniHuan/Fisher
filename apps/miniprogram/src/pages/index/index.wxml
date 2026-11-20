@@ -8,7 +8,7 @@
   <view class="content">
     <view class="search-wrap">
       <view class="search-row card">
-        <icon class="search-icon" type="search" size="16" color="#5e6b66"></icon>
+        <icon class="search-icon" type="search" size="16" color="#5C6B64"></icon>
         <input
           class="search-input"
           value="{{keyword}}"
@@ -182,7 +182,7 @@
               <text class="filter-switch-label">显示禁钓点</text>
               <text class="filter-switch-hint">默认隐藏，开启后显示禁钓提示</text>
             </view>
-            <switch checked="{{includeBanned}}" color="#0e6b5e" bindchange="onBannedChange" />
+            <switch checked="{{includeBanned}}" color="#1E6B57" bindchange="onBannedChange" />
           </view>
         </view>
         <view wx:if="{{!fishOptions.length && !feeOptions.length}}" class="filter-empty">

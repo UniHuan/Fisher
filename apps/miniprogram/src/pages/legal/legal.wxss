@@ -5,7 +5,7 @@
 
 .legal-fallback-title {
   display: block;
-  color: #13211c;
+  color: #1B2420;
   font-size: 32rpx;
   font-weight: 600;
 }
@@ -13,7 +13,7 @@
 .legal-fallback-text {
   display: block;
   margin-top: 14rpx;
-  color: #5e6b66;
+  color: #5C6B64;
   font-size: 25rpx;
   line-height: 1.6;
 }
@@ -21,7 +21,7 @@
 .legal-fallback-url {
   display: block;
   margin-top: 18rpx;
-  color: #0e6b5e;
+  color: #1E6B57;
   font-size: 23rpx;
   line-height: 1.5;
   word-break: break-all;
