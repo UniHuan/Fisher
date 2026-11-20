@@ -1,4 +1,4 @@
-import { Module, type DynamicModule, type Provider } from '@nestjs/common';
+import { Global, Module, type DynamicModule, type Provider } from '@nestjs/common';
 import { AppAuthGuard } from '../../common/guards/app-auth.guard';
 import { OptionalAppAuthGuard } from '../../common/guards/optional-app-auth.guard';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -14,6 +14,9 @@ export interface AppAuthModuleOptions {
   wechatAuthProvider?: Provider;
 }
 
+// Global so feature modules can declare AppAuthGuard/OptionalAppAuthGuard without
+// importing this dynamic module a second time (which would remount its controller).
+@Global()
 @Module({})
 export class AppAuthModule {
   static register(options: AppAuthModuleOptions = {}): DynamicModule {

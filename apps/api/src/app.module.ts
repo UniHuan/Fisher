@@ -11,6 +11,7 @@ import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { HealthController } from './modules/health/health.controller';
 import { PoisModule } from './modules/pois/pois.module';
 import { PublicSpotsModule } from './modules/public-spots/public-spots.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { WechatCallbackModule } from './modules/wechat-callback/wechat-callback.module';
@@ -42,6 +43,9 @@ export class AppModule {
         AnalyticsModule,
         AdminAuthModule,
         AppAuthModule.register({ wechatAuthProvider: options.wechatAuthProvider }),
+        ReportsModule.register({
+          contentSecurityProvider: options.contentSecurityProvider,
+        }),
         AuditLogModule,
         DictionariesModule,
         AdminSpotsModule,

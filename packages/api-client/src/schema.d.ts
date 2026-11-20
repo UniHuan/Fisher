@@ -228,6 +228,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a text-only comment, catch or intel report
+         * @description Always returns 201; moderation_status tells the client whether the content was published, rejected or queued for review.
+         */
+        post: operations["ReportsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current user reports including pending and rejected */
+        get: operations["ReportsController_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spots/{spotId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List published reports for a spot with type filters and cursor pagination */
+        get: operations["ReportsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -840,6 +894,147 @@ export interface components {
              */
             restricted_until: string | null;
             notices: components["schemas"]["AppNoticeDto"][];
+        };
+        CreateReportResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /**
+             * @description 201 is returned regardless of the machine review outcome
+             * @example published
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            /** @example 已发布 */
+            message: string;
+        };
+        CreateReportDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /**
+             * @description Plain text, 1 to 500 Unicode code points after trimming. Emoji count as one.
+             * @example 今天罗非爆护，巴掌大，钓了十几条。
+             */
+            content: string;
+            /**
+             * @description Required for catch content
+             * @example luofei
+             */
+            fish_key?: string;
+            /**
+             * @description Catch weight in kilograms; catch content only
+             * @example 2.5
+             */
+            catch_weight_kg?: number;
+            /**
+             * @description Required the first time the user accepts the community terms
+             * @example 2026-11-20
+             */
+            terms_version?: string;
+        };
+        MyReportSpotDto: {
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /** @example 深圳湾公园东门钓点 */
+            spot_name: string;
+            /** @example open */
+            open_status: string | null;
+            /**
+             * @description False when the spot is banned, offline or deleted
+             * @example true
+             */
+            can_open: boolean;
+        };
+        MyReportItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /** @example 今天鱼口不错 */
+            content: string;
+            /**
+             * @description Public paths for visible images; pending/rejected images stay empty
+             * @example []
+             */
+            images: string[];
+            /**
+             * @example machine_pending
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            /** @example 广告引流 */
+            reject_reason: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            audit_time: string | null;
+            spot: components["schemas"]["MyReportSpotDto"];
+        };
+        MyReportPageDto: {
+            items: components["schemas"]["MyReportItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 3 */
+            total: number;
+        };
+        PublicReportAuthorDto: {
+            /** @example 钓友 A7K2 */
+            nickname: string | null;
+            /** @example null */
+            avatar_url: string | null;
+        };
+        PublicReportItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /** @example 今天鱼口不错 */
+            content: string;
+            /**
+             * @description Relative public image paths; empty until image uploads land
+             * @example []
+             */
+            images: string[];
+            /** @example luofei */
+            fish_key: string | null;
+            /**
+             * @description Decimal serialized as a string
+             * @example 2.50
+             */
+            catch_weight_kg: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @example 18 */
+            like_count: number;
+            /** @example false */
+            liked_by_me: boolean;
+            /** @example false */
+            is_mine: boolean;
+            /** @example false */
+            is_adopted: boolean;
+            author: components["schemas"]["PublicReportAuthorDto"];
+        };
+        PublicReportPageDto: {
+            items: components["schemas"]["PublicReportItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 12 */
+            total: number;
         };
         AuditLogItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -3121,6 +3316,204 @@ export interface operations {
             };
             /** @description Dependency unavailable (50301) */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReportDto"];
+            };
+        };
+        responses: {
+            /** @description Report stored; the machine review outcome is in moderation_status */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["CreateReportResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302, 40303, 40304, 40305) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_mine: {
+        parameters: {
+            query?: {
+                /** @description pending=machine_pending; published=published/human_approved; rejected=machine_rejected/human_rejected; removed=admin removal */
+                status?: "all" | "pending" | "published" | "rejected" | "removed";
+                /** @description Opaque cursor: base64(created_at|report_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current user report page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["MyReportPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_list: {
+        parameters: {
+            query?: {
+                content_type?: "comment" | "catch" | "intel";
+                /** @description Opaque cursor: base64(created_at|report_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                spotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible reports, next cursor and total */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicReportPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

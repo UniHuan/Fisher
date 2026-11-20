@@ -586,6 +586,227 @@ paths:
       security:
         - bearer: []
       tags: *a25
+  /api/v1/reports:
+    post:
+      description: Always returns 201; moderation_status tells the client whether the
+        content was published, rejected or queued for review.
+      operationId: ReportsController_create
+      parameters:
+        - &a26
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a27
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportDto"
+      responses:
+        "201":
+          description: Report stored; the machine review outcome is in moderation_status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CreateReportResponseDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40302, 40303, 40304, 40305)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "429":
+          description: Too many requests (42901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: Publish a text-only comment, catch or intel report
+      tags: &a28
+        - reports
+  /api/v1/reports/mine:
+    get:
+      operationId: ReportsController_mine
+      parameters:
+        - *a26
+        - *a27
+        - name: status
+          required: false
+          in: query
+          description: pending=machine_pending; published=published/human_approved;
+            rejected=machine_rejected/human_rejected; removed=admin removal
+          schema:
+            default: all
+            type: string
+            enum:
+              - all
+              - pending
+              - published
+              - rejected
+              - removed
+        - name: cursor
+          required: false
+          in: query
+          description: "Opaque cursor: base64(created_at|report_id)"
+          schema:
+            maxLength: 256
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 20
+            default: 10
+            type: integer
+      responses:
+        "200":
+          description: The current user report page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MyReportPageDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: List the current user reports including pending and rejected
+      tags: *a28
+  /api/v1/spots/{spotId}/reports:
+    get:
+      operationId: ReportsController_list
+      parameters:
+        - *a26
+        - *a27
+        - name: spotId
+          required: true
+          in: path
+          description: Spot ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: content_type
+          required: false
+          in: query
+          schema:
+            example: catch
+            type: string
+            enum:
+              - comment
+              - catch
+              - intel
+        - name: cursor
+          required: false
+          in: query
+          description: "Opaque cursor: base64(created_at|report_id)"
+          schema:
+            maxLength: 256
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 20
+            default: 10
+            type: integer
+      responses:
+        "200":
+          description: Visible reports, next cursor and total
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PublicReportPageDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      summary: List published reports for a spot with type filters and cursor pagination
+      tags: *a28
   /api/v1/admin/audit-logs:
     get:
       operationId: AuditLogController_list
@@ -764,7 +985,7 @@ paths:
     get:
       operationId: AdminDictionariesController_list
       parameters:
-        - &a26
+        - &a29
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -776,7 +997,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a27
+        - &a30
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -797,40 +1018,40 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminDictionaryListDto"
-        "400": &a28
+        "400": &a31
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": &a29
+        "401": &a32
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a30
+        "403": &a33
           description: Forbidden (40301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a31
+        "500": &a34
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a32
+      security: &a35
         - admin-cookie: []
       summary: List every dictionary row, including disabled ones
-      tags: &a33
+      tags: &a36
         - admin dictionaries
     post:
       operationId: AdminDictionariesController_create
       parameters:
-        - *a26
-        - *a27
+        - *a29
+        - *a30
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -856,25 +1077,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminDictionaryItemDto"
-        "400": *a28
-        "401": *a29
-        "403": *a30
+        "400": *a31
+        "401": *a32
+        "403": *a33
         "409":
           description: Dictionary key already exists (40901)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a31
-      security: *a32
+        "500": *a34
+      security: *a35
       summary: Create a dictionary row
-      tags: *a33
+      tags: *a36
   /api/v1/admin/dictionaries/{type}/{key}:
     put:
       operationId: AdminDictionariesController_update
       parameters:
-        - *a26
-        - *a27
+        - *a29
+        - *a30
         - name: type
           required: true
           in: path
@@ -912,24 +1133,24 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminDictionaryItemDto"
-        "400": *a28
-        "401": *a29
-        "403": *a30
+        "400": *a31
+        "401": *a32
+        "403": *a33
         "404":
           description: Dictionary row does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a31
-      security: *a32
+        "500": *a34
+      security: *a35
       summary: Update a dictionary label, order, visibility or parent
-      tags: *a33
+      tags: *a36
   /api/v1/admin/spots:
     get:
       operationId: AdminSpotsController_list
       parameters:
-        - &a34
+        - &a37
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -941,7 +1162,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a35
+        - &a38
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -1016,40 +1237,40 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPageDto"
-        "400": &a36
+        "400": &a39
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": &a37
+        "401": &a40
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a38
+        "403": &a41
           description: Forbidden (40301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a39
+        "500": &a42
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a40
+      security: &a43
         - admin-cookie: []
       summary: List spots for admin management
-      tags: &a41
+      tags: &a44
         - admin spots
     post:
       operationId: AdminSpotsController_create
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -1075,35 +1296,35 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotWriteResponseDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
-        "500": *a39
-      security: *a40
+        "400": *a39
+        "401": *a40
+        "403": *a41
+        "500": *a42
+      security: *a43
       summary: Create a spot draft
-      tags: *a41
+      tags: *a44
   /api/v1/admin/spots/import-template:
     get:
       operationId: AdminSpotsController_importTemplate
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
       responses:
         "200":
           description: Excel template
-        "400": *a36
-        "401": *a37
-        "403": *a38
-        "500": *a39
-      security: *a40
+        "400": *a39
+        "401": *a40
+        "403": *a41
+        "500": *a42
+      security: *a43
       summary: Download the Excel import template
-      tags: *a41
+      tags: *a44
   /api/v1/admin/spots/import:
     post:
       operationId: AdminSpotsController_importSpots
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -1141,30 +1362,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": *a37
-        "403": *a38
+        "401": *a40
+        "403": *a41
         "413":
           description: Import file exceeds 20 MB (41301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
+        "500": *a42
         "503":
           description: Import storage unavailable (50301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: *a40
+      security: *a43
       summary: Upload an Excel import and create draft spots asynchronously
-      tags: *a41
+      tags: *a44
   /api/v1/admin/spots/{id}:
     get:
       operationId: AdminSpotsController_detail
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: id
           required: true
           in: path
@@ -1185,24 +1406,24 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotDetailDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
+        "400": *a39
+        "401": *a40
+        "403": *a41
         "404":
           description: Spot does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
-      security: *a40
+        "500": *a42
+      security: *a43
       summary: Get one spot, including drafts and offline rows
-      tags: *a41
+      tags: *a44
     put:
       operationId: AdminSpotsController_update
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: id
           required: true
           in: path
@@ -1235,9 +1456,9 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotWriteResponseDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
+        "400": *a39
+        "401": *a40
+        "403": *a41
         "404":
           description: Spot does not exist (40401)
           content:
@@ -1256,15 +1477,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
-      security: *a40
+        "500": *a42
+      security: *a43
       summary: Update a draft or published spot
-      tags: *a41
+      tags: *a44
     delete:
       operationId: AdminSpotsController_remove
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: id
           required: true
           in: path
@@ -1291,9 +1512,9 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotDeleteResponseDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
+        "400": *a39
+        "401": *a40
+        "403": *a41
         "404":
           description: Spot does not exist (40401)
           content:
@@ -1306,16 +1527,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
-      security: *a40
+        "500": *a42
+      security: *a43
       summary: Soft-delete a draft or offline spot
-      tags: *a41
+      tags: *a44
   /api/v1/admin/spots/{id}/publish:
     post:
       operationId: AdminSpotsController_publish
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: id
           required: true
           in: path
@@ -1348,9 +1569,9 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotDetailDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
+        "400": *a39
+        "401": *a40
+        "403": *a41
         "404":
           description: Spot does not exist (40401)
           content:
@@ -1369,16 +1590,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
-      security: *a40
+        "500": *a42
+      security: *a43
       summary: Publish a draft or offline spot
-      tags: *a41
+      tags: *a44
   /api/v1/admin/spots/{id}/offline:
     post:
       operationId: AdminSpotsController_offline
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: id
           required: true
           in: path
@@ -1411,9 +1632,9 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotDetailDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
+        "400": *a39
+        "401": *a40
+        "403": *a41
         "404":
           description: Spot does not exist (40401)
           content:
@@ -1426,16 +1647,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
-      security: *a40
+        "500": *a42
+      security: *a43
       summary: Take a published spot offline
-      tags: *a41
+      tags: *a44
   /api/v1/admin/spots/{id}/verify:
     post:
       operationId: AdminSpotsController_verify
       parameters:
-        - *a34
-        - *a35
+        - *a37
+        - *a38
         - name: id
           required: true
           in: path
@@ -1468,19 +1689,19 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotDetailDto"
-        "400": *a36
-        "401": *a37
-        "403": *a38
+        "400": *a39
+        "401": *a40
+        "403": *a41
         "404":
           description: Spot does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a39
-      security: *a40
+        "500": *a42
+      security: *a43
       summary: Mark a spot verified
-      tags: *a41
+      tags: *a44
   /api/v1/config:
     get:
       operationId: ClientConfigController_get
@@ -1536,7 +1757,7 @@ paths:
     get:
       operationId: PublicSpotsController_list
       parameters:
-        - &a42
+        - &a45
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -1548,7 +1769,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a43
+        - &a46
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -1663,33 +1884,33 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicSpotPageDto"
-        "400": &a44
+        "400": &a47
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "404": &a45
+        "404": &a48
           description: Not found (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a46
+        "500": &a49
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
       summary: List published spots with filters, search and sorting
-      tags: &a47
+      tags: &a50
         - public spots
   /api/v1/spots/map:
     get:
       operationId: PublicSpotsController_map
       parameters:
-        - *a42
-        - *a43
+        - *a45
+        - *a46
         - name: north
           required: false
           in: query
@@ -1745,17 +1966,17 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicMapResponseDto"
-        "400": *a44
-        "404": *a45
-        "500": *a46
+        "400": *a47
+        "404": *a48
+        "500": *a49
       summary: Return lightweight published spot map points or clusters
-      tags: *a47
+      tags: *a50
   /api/v1/spots/{id}:
     get:
       operationId: PublicSpotsController_detail
       parameters:
-        - *a42
-        - *a43
+        - *a45
+        - *a46
         - name: id
           required: true
           in: path
@@ -1776,22 +1997,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicSpotDetailDto"
-        "400": *a44
+        "400": *a47
         "404":
           description: Spot is not published or does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a46
+        "500": *a49
       summary: Get a published spot detail
-      tags: *a47
+      tags: *a50
   /api/v1/spots/{id}/pois:
     get:
       operationId: PublicSpotsController_pois
       parameters:
-        - *a42
-        - *a43
+        - *a45
+        - *a46
         - name: id
           required: true
           in: path
@@ -1825,21 +2046,21 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicPoiListDto"
-        "400": *a44
+        "400": *a47
         "404":
           description: Spot is not published or does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a46
+        "500": *a49
       summary: List nearby POIs for a published spot
-      tags: *a47
+      tags: *a50
   /api/v1/admin/pois:
     get:
       operationId: PoisController_list
       parameters:
-        - &a48
+        - &a51
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -1851,7 +2072,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a49
+        - &a52
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -1914,40 +2135,40 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminPoiPageDto"
-        "400": &a50
+        "400": &a53
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": &a51
+        "401": &a54
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a52
+        "403": &a55
           description: Forbidden (40301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a53
+        "500": &a56
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a54
+      security: &a57
         - admin-cookie: []
       summary: List POIs in the shared POI library
-      tags: &a55
+      tags: &a58
         - admin pois
     post:
       operationId: PoisController_create
       parameters:
-        - *a48
-        - *a49
+        - *a51
+        - *a52
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -1973,19 +2194,19 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminPoiItemDto"
-        "400": *a50
-        "401": *a51
-        "403": *a52
-        "500": *a53
-      security: *a54
+        "400": *a53
+        "401": *a54
+        "403": *a55
+        "500": *a56
+      security: *a57
       summary: Create a manually entered POI
-      tags: *a55
+      tags: *a58
   /api/v1/admin/pois/{id}:
     put:
       operationId: PoisController_update
       parameters:
-        - *a48
-        - *a49
+        - *a51
+        - *a52
         - name: id
           required: true
           in: path
@@ -2018,25 +2239,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminPoiItemDto"
-        "400": *a50
-        "401": *a51
-        "403": *a52
+        "400": *a53
+        "401": *a54
+        "403": *a55
         "404":
           description: POI does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a53
-      security: *a54
+        "500": *a56
+      security: *a57
       summary: Correct or hide a POI
-      tags: *a55
+      tags: *a58
   /api/v1/admin/spots/{id}/pois:
     get:
       operationId: PoisController_listSpotPois
       parameters:
-        - *a48
-        - *a49
+        - *a51
+        - *a52
         - name: id
           required: true
           in: path
@@ -2057,24 +2278,24 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPoiListDto"
-        "400": *a50
-        "401": *a51
-        "403": *a52
+        "400": *a53
+        "401": *a54
+        "403": *a55
         "404":
           description: Spot does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a53
-      security: *a54
+        "500": *a56
+      security: *a57
       summary: List a spot POI bindings, including hidden POIs and last sync
-      tags: *a55
+      tags: *a58
     post:
       operationId: PoisController_bind
       parameters:
-        - *a48
-        - *a49
+        - *a51
+        - *a52
         - name: id
           required: true
           in: path
@@ -2107,9 +2328,9 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPoiItemDto"
-        "400": *a50
-        "401": *a51
-        "403": *a52
+        "400": *a53
+        "401": *a54
+        "403": *a55
         "404":
           description: Spot or POI does not exist (40401)
           content:
@@ -2122,16 +2343,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a53
-      security: *a54
+        "500": *a56
+      security: *a57
       summary: Bind an existing POI to a spot
-      tags: *a55
+      tags: *a58
   /api/v1/admin/spots/{id}/pois/{poi_id}:
     delete:
       operationId: PoisController_unbind
       parameters:
-        - *a48
-        - *a49
+        - *a51
+        - *a52
         - name: id
           required: true
           in: path
@@ -2165,25 +2386,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPoiUnbindDto"
-        "400": *a50
-        "401": *a51
-        "403": *a52
+        "400": *a53
+        "401": *a54
+        "403": *a55
         "404":
           description: Spot or binding does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a53
-      security: *a54
+        "500": *a56
+      security: *a57
       summary: Unbind a POI from a spot
-      tags: *a55
+      tags: *a58
   /api/v1/admin/spots/{id}/pois/sync:
     post:
       operationId: PoisController_sync
       parameters:
-        - *a48
-        - *a49
+        - *a51
+        - *a52
         - name: id
           required: true
           in: path
@@ -2210,25 +2431,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PoiSyncRunDto"
-        "400": *a50
-        "401": *a51
-        "403": *a52
+        "400": *a53
+        "401": *a54
+        "403": *a55
         "404":
           description: Spot does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a53
+        "500": *a56
         "503":
           description: POI provider unavailable (50301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: *a54
+      security: *a57
       summary: Sync nearby POIs from the configured provider
-      tags: *a55
+      tags: *a58
   /api/v1/admin/uploads:
     post:
       operationId: UploadsController_create
@@ -2343,7 +2564,7 @@ paths:
     get:
       operationId: ImportsController_job
       parameters:
-        - &a56
+        - &a59
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -2355,7 +2576,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a57
+        - &a60
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -2383,13 +2604,13 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/ImportJobDto"
-        "401": &a58
+        "401": &a61
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a59
+        "403": &a62
           description: Forbidden (40301)
           content:
             application/json:
@@ -2401,23 +2622,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a60
+        "500": &a63
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a61
+      security: &a64
         - admin-cookie: []
       summary: Get an import job status and counts
-      tags: &a62
+      tags: &a65
         - admin imports
   /api/v1/admin/imports/{id}/errors:
     get:
       operationId: ImportsController_errors
       parameters:
-        - *a56
-        - *a57
+        - *a59
+        - *a60
         - name: id
           required: true
           in: path
@@ -2428,18 +2649,18 @@ paths:
       responses:
         "200":
           description: CSV report
-        "401": *a58
-        "403": *a59
+        "401": *a61
+        "403": *a62
         "404":
           description: Import or report does not exist (40401)
           content:
             text/csv:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a60
-      security: *a61
+        "500": *a63
+      security: *a64
       summary: Download the import error and warning CSV
-      tags: *a62
+      tags: *a65
 info:
   title: SZFisher API
   description: "Shenzhen fishing assistant API. Base path: /api/v1."
@@ -2854,6 +3075,262 @@ components:
         - can_publish
         - restricted_until
         - notices
+    CreateReportResponseDto:
+      type: object
+      properties:
+        report_id:
+          type: string
+          example: 01HX0000000000000000000000
+        moderation_status:
+          type: string
+          enum:
+            - machine_pending
+            - machine_rejected
+            - published
+            - human_approved
+            - human_rejected
+            - removed
+          example: published
+          description: 201 is returned regardless of the machine review outcome
+        message:
+          type: string
+          example: 已发布
+      required:
+        - report_id
+        - moderation_status
+        - message
+    CreateReportDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000000
+        content_type:
+          type: string
+          enum:
+            - comment
+            - catch
+            - intel
+          example: comment
+        content:
+          type: string
+          description: Plain text, 1 to 500 Unicode code points after trimming. Emoji
+            count as one.
+          example: 今天罗非爆护，巴掌大，钓了十几条。
+          maxLength: 2000
+        fish_key:
+          type: string
+          description: Required for catch content
+          maxLength: 64
+          example: luofei
+        catch_weight_kg:
+          type: number
+          description: Catch weight in kilograms; catch content only
+          minimum: 0.01
+          maximum: 999.99
+          example: 2.5
+        terms_version:
+          type: string
+          description: Required the first time the user accepts the community terms
+          maxLength: 16
+          example: 2026-11-20
+      required:
+        - spot_id
+        - content_type
+        - content
+    MyReportSpotDto:
+      type: object
+      properties:
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000001
+        spot_name:
+          type: string
+          example: 深圳湾公园东门钓点
+        open_status:
+          type: string
+          nullable: true
+          example: open
+        can_open:
+          type: boolean
+          example: true
+          description: False when the spot is banned, offline or deleted
+      required:
+        - spot_id
+        - spot_name
+        - open_status
+        - can_open
+    MyReportItemDto:
+      type: object
+      properties:
+        report_id:
+          type: string
+          example: 01HX0000000000000000000000
+        content_type:
+          type: string
+          enum:
+            - comment
+            - catch
+            - intel
+          example: comment
+        content:
+          type: string
+          example: 今天鱼口不错
+        images:
+          example: []
+          description: Public paths for visible images; pending/rejected images stay empty
+          type: array
+          items:
+            type: string
+        moderation_status:
+          type: string
+          enum:
+            - machine_pending
+            - machine_rejected
+            - published
+            - human_approved
+            - human_rejected
+            - removed
+          example: machine_pending
+        reject_reason:
+          type: string
+          nullable: true
+          example: 广告引流
+        created_at:
+          type: string
+          format: date-time
+        audit_time:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        spot:
+          $ref: "#/components/schemas/MyReportSpotDto"
+      required:
+        - report_id
+        - content_type
+        - content
+        - images
+        - moderation_status
+        - reject_reason
+        - created_at
+        - audit_time
+        - spot
+    MyReportPageDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyReportItemDto"
+        next_cursor:
+          type: string
+          nullable: true
+          example: null
+        total:
+          type: integer
+          example: 3
+      required:
+        - items
+        - next_cursor
+        - total
+    PublicReportAuthorDto:
+      type: object
+      properties:
+        nickname:
+          type: string
+          nullable: true
+          example: 钓友 A7K2
+        avatar_url:
+          type: string
+          nullable: true
+          example: null
+      required:
+        - nickname
+        - avatar_url
+    PublicReportItemDto:
+      type: object
+      properties:
+        report_id:
+          type: string
+          example: 01HX0000000000000000000000
+        spot_id:
+          type: string
+          example: 01HX0000000000000000000001
+        content_type:
+          type: string
+          enum:
+            - comment
+            - catch
+            - intel
+          example: comment
+        content:
+          type: string
+          example: 今天鱼口不错
+        images:
+          example: []
+          description: Relative public image paths; empty until image uploads land
+          type: array
+          items:
+            type: string
+        fish_key:
+          type: string
+          nullable: true
+          example: luofei
+        catch_weight_kg:
+          type: string
+          nullable: true
+          example: "2.50"
+          description: Decimal serialized as a string
+        created_at:
+          type: string
+          format: date-time
+        like_count:
+          type: integer
+          example: 18
+        liked_by_me:
+          type: boolean
+          example: false
+        is_mine:
+          type: boolean
+          example: false
+        is_adopted:
+          type: boolean
+          example: false
+        author:
+          $ref: "#/components/schemas/PublicReportAuthorDto"
+      required:
+        - report_id
+        - spot_id
+        - content_type
+        - content
+        - images
+        - fish_key
+        - catch_weight_kg
+        - created_at
+        - like_count
+        - liked_by_me
+        - is_mine
+        - is_adopted
+        - author
+    PublicReportPageDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicReportItemDto"
+        next_cursor:
+          type: string
+          nullable: true
+          example: null
+        total:
+          type: integer
+          example: 12
+      required:
+        - items
+        - next_cursor
+        - total
     AuditLogItemDto:
       type: object
       properties:
@@ -3461,7 +3938,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: &a63
+          example: &a66
             - luofei
             - jiyu
           type: array
@@ -3489,7 +3966,7 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: &a64
+          example: &a67
             - tai_diao
             - lu_ya
           type: array
@@ -3497,7 +3974,7 @@ components:
             type: string
         open_status:
           type: string
-          enum: &a65
+          enum: &a68
             - open
             - paused
             - banned
@@ -3523,7 +4000,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: &a66
+          example: &a69
             - spots/a.jpg
           type: array
           items:
@@ -3541,7 +4018,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: &a67
+          enum: &a70
             - official
             - operation
             - user_report
@@ -3595,7 +4072,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: *a63
+          example: *a66
           type: array
           items:
             type: string
@@ -3621,13 +4098,13 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: *a64
+          example: *a67
           type: array
           items:
             type: string
         open_status:
           type: string
-          enum: *a65
+          enum: *a68
           nullable: true
           example: open
         ban_note:
@@ -3650,7 +4127,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: *a66
+          example: *a69
           type: array
           items:
             type: string
@@ -3667,7 +4144,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: *a67
+          enum: *a70
           nullable: true
           description: Defaults to operation
     AdminSpotDeleteResponseDto:
@@ -3787,7 +4264,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: &a68
+          example: &a71
             - luofei
             - jiyu
           type: array
@@ -3807,7 +4284,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: &a69
+          enum: &a72
             - open
             - paused
             - banned
@@ -3828,7 +4305,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: &a70
+          enum: &a73
             - fresh
             - stale
             - expired
@@ -4091,7 +4568,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: *a68
+          example: *a71
           type: array
           items:
             type: string
@@ -4109,7 +4586,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: *a69
+          enum: *a72
           example: open
         is_core:
           type: boolean
@@ -4127,7 +4604,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: *a70
+          enum: *a73
           example: fresh
         distance_m:
           type: integer
@@ -4262,7 +4739,7 @@ components:
           example: 深圳湾公园停车场
         poi_type:
           type: string
-          enum: &a71
+          enum: &a74
             - food
             - parking
             - toilet
@@ -4293,7 +4770,7 @@ components:
           example: manual
         status:
           type: string
-          enum: &a72
+          enum: &a75
             - active
             - hidden
           example: active
@@ -4441,7 +4918,7 @@ components:
           example: 深圳湾公园停车场
         poi_type:
           type: string
-          enum: *a71
+          enum: *a74
           example: parking
         latitude:
           type: string
@@ -4466,7 +4943,7 @@ components:
           example: manual
         status:
           type: string
-          enum: *a72
+          enum: *a75
           example: active
         created_at:
           type: string

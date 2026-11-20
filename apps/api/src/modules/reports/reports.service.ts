@@ -1,0 +1,397 @@
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  ERROR_CODES,
+  MODERATION_STATUS,
+  OPEN_STATUS,
+  REPORT_CONTENT_TYPE,
+  SPOT_STATUS,
+} from '@szfisher/shared';
+import type { Prisma } from '@prisma/client';
+import { ulid } from 'ulid';
+import { AppError } from '../../common/errors/app-error';
+import type { AppUserContext } from '../../common/types/request-context';
+import { ClientConfigService } from '../config/config.service';
+import {
+  CONTENT_SECURITY_PROVIDER,
+  type ContentSecurityProvider,
+  type ContentSecuritySuggest,
+  type ContentSecurityTextResult,
+} from '../content-security/content-security.types';
+import { DictionariesRepository } from '../dictionaries/dictionaries.repository';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
+import type { CreateReportResponseDto } from './dto/create-report.dto';
+import type { MyReportStatusFilter } from './dto/my-report-list-query.dto';
+import type { MyReportItemDto } from './dto/my-report-response.dto';
+import type { PublicReportItemDto } from './dto/public-report-response.dto';
+import { decodeReportCursor, encodeReportCursor } from './report-cursor';
+import {
+  canOpenSpot,
+  toMyReportItem,
+  toPublicReportItem,
+} from './report.mapper';
+import { ReportsRepository, type SpotVisibility } from './reports.repository';
+
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 20;
+const MAX_CONTENT_CODE_POINTS = 500;
+const NEW_USER_WINDOW_MS = 24 * 60 * 60 * 1000;
+const DAILY_REPORT_RULE_SECONDS = 24 * 60 * 60;
+const DAILY_REPORT_LIMIT = 10;
+const NEW_USER_REPORT_LIMIT = 3;
+
+export const PUBLIC_REPORT_STATUSES: readonly string[] = [
+  MODERATION_STATUS.PUBLISHED,
+  MODERATION_STATUS.HUMAN_APPROVED,
+];
+
+const MY_STATUS_GROUPS: Record<MyReportStatusFilter, readonly string[] | null> = {
+  all: null,
+  pending: [MODERATION_STATUS.MACHINE_PENDING],
+  published: [MODERATION_STATUS.PUBLISHED, MODERATION_STATUS.HUMAN_APPROVED],
+  rejected: [MODERATION_STATUS.MACHINE_REJECTED, MODERATION_STATUS.HUMAN_REJECTED],
+  removed: [MODERATION_STATUS.REMOVED],
+};
+
+const CREATE_MESSAGES: Record<string, string> = {
+  [MODERATION_STATUS.PUBLISHED]: '已发布',
+  [MODERATION_STATUS.MACHINE_REJECTED]: '内容未通过审核',
+  [MODERATION_STATUS.MACHINE_PENDING]: '内容审核中',
+};
+
+export interface CreateReportInput {
+  spot_id: string;
+  content_type: string;
+  content: string;
+  fish_key?: string;
+  catch_weight_kg?: number;
+  terms_version?: string;
+}
+
+export interface PublicReportPage {
+  items: PublicReportItemDto[];
+  next_cursor: string | null;
+  total: number;
+}
+
+export interface MyReportPage {
+  items: MyReportItemDto[];
+  next_cursor: string | null;
+  total: number;
+}
+
+interface ContentShape {
+  fishKey: string | null;
+  catchWeightKg: number | null;
+}
+
+function validationError(field: string, message: string): AppError {
+  return new AppError(ERROR_CODES.VALIDATION, HttpStatus.BAD_REQUEST, message, [
+    { field, message },
+  ]);
+}
+
+function moderationStatusFor(suggest: ContentSecuritySuggest): string {
+  if (suggest === 'pass') {
+    return MODERATION_STATUS.PUBLISHED;
+  }
+  if (suggest === 'risky') {
+    return MODERATION_STATUS.MACHINE_REJECTED;
+  }
+  return MODERATION_STATUS.MACHINE_PENDING;
+}
+
+function isSpotPubliclyVisible(spot: SpotVisibility): boolean {
+  return canOpenSpot(spot);
+}
+
+@Injectable()
+export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly clientConfig: ClientConfigService,
+    private readonly dictionaries: DictionariesRepository,
+    private readonly rateLimit: RateLimitService,
+    private readonly repository: ReportsRepository,
+    @Inject(CONTENT_SECURITY_PROVIDER)
+    private readonly contentSecurity: ContentSecurityProvider,
+  ) {}
+
+  async create(
+    input: CreateReportInput,
+    appUser: AppUserContext | undefined,
+  ): Promise<CreateReportResponseDto> {
+    if (appUser === undefined) {
+      throw new AppError(
+        ERROR_CODES.UNAUTHENTICATED,
+        HttpStatus.UNAUTHORIZED,
+        'Authentication required',
+      );
+    }
+    await this.assertUgcEnabled();
+
+    const now = new Date();
+    const user = await this.repository.findUser(appUser.userId);
+    if (user === null) {
+      throw new AppError(
+        ERROR_CODES.UNAUTHENTICATED,
+        HttpStatus.UNAUTHORIZED,
+        'Authentication required',
+      );
+    }
+    if (user.status !== 'active' || user.deleted_at !== null) {
+      throw new AppError(
+        ERROR_CODES.REPORT_FORBIDDEN,
+        HttpStatus.FORBIDDEN,
+        'Account cannot publish',
+      );
+    }
+    if (user.restricted_until !== null && user.restricted_until.getTime() > now.getTime()) {
+      throw new AppError(
+        ERROR_CODES.USER_RESTRICTED,
+        HttpStatus.FORBIDDEN,
+        'Publishing is restricted',
+      );
+    }
+
+    const spot = await this.repository.findSpotVisibility(input.spot_id);
+    if (spot === null || spot.status !== SPOT_STATUS.PUBLISHED || spot.deleted_at !== null) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, HttpStatus.NOT_FOUND, 'Spot is not available');
+    }
+    if (spot.open_status === OPEN_STATUS.BANNED) {
+      throw new AppError(
+        ERROR_CODES.SPOT_NOT_OPEN_FOR_UGC,
+        HttpStatus.FORBIDDEN,
+        'Spot is not open for UGC',
+      );
+    }
+
+    const content = input.content.trim();
+    const codePoints = Array.from(content).length;
+    if (codePoints < 1 || codePoints > MAX_CONTENT_CODE_POINTS) {
+      throw validationError('content', 'Content must be 1 to 500 characters');
+    }
+    const shape = await this.resolveContentShape(input);
+
+    const termsVersion = this.config.get<string>('UGC_TERMS_VERSION')?.trim() ?? '';
+    if (termsVersion === '') {
+      throw new AppError(
+        ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'UGC terms version is not configured',
+      );
+    }
+    const providedTerms = input.terms_version?.trim();
+    const needsAcceptance =
+      user.terms_accepted_at === null || user.terms_version !== termsVersion;
+    if (needsAcceptance) {
+      if (providedTerms === undefined || providedTerms !== termsVersion) {
+        throw validationError('terms_version', 'The current terms version must be accepted');
+      }
+    } else if (providedTerms !== undefined && providedTerms !== termsVersion) {
+      throw validationError('terms_version', 'Unsupported terms version');
+    }
+
+    await this.enforceDailyLimit(user.user_id, user.created_at, now);
+
+    const reportId = ulid();
+    await this.repository.createReport({
+      reportId,
+      spotId: input.spot_id,
+      userId: user.user_id,
+      contentType: input.content_type,
+      content,
+      fishKey: shape.fishKey,
+      catchWeightKg: shape.catchWeightKg,
+      terms: needsAcceptance ? { version: termsVersion, acceptedAt: now } : null,
+    });
+
+    const result = await this.checkText(content, appUser.openid);
+    const moderationStatus = moderationStatusFor(result.suggest);
+    await this.repository.updateModeration(
+      reportId,
+      moderationStatus,
+      toMachineResult(result),
+    );
+
+    return {
+      report_id: reportId,
+      moderation_status: moderationStatus,
+      message: CREATE_MESSAGES[moderationStatus] ?? '内容审核中',
+    };
+  }
+
+  async listPublic(
+    spotId: string,
+    query: { content_type?: string; cursor?: string; limit?: number },
+    appUser: AppUserContext | undefined,
+  ): Promise<PublicReportPage> {
+    if (!(await this.isUgcEnabled())) {
+      return { items: [], next_cursor: null, total: 0 };
+    }
+    const spot = await this.repository.findSpotVisibility(spotId);
+    if (spot === null || !isSpotPubliclyVisible(spot)) {
+      return { items: [], next_cursor: null, total: 0 };
+    }
+
+    const limit = this.pageSize(query.limit);
+    const cursor = this.decodeCursor(query.cursor);
+    const { rows, total, likedReportIds, hasMore } = await this.repository.listPublic({
+      spotId,
+      contentType: query.content_type,
+      statuses: PUBLIC_REPORT_STATUSES,
+      cursor,
+      limit,
+      viewerId: appUser?.userId,
+    });
+
+    return {
+      items: rows.map((row) => toPublicReportItem(row, appUser?.userId, likedReportIds)),
+      next_cursor: this.nextCursor(rows, hasMore),
+      total,
+    };
+  }
+
+  async listMine(
+    query: { status?: MyReportStatusFilter; cursor?: string; limit?: number },
+    appUser: AppUserContext | undefined,
+  ): Promise<MyReportPage> {
+    if (appUser === undefined) {
+      throw new AppError(
+        ERROR_CODES.UNAUTHENTICATED,
+        HttpStatus.UNAUTHORIZED,
+        'Authentication required',
+      );
+    }
+    const status = query.status ?? 'all';
+    const limit = this.pageSize(query.limit);
+    const cursor = this.decodeCursor(query.cursor);
+    const { rows, total, hasMore } = await this.repository.listMine({
+      userId: appUser.userId,
+      statuses: MY_STATUS_GROUPS[status],
+      cursor,
+      limit,
+    });
+
+    return {
+      items: rows.map(toMyReportItem),
+      next_cursor: this.nextCursor(rows, hasMore),
+      total,
+    };
+  }
+
+  private async resolveContentShape(input: CreateReportInput): Promise<ContentShape> {
+    switch (input.content_type) {
+      case REPORT_CONTENT_TYPE.COMMENT:
+      case REPORT_CONTENT_TYPE.INTEL:
+        if (input.fish_key !== undefined || input.catch_weight_kg !== undefined) {
+          throw validationError(
+            'content_type',
+            'Only catch content may include fish_key or catch_weight_kg',
+          );
+        }
+        return { fishKey: null, catchWeightKg: null };
+      case REPORT_CONTENT_TYPE.CATCH: {
+        const fishKey = input.fish_key?.trim() ?? '';
+        if (fishKey === '') {
+          throw validationError('fish_key', 'Catch content requires a fish_key');
+        }
+        const fish = await this.dictionaries.findByKey('fish_type', fishKey);
+        if (fish === null || !fish.enabled) {
+          throw validationError('fish_key', 'Unknown or disabled fish_key');
+        }
+        return { fishKey, catchWeightKg: input.catch_weight_kg ?? null };
+      }
+      default:
+        throw validationError('content_type', 'Unsupported content type');
+    }
+  }
+
+  private async enforceDailyLimit(
+    userId: string,
+    createdAt: Date,
+    now: Date,
+  ): Promise<void> {
+    const isNewUser = now.getTime() - createdAt.getTime() < NEW_USER_WINDOW_MS;
+    const decision = await this.rateLimit.hit(
+      `report:user:${userId}:${now.toISOString().slice(0, 10).replace(/-/g, '')}`,
+      {
+        limit: isNewUser ? NEW_USER_REPORT_LIMIT : DAILY_REPORT_LIMIT,
+        windowSeconds: DAILY_REPORT_RULE_SECONDS,
+      },
+      now,
+    );
+    if (!decision.allowed) {
+      throw new AppError(
+        ERROR_CODES.RATE_LIMITED,
+        HttpStatus.TOO_MANY_REQUESTS,
+        'Daily posting limit reached',
+      );
+    }
+  }
+
+  private async checkText(
+    content: string,
+    openid: string,
+  ): Promise<ContentSecurityTextResult> {
+    try {
+      return await this.contentSecurity.checkText({ content, openid });
+    } catch {
+      // A moderation outage must never publish; it goes to the human queue.
+      this.logger.warn('Text moderation failed; routing content to human review');
+      return { suggest: 'review' };
+    }
+  }
+
+  private async assertUgcEnabled(): Promise<void> {
+    if (!(await this.isUgcEnabled())) {
+      throw new AppError(
+        ERROR_CODES.FEATURE_DISABLED,
+        HttpStatus.FORBIDDEN,
+        'UGC is disabled',
+      );
+    }
+  }
+
+  private async isUgcEnabled(): Promise<boolean> {
+    const config = await this.clientConfig.getClientConfig();
+    return config.features.ugc;
+  }
+
+  private pageSize(limit: number | undefined): number {
+    if (limit === undefined) {
+      return DEFAULT_PAGE_SIZE;
+    }
+    return Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
+  }
+
+  private decodeCursor(cursor: string | undefined) {
+    if (cursor === undefined) {
+      return null;
+    }
+    const decoded = decodeReportCursor(cursor);
+    if (decoded === null) {
+      throw validationError('cursor', 'Invalid cursor');
+    }
+    return decoded;
+  }
+
+  private nextCursor(rows: ReadonlyArray<{ created_at: Date; report_id: string }>, hasMore: boolean): string | null {
+    if (!hasMore) {
+      return null;
+    }
+    const last = rows[rows.length - 1];
+    return last === undefined ? null : encodeReportCursor(last.created_at, last.report_id);
+  }
+}
+
+function toMachineResult(result: ContentSecurityTextResult): Prisma.InputJsonObject {
+  // Only the conclusion, label and trace id are persisted: no content or openid.
+  return {
+    suggest: result.suggest,
+    ...(result.label === undefined ? {} : { label: result.label }),
+    ...(result.traceId === undefined ? {} : { trace_id: result.traceId }),
+  };
+}
