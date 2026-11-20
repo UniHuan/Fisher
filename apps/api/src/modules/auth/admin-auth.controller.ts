@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   Body,
   Controller,
@@ -45,7 +46,7 @@ import {
 } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { MfaTokenDto, RecoveryCodeDto, TotpCodeDto } from './dto/totp.dto';
-import { LoginRateLimiter } from './login-rate-limiter.service';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 
 const CSRF_HEADER = {
   name: 'X-CSRF-Token',
@@ -69,7 +70,7 @@ function sessionBody(session: IssuedSession): SessionBody {
 export class AdminAuthController {
   constructor(
     private readonly auth: AdminAuthService,
-    private readonly loginLimiter: LoginRateLimiter,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   @Public()
@@ -86,14 +87,23 @@ export class AdminAuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<SessionBody | { mfa_required: true; mfa_token: string } | { must_bind_totp: true; mfa_token: string }> {
     // Per-IP limiter runs before credential work so floods never reach argon2.
-    const decision = this.loginLimiter.hit(
-      request.ip ?? request.socket?.remoteAddress ?? 'unknown',
-    );
+    // Only the SHA-256 digest of the client IP is stored in the shared counter key.
+    const clientHash = createHash('sha256')
+      .update(request.ip ?? 'unknown')
+      .digest('hex');
+    const decision = await this.rateLimit.hit(`admin-login:ip:${clientHash}`, {
+      limit: 5,
+      windowSeconds: 60,
+    });
     response.setHeader('X-RateLimit-Limit', String(decision.limit));
     response.setHeader('X-RateLimit-Remaining', String(decision.remaining));
-    response.setHeader('X-RateLimit-Reset', String(Math.ceil(decision.resetAt / 1000)));
+    response.setHeader('X-RateLimit-Reset', String(Math.ceil(decision.resetAt.getTime() / 1000)));
     if (!decision.allowed) {
-      response.setHeader('Retry-After', String(decision.retryAfterSeconds));
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((decision.resetAt.getTime() - Date.now()) / 1000),
+      );
+      response.setHeader('Retry-After', String(retryAfterSeconds));
       throw new AppError(
         ERROR_CODES.RATE_LIMITED,
         HttpStatus.TOO_MANY_REQUESTS,

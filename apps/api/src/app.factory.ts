@@ -22,6 +22,9 @@ export async function createApp(extraControllers: Type<unknown>[] = []): Promise
     bodyParser: false,
     logger: new JsonLogger(),
   });
+  // Production terminates TLS in an nginx on the same host, so only the loopback
+  // hop is trusted to set X-Forwarded-For; direct clients cannot spoof their IP.
+  app.set('trust proxy', 'loopback');
   const adminOrigins = app.get(ConfigService).getOrThrow<string[]>('ADMIN_ORIGINS');
 
   // Request IDs must run before body parsing so parser errors still carry one.
