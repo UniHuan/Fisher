@@ -97,3 +97,108 @@ input {
 .card-pressed {
   opacity: 0.92;
 }
+
+.form-field {
+  margin-bottom: 26rpx;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #13211c;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.form-input {
+  width: 100%;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #d7e0d9;
+  border-radius: 10rpx;
+  background: #f2f5f0;
+  color: #13211c;
+  font-size: 27rpx;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 240rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #d7e0d9;
+  border-radius: 10rpx;
+  background: #f2f5f0;
+  color: #13211c;
+  font-size: 27rpx;
+  line-height: 1.6;
+}
+
+.form-counter {
+  display: block;
+  margin-top: 8rpx;
+  text-align: right;
+  color: #8a9691;
+  font-size: 22rpx;
+}
+
+.form-hint {
+  color: #7a8782;
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.form-error {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 10rpx;
+  background: #fbe7e1;
+  color: #b2412a;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.filter-chip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.filter-chip {
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: #eef2ee;
+  color: #5e6b66;
+  font-size: 24rpx;
+}
+
+.filter-chip-active {
+  background: #0e6b5e;
+  color: #ffffff;
+}
+
+.login-card {
+  padding: 36rpx 28rpx;
+  text-align: center;
+}
+
+.login-title {
+  display: block;
+  color: #13211c;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.login-text {
+  display: block;
+  margin-top: 14rpx;
+  color: #5e6b66;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.login-button {
+  margin-top: 28rpx;
+}
+
+.retry-button {
+  margin-top: 24rpx;
+}

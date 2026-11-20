@@ -1,4 +1,9 @@
 import type { components } from '@szfisher/api-client';
+import {
+  getAccessToken,
+  getRefreshToken,
+  refreshSession as refreshStoredSession,
+} from './session';
 
 function resolveApiOrigin(): string {
   // Set to 'http://localhost:3001' to develop against a local API.
@@ -29,6 +34,20 @@ export type PublicMapCluster = components['schemas']['PublicMapClusterDto'];
 export type PublicPoiItem = components['schemas']['PublicPoiItemDto'];
 export type PublicPoiList = components['schemas']['PublicPoiListDto'];
 export type PublicDictionaries = components['schemas']['PublicDictionariesDto'];
+export type AppSession = components['schemas']['AppSessionDto'];
+export type AppMe = components['schemas']['AppMeDto'];
+export type AppNotice = components['schemas']['AppNoticeDto'];
+export type AppUser = components['schemas']['AppUserDto'];
+export type ClientConfig = components['schemas']['ClientConfigDto'];
+export type LegalConfig = components['schemas']['LegalConfigDto'];
+export type CreateReportInput = components['schemas']['CreateReportDto'];
+export type CreateReportResult = components['schemas']['CreateReportResponseDto'];
+export type PublicReportItem = components['schemas']['PublicReportItemDto'];
+export type PublicReportPage = components['schemas']['PublicReportPageDto'];
+export type MyReportItem = components['schemas']['MyReportItemDto'];
+export type MyReportPage = components['schemas']['MyReportPageDto'];
+export type ReportContentType = 'comment' | 'catch' | 'intel';
+export type MyReportStatusFilter = 'all' | 'pending' | 'published' | 'rejected' | 'removed';
 
 interface ApiEnvelope<T> {
   code: number;
@@ -62,6 +81,35 @@ export interface MapBounds {
   include_banned?: boolean;
 }
 
+export interface SpotReportParams {
+  content_type?: ReportContentType;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface RequestOptions {
+  method?: 'GET' | 'POST' | 'DELETE';
+  query?: Record<string, unknown>;
+  body?: unknown;
+  /**
+   * 'optional' attaches the access token when one exists and refreshes on 401;
+   * 'required' behaves the same and is used by endpoints that need a user.
+   */
+  auth?: 'optional' | 'required';
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: number;
+
+  constructor(message: string, status: number, code: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 function queryString(params: Record<string, unknown>): string {
   const parts: string[] = [];
   for (const key of Object.keys(params)) {
@@ -74,38 +122,84 @@ function queryString(params: Record<string, unknown>): string {
   return parts.length === 0 ? '' : `?${parts.join('&')}`;
 }
 
-function request<T>(path: string, params: Record<string, unknown> = {}): Promise<T> {
+function sendOnce<T>(path: string, options: RequestOptions): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    wx.request({
-      url: `${API_BASE}${path}${queryString(params)}`,
-      method: 'GET',
+    const token = options.auth === undefined ? null : getAccessToken();
+    const header: Record<string, string> = {
+      'X-Client-Type': 'miniprogram',
+      'X-Client-Version': CLIENT_VERSION,
+      'X-Request-Id': `wx-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    };
+    if (token !== null) {
+      header.Authorization = `Bearer ${token}`;
+    }
+    const requestOptions: WxRequestOptions = {
+      url: `${API_BASE}${path}${queryString(options.query ?? {})}`,
+      method: options.method ?? 'GET',
       timeout: 15000,
-      header: {
-        'X-Client-Type': 'miniprogram',
-        'X-Client-Version': CLIENT_VERSION,
-        'X-Request-Id': `wx-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-      },
+      header,
       success: (response) => {
-        const body = response.data as ApiEnvelope<T>;
+        const body = response.data as Partial<ApiEnvelope<T>> | null;
         if (
           response.statusCode >= 200 &&
           response.statusCode < 300 &&
+          body !== null &&
           body.code === 0
         ) {
-          resolve(body.data);
+          resolve(body.data as T);
           return;
         }
-        reject(new Error(body.message || `请求失败 (${response.statusCode})`));
+        reject(
+          new ApiError(
+            body?.message || `请求失败 (${response.statusCode})`,
+            response.statusCode,
+            body?.code ?? 0,
+          ),
+        );
       },
       fail: (error) => {
         reject(new Error(error.errMsg || '网络请求失败'));
       },
-    });
+    };
+    if (options.body !== undefined) {
+      requestOptions.data = options.body;
+    }
+    wx.request(requestOptions);
   });
 }
 
+async function send<T>(
+  path: string,
+  options: RequestOptions,
+  allowRefresh: boolean,
+): Promise<T> {
+  try {
+    return await sendOnce<T>(path, options);
+  } catch (error) {
+    if (
+      allowRefresh &&
+      options.auth !== undefined &&
+      error instanceof ApiError &&
+      error.status === 401 &&
+      getRefreshToken() !== null
+    ) {
+      try {
+        await refreshStoredSession();
+      } catch {
+        throw error;
+      }
+      return send<T>(path, options, false);
+    }
+    throw error;
+  }
+}
+
+export function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return send<T>(path, options, true);
+}
+
 export function listSpots(params: SpotListParams): Promise<PublicSpotPage> {
-  return request<PublicSpotPage>('/spots', params as Record<string, unknown>);
+  return request<PublicSpotPage>('/spots', { query: params as Record<string, unknown> });
 }
 
 export function getSpot(spotId: string): Promise<PublicSpotDetail> {
@@ -113,7 +207,9 @@ export function getSpot(spotId: string): Promise<PublicSpotDetail> {
 }
 
 export function getMapSpots(params: MapBounds): Promise<PublicMapResponse> {
-  return request<PublicMapResponse>('/spots/map', params as Record<string, unknown>);
+  return request<PublicMapResponse>('/spots/map', {
+    query: params as Record<string, unknown>,
+  });
 }
 
 export function getDictionaries(): Promise<PublicDictionaries> {
@@ -122,7 +218,66 @@ export function getDictionaries(): Promise<PublicDictionaries> {
 
 export function getSpotPois(spotId: string, poiType?: string): Promise<PublicPoiList> {
   return request<PublicPoiList>(`/spots/${encodeURIComponent(spotId)}/pois`, {
-    poi_type: poiType,
+    query: { poi_type: poiType },
+  });
+}
+
+export function getClientConfig(): Promise<ClientConfig> {
+  return request<ClientConfig>('/config');
+}
+
+export function loginWithWechat(code: string): Promise<AppSession> {
+  return request<AppSession>('/auth/wechat/login', {
+    method: 'POST',
+    body: { code },
+  });
+}
+
+export function refreshSession(refreshToken: string): Promise<AppSession> {
+  return request<AppSession>('/auth/refresh', {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
+  });
+}
+
+export function logout(refreshToken: string): Promise<null> {
+  return request<null>('/auth/logout', {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
+    auth: 'required',
+  });
+}
+
+export function getMe(): Promise<AppMe> {
+  return request<AppMe>('/auth/me', { auth: 'required' });
+}
+
+export function listSpotReports(
+  spotId: string,
+  params: SpotReportParams = {},
+): Promise<PublicReportPage> {
+  return request<PublicReportPage>(`/spots/${encodeURIComponent(spotId)}/reports`, {
+    query: params as Record<string, unknown>,
+    auth: 'optional',
+  });
+}
+
+export function createReport(input: CreateReportInput): Promise<CreateReportResult> {
+  return request<CreateReportResult>('/reports', {
+    method: 'POST',
+    body: input,
+    auth: 'required',
+  });
+}
+
+export function listMyReports(
+  status: MyReportStatusFilter = 'all',
+  cursor?: string,
+  limit?: number,
+): Promise<MyReportPage> {
+  return request<MyReportPage>('/reports/mine', {
+    query: { status, cursor, limit },
+    auth: 'required',
   });
 }
 
@@ -178,4 +333,81 @@ export function dictionaryLabel(
   }
   const found = (items ?? []).find((item) => item.key === key);
   return found?.label ?? key;
+}
+
+export function contentTypeLabel(contentType: string): string {
+  if (contentType === 'catch') {
+    return '鱼获';
+  }
+  if (contentType === 'intel') {
+    return '情报';
+  }
+  return '评论';
+}
+
+export function moderationStatusLabel(status: string): string {
+  if (status === 'machine_pending') {
+    return '审核中';
+  }
+  if (status === 'published' || status === 'human_approved') {
+    return '已发布';
+  }
+  if (status === 'machine_rejected' || status === 'human_rejected') {
+    return '已驳回';
+  }
+  if (status === 'removed') {
+    return '已下架';
+  }
+  return '未知状态';
+}
+
+export function moderationStatusTone(status: string): string {
+  if (status === 'machine_pending') {
+    return 'tag-warn';
+  }
+  if (status === 'machine_rejected' || status === 'human_rejected' || status === 'removed') {
+    return 'tag-danger';
+  }
+  return '';
+}
+
+function pad(value: number): string {
+  return value < 10 ? `0${value}` : String(value);
+}
+
+export function relativeTimeText(value: string, now: number = Date.now()): string {
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) {
+    return '';
+  }
+  const diff = Math.max(0, now - time);
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) {
+    return '刚刚';
+  }
+  if (diff < hour) {
+    return `${Math.floor(diff / minute)} 分钟前`;
+  }
+  if (diff < day) {
+    return `${Math.floor(diff / hour)} 小时前`;
+  }
+  if (diff < 7 * day) {
+    return `${Math.floor(diff / day)} 天前`;
+  }
+  const date = new Date(time);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function restrictionDateText(value: string | null): string {
+  if (value === null || value.length === 0) {
+    return '';
+  }
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) {
+    return '';
+  }
+  const date = new Date(time);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

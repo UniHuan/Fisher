@@ -3,7 +3,9 @@
     "pages/index/index",
     "pages/map/map",
     "pages/detail/detail",
-    "pages/poi/list"
+    "pages/poi/list",
+    "pages/report/create",
+    "pages/profile/index"
   ],
   "window": {
     "navigationBarTitleText": "深圳钓鱼助手",
@@ -25,6 +27,10 @@
       {
         "pagePath": "pages/map/map",
         "text": "地图"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
       }
     ]
   },

@@ -1,0 +1,176 @@
+.profile-page {
+  padding-bottom: 60rpx;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: #e3eee8;
+  color: #0e6b5e;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.profile-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  display: block;
+  color: #13211c;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.profile-sub {
+  display: block;
+  margin-top: 6rpx;
+  color: #7a8782;
+  font-size: 23rpx;
+}
+
+.content-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  padding: 6rpx 4rpx 16rpx;
+}
+
+.content-total {
+  color: #8a9691;
+  font-size: 22rpx;
+}
+
+.filter-scroll {
+  margin-bottom: 18rpx;
+  white-space: nowrap;
+}
+
+.report-card {
+  padding: 22rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.report-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.report-spot {
+  overflow: hidden;
+  color: #13211c;
+  font-size: 25rpx;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.report-time {
+  flex: 0 0 auto;
+  color: #8a9691;
+  font-size: 22rpx;
+}
+
+.report-content {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 12rpx;
+  color: #4c5b55;
+  font-size: 26rpx;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.report-foot {
+  margin-top: 12rpx;
+}
+
+.report-reject {
+  display: block;
+  margin-top: 8rpx;
+  color: #b2412a;
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.more-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 4rpx 0;
+  font-size: 23rpx;
+}
+
+.retry-link {
+  color: #0e6b5e;
+}
+
+.more-button {
+  margin-top: 14rpx;
+  font-size: 25rpx;
+}
+
+.list-end {
+  padding: 18rpx 0 4rpx;
+  text-align: center;
+  color: #8a9691;
+  font-size: 22rpx;
+}
+
+.legal-block {
+  margin-top: 32rpx;
+  padding: 24rpx;
+  text-align: center;
+}
+
+.legal-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.legal-link {
+  color: #5e6b66;
+  font-size: 23rpx;
+}
+
+.legal-dot {
+  color: #b7c2bd;
+  font-size: 22rpx;
+}
+
+.legal-note {
+  display: block;
+  margin-top: 10rpx;
+  color: #8a9691;
+  font-size: 21rpx;
+}
+
+.logout-button {
+  margin-top: 20rpx;
+  font-size: 26rpx;
+}

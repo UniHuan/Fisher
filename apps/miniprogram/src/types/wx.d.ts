@@ -56,6 +56,29 @@ interface WxNavigateOptions {
   url: string;
 }
 
+interface WxNavigateBackOptions {
+  delta?: number;
+}
+
+interface WxLoginOptions {
+  success?: (result: { code?: string; errMsg?: string }) => void;
+  fail?: (error: { errMsg: string }) => void;
+}
+
+interface WxShowModalOptions {
+  title?: string;
+  content?: string;
+  showCancel?: boolean;
+  cancelText?: string;
+  confirmText?: string;
+  success?: (result: { confirm: boolean; cancel: boolean }) => void;
+  fail?: (error: { errMsg: string }) => void;
+}
+
+interface WxAlertBeforeUnloadOptions {
+  message: string;
+}
+
 interface WxOpenSettingOptions {
   success?: (result: { authSetting: Record<string, boolean> }) => void;
   fail?: (error: { errMsg: string }) => void;
@@ -87,15 +110,23 @@ interface WxPageInstance {
 
 declare const wx: {
   request(options: WxRequestOptions): void;
+  login(options: WxLoginOptions): void;
   getLocation(options: WxGetLocationOptions): void;
   openLocation(options: WxOpenLocationOptions): void;
   showToast(options: WxShowToastOptions): void;
+  showModal(options: WxShowModalOptions): void;
   setClipboardData(options: WxSetClipboardOptions): void;
   previewImage(options: WxPreviewImageOptions): void;
   navigateTo(options: WxNavigateOptions): void;
+  navigateBack(options?: WxNavigateBackOptions): void;
   switchTab(options: WxNavigateOptions): void;
+  enableAlertBeforeUnload(options: WxAlertBeforeUnloadOptions): void;
+  disableAlertBeforeUnload(): void;
   stopPullDownRefresh(): void;
   openSetting(options?: WxOpenSettingOptions): void;
+  getStorageSync(key: string): unknown;
+  setStorageSync(key: string, data: unknown): void;
+  removeStorageSync(key: string): void;
   reportAnalytics(eventName: string, data: Record<string, string | number>): void;
   getSystemInfoSync(): WxSystemInfo;
   getAccountInfoSync(): WxAccountInfo;

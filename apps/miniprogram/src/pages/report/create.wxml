@@ -1,0 +1,99 @@
+<view class="page create-page">
+  <view wx:if="{{loadingConfig}}" class="empty">正在加载发布配置…</view>
+
+  <view wx:elif="{{configError}}" class="card empty">
+    <text>{{configError}}</text>
+    <button class="primary-button retry-button" bindtap="retryConfig">重新加载</button>
+  </view>
+
+  <view wx:elif="{{!ugcEnabled}}" class="card empty">社区功能暂未开放</view>
+
+  <view wx:elif="{{!sessionReady}}" class="card login-card">
+    <text class="login-title">登录后发布</text>
+    <text class="login-text">使用微信登录后可以发布评论、鱼获和情报。</text>
+    <button
+      class="primary-button login-button"
+      bindtap="login"
+      loading="{{loggingIn}}"
+      disabled="{{loggingIn}}"
+    >{{loggingIn ? '正在登录' : '微信登录'}}</button>
+  </view>
+
+  <block wx:else>
+    <view class="card create-card">
+      <view class="spot-line">
+        <text class="spot-label">钓点</text>
+        <text class="spot-name">{{spotName || '当前钓点'}}</text>
+      </view>
+
+      <view class="type-tabs">
+        <view
+          wx:for="{{contentTypes}}"
+          wx:key="key"
+          class="type-tab {{contentType === item.key ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="selectType"
+        >{{item.label}}</view>
+      </view>
+
+      <view class="form-field">
+        <textarea
+          class="form-textarea"
+          value="{{content}}"
+          placeholder="说说这次的情况..."
+          maxlength="500"
+          bindinput="onContentInput"
+        />
+        <text class="form-counter">{{contentCount}}/{{maxContentLength}}</text>
+      </view>
+
+      <block wx:if="{{contentType === 'catch'}}">
+        <view class="form-field">
+          <text class="form-label">鱼种</text>
+          <picker
+            mode="selector"
+            range="{{fishLabels}}"
+            value="{{fishIndex}}"
+            bindchange="onFishChange"
+          >
+            <view class="form-input picker-value {{fishKey ? '' : 'picker-placeholder'}}">{{fishLabel || '请选择鱼种'}}</view>
+          </picker>
+          <text wx:if="{{!fishKey}}" class="form-hint catch-hint">发布鱼获需要选择鱼种</text>
+        </view>
+
+        <view class="form-field">
+          <text class="form-label">重量（公斤，选填）</text>
+          <input
+            class="form-input"
+            type="digit"
+            value="{{weight}}"
+            placeholder="例如 2.5"
+            bindinput="onWeightInput"
+          />
+        </view>
+      </block>
+
+      <checkbox-group class="terms-row" bindchange="onTermsChange">
+        <label class="terms-label">
+          <checkbox value="terms" checked="{{termsAccepted}}" color="#0e6b5e" />
+          <text class="terms-text">我已阅读并同意社区规范</text>
+        </label>
+      </checkbox-group>
+
+      <view wx:if="{{!meCanPublish}}" class="form-error">
+        {{restrictionText || '当前账号暂不能发布内容'}}
+      </view>
+      <view wx:if="{{submitError}}" class="form-error">{{submitError}}</view>
+    </view>
+
+    <view class="create-actions">
+      <button class="secondary-button" bindtap="cancel" disabled="{{submitting}}">取消</button>
+      <button
+        class="primary-button publish-button"
+        bindtap="submit"
+        loading="{{submitting}}"
+        disabled="{{submitting || !meCanPublish}}"
+      >发布</button>
+    </view>
+  </block>
+</view>

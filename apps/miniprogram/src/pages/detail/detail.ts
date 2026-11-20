@@ -1,20 +1,44 @@
 import { track } from '../../analytics';
 import {
+  contentTypeLabel,
   dictionaryLabel,
   freshnessLabel,
+  getClientConfig,
   getDictionaries,
   getSpot,
+  listSpotReports,
   mediaUrl,
   openStatusLabel,
+  relativeTimeText,
   type PublicDictionaries,
+  type PublicReportItem,
   type PublicSpotDetail,
+  type ReportContentType,
+  type SpotReportParams,
 } from '../../api';
+import { ensureSession, getMe, getSession } from '../../session';
 
 interface DisplayPoiGroup {
   poi_type: string;
   label: string;
   count: number;
   names: string;
+}
+
+type ReportFilterKey = 'all' | ReportContentType;
+
+interface ReportFilter {
+  key: ReportFilterKey;
+  label: string;
+}
+
+interface DisplayReport {
+  report_id: string;
+  typeLabel: string;
+  content: string;
+  catchText: string;
+  authorText: string;
+  timeText: string;
 }
 
 interface DetailData {
@@ -54,6 +78,20 @@ interface DetailData {
     };
   }>;
   canNavigate: boolean;
+  ugcVisible: boolean;
+  reports: DisplayReport[];
+  reportTotal: number;
+  reportCursor: string | null;
+  reportHasMore: boolean;
+  reportsLoading: boolean;
+  reportsLoadingMore: boolean;
+  reportsError: string;
+  reportFilter: ReportFilterKey;
+  reportFilters: ReportFilter[];
+  reportsReady: boolean;
+  reportSeq: number;
+  loginSheetOpen: boolean;
+  loggingIn: boolean;
 }
 
 interface LoadOptions {
@@ -68,15 +106,39 @@ interface PoiGroupTapEvent {
   currentTarget: { dataset: { type: string } };
 }
 
+interface ReportFilterTapEvent {
+  currentTarget: { dataset: { key: string } };
+}
+
 interface DetailMethods {
   load(spotId: string): Promise<void>;
   display(spot: PublicSpotDetail): void;
+  loadReports(reset: boolean): Promise<void>;
+  displayReport(item: PublicReportItem): DisplayReport;
+  changeReportFilter(event: ReportFilterTapEvent): void;
+  loadMoreReports(): void;
+  retryReports(): void;
+  openWrite(): void;
+  closeLoginSheet(): void;
+  loginAndWrite(): Promise<void>;
+  openCreatePage(): void;
+  refreshMe(): void;
   previewImage(event: ImageTapEvent): void;
   openPoiList(event: PoiGroupTapEvent): void;
   navigate(): void;
   copyAddress(): void;
   retry(): void;
+  noop(): void;
 }
+
+const INITIAL_REPORT_LIMIT = 3;
+const MORE_REPORT_LIMIT = 10;
+const REPORT_FILTERS: ReportFilter[] = [
+  { key: 'all', label: '全部' },
+  { key: 'comment', label: '评论' },
+  { key: 'catch', label: '鱼获' },
+  { key: 'intel', label: '情报' },
+];
 
 let currentSpotId = '';
 
@@ -103,6 +165,20 @@ Page<DetailData, DetailMethods>({
     poiGroups: [],
     markers: [],
     canNavigate: false,
+    ugcVisible: false,
+    reports: [],
+    reportTotal: 0,
+    reportCursor: null,
+    reportHasMore: false,
+    reportsLoading: false,
+    reportsLoadingMore: false,
+    reportsError: '',
+    reportFilter: 'all',
+    reportFilters: REPORT_FILTERS,
+    reportsReady: false,
+    reportSeq: 0,
+    loginSheetOpen: false,
+    loggingIn: false,
   },
 
   onLoad(options: LoadOptions) {
@@ -114,28 +190,192 @@ Page<DetailData, DetailMethods>({
     void this.load(currentSpotId);
   },
 
+  onShow() {
+    // The first onShow runs while the page is still loading, so reportsReady
+    // distinguishes the initial display from returning to the page.
+    if (!this.data.reportsReady || !this.data.ugcVisible) {
+      return;
+    }
+    void this.loadReports(true);
+    this.refreshMe();
+  },
+
   async load(spotId: string): Promise<void> {
     this.setData({ loading: true, error: '' });
-    let dictionaries: PublicDictionaries | null = null;
-    try {
-      dictionaries = await getDictionaries();
-    } catch {
-      // Detail still works with raw keys.
-    }
-    try {
-      const spot = await getSpot(spotId);
-      this.setData({ dictionaries });
-      this.display(spot);
-      this.setData({ loading: false });
-      track('spot_detail_view', { spot_id: spot.spot_id, source: 'list' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '钓点加载失败';
+    const [dictionariesResult, configResult, spotResult] = await Promise.allSettled([
+      getDictionaries(),
+      getClientConfig(),
+      getSpot(spotId),
+    ] as const);
+
+    if (spotResult.status === 'rejected') {
+      const reason = spotResult.reason;
+      const message = reason instanceof Error ? reason.message : '钓点加载失败';
       track('error_event', { page: 'detail', code: '', message });
+      this.setData({ loading: false, error: message });
+      return;
+    }
+
+    const dictionaries =
+      dictionariesResult.status === 'fulfilled' ? dictionariesResult.value : null;
+    const config = configResult.status === 'fulfilled' ? configResult.value : null;
+    const spot = spotResult.value;
+    const ugcVisible = config?.features.ugc === true && !spot.is_banned;
+
+    this.setData({ dictionaries, ugcVisible });
+    this.display(spot);
+    this.setData({ loading: false });
+    track('spot_detail_view', { spot_id: spot.spot_id, source: 'list' });
+
+    if (ugcVisible) {
+      track('ugc_section_view', { spot_id: spot.spot_id });
+      await this.loadReports(true);
+    }
+  },
+
+  async loadReports(reset: boolean): Promise<void> {
+    if (!this.data.ugcVisible || currentSpotId === '') {
+      return;
+    }
+    if (!reset && (this.data.reportCursor === null || this.data.reportsLoadingMore)) {
+      return;
+    }
+    const seq = this.data.reportSeq + 1;
+    if (reset) {
       this.setData({
-        loading: false,
-        error: message,
+        reportSeq: seq,
+        reportsLoading: true,
+        reportsError: '',
+        reports: [],
+        reportCursor: null,
+        reportHasMore: false,
+      });
+    } else {
+      this.setData({ reportSeq: seq, reportsLoadingMore: true, reportsError: '' });
+    }
+
+    const params: SpotReportParams = {
+      limit: reset ? INITIAL_REPORT_LIMIT : MORE_REPORT_LIMIT,
+      content_type: this.data.reportFilter === 'all' ? undefined : this.data.reportFilter,
+      cursor: reset ? undefined : (this.data.reportCursor ?? undefined),
+    };
+
+    try {
+      const page = await listSpotReports(currentSpotId, params);
+      if (this.data.reportSeq !== seq) {
+        return;
+      }
+      const items = page.items.map((item) => this.displayReport(item));
+      this.setData({
+        reports: reset ? items : [...this.data.reports, ...items],
+        reportTotal: page.total,
+        reportCursor: page.next_cursor,
+        reportHasMore: page.next_cursor !== null,
+        reportsLoading: false,
+        reportsLoadingMore: false,
+        reportsError: '',
+        reportsReady: true,
+      });
+    } catch (error) {
+      if (this.data.reportSeq !== seq) {
+        return;
+      }
+      this.setData({
+        reportsLoading: false,
+        reportsLoadingMore: false,
+        reportsError: error instanceof Error ? error.message : '情报加载失败',
+        reportsReady: true,
       });
     }
+  },
+
+  displayReport(item: PublicReportItem): DisplayReport {
+    let catchText = '';
+    if (item.content_type === 'catch' && item.fish_key !== null) {
+      const fish = dictionaryLabel(this.data.dictionaries?.fish_types, item.fish_key);
+      const weight =
+        item.catch_weight_kg === null ? '' : `${Number(item.catch_weight_kg)} kg`;
+      catchText = weight === '' ? fish : `${fish} · ${weight}`;
+    }
+    return {
+      report_id: item.report_id,
+      typeLabel: contentTypeLabel(item.content_type),
+      content: item.content,
+      catchText,
+      authorText: item.author.nickname ?? '钓友',
+      timeText: relativeTimeText(item.created_at),
+    };
+  },
+
+  changeReportFilter(event: ReportFilterTapEvent): void {
+    const key = event.currentTarget.dataset.key;
+    const filter = REPORT_FILTERS.find((item) => item.key === key);
+    if (filter === undefined || filter.key === this.data.reportFilter) {
+      return;
+    }
+    // Keep the previous total visible while the filtered page loads.
+    this.setData({ reportFilter: filter.key });
+    void this.loadReports(true);
+  },
+
+  loadMoreReports(): void {
+    void this.loadReports(false);
+  },
+
+  retryReports(): void {
+    void this.loadReports(true);
+  },
+
+  openWrite(): void {
+    if (!this.data.ugcVisible) {
+      return;
+    }
+    track('ugc_create_open', { spot_id: currentSpotId });
+    if (getSession() !== null) {
+      this.openCreatePage();
+      return;
+    }
+    this.setData({ loginSheetOpen: true });
+  },
+
+  closeLoginSheet(): void {
+    if (this.data.loggingIn) {
+      return;
+    }
+    this.setData({ loginSheetOpen: false });
+  },
+
+  async loginAndWrite(): Promise<void> {
+    if (this.data.loggingIn) {
+      return;
+    }
+    this.setData({ loggingIn: true });
+    track('ugc_login_start');
+    try {
+      await ensureSession();
+      track('ugc_login_success');
+      this.setData({ loginSheetOpen: false, loggingIn: false });
+      this.refreshMe();
+      this.openCreatePage();
+    } catch {
+      track('ugc_login_fail', { result: 'fail' });
+      this.setData({ loggingIn: false });
+      wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+    }
+  },
+
+  openCreatePage(): void {
+    const spotName = this.data.spot?.spot_name ?? '';
+    wx.navigateTo({
+      url: `/pages/report/create?spot_id=${encodeURIComponent(currentSpotId)}&spot_name=${encodeURIComponent(spotName)}`,
+    });
+  },
+
+  refreshMe(): void {
+    if (getSession() === null) {
+      return;
+    }
+    void getMe().catch(() => undefined);
   },
 
   display(spot: PublicSpotDetail): void {
@@ -280,5 +520,9 @@ Page<DetailData, DetailMethods>({
     if (currentSpotId !== '') {
       void this.load(currentSpotId);
     }
+  },
+
+  noop() {
+    // Keeps taps inside the login sheet from closing it.
   },
 });
