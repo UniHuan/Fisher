@@ -14,6 +14,62 @@ interface WxRequestOptions {
   fail?: (error: { errMsg: string }) => void;
 }
 
+interface WxUploadResponse {
+  data: string;
+  statusCode: number;
+  header: Record<string, string>;
+}
+
+interface WxUploadTask {
+  onProgressUpdate(
+    callback: (result: {
+      progress: number;
+      totalBytesSent: number;
+      totalBytesExpectedToSend: number;
+    }) => void,
+  ): void;
+  abort(): void;
+}
+
+interface WxUploadFileOptions {
+  url: string;
+  filePath: string;
+  name: string;
+  header?: Record<string, string>;
+  formData?: Record<string, string>;
+  timeout?: number;
+  success?: (response: WxUploadResponse) => void;
+  fail?: (error: { errMsg: string }) => void;
+}
+
+interface WxMediaFile {
+  tempFilePath: string;
+  size: number;
+  fileType?: 'image' | 'video';
+  width?: number;
+  height?: number;
+  duration?: number;
+  thumbTempFilePath?: string;
+}
+
+interface WxChooseMediaOptions {
+  count?: number;
+  mediaType?: Array<'image' | 'video' | 'mix'>;
+  sourceType?: Array<'album' | 'camera'>;
+  sizeType?: Array<'original' | 'compressed'>;
+  camera?: 'back' | 'front';
+  success?: (result: { tempFiles: WxMediaFile[]; type: string }) => void;
+  fail?: (error: { errMsg: string }) => void;
+}
+
+interface WxShowActionSheetOptions {
+  itemList: string[];
+  itemColor?: string;
+  alertText?: string;
+  success?: (result: { tapIndex: number }) => void;
+  fail?: (error: { errMsg: string }) => void;
+}
+
 interface WxLocation {
   latitude: number;
   longitude: number;
@@ -54,6 +110,8 @@ interface WxPreviewImageOptions {
 
 interface WxNavigateOptions {
   url: string;
+  success?: () => void;
+  fail?: (error: { errMsg: string }) => void;
 }
 
 interface WxNavigateBackOptions {
@@ -71,6 +129,7 @@ interface WxShowModalOptions {
   showCancel?: boolean;
   cancelText?: string;
   confirmText?: string;
+  confirmColor?: string;
   success?: (result: { confirm: boolean; cancel: boolean }) => void;
   fail?: (error: { errMsg: string }) => void;
 }
@@ -110,11 +169,14 @@ interface WxPageInstance {
 
 declare const wx: {
   request(options: WxRequestOptions): void;
+  uploadFile(options: WxUploadFileOptions): WxUploadTask;
+  chooseMedia(options: WxChooseMediaOptions): void;
   login(options: WxLoginOptions): void;
   getLocation(options: WxGetLocationOptions): void;
   openLocation(options: WxOpenLocationOptions): void;
   showToast(options: WxShowToastOptions): void;
   showModal(options: WxShowModalOptions): void;
+  showActionSheet(options: WxShowActionSheetOptions): void;
   setClipboardData(options: WxSetClipboardOptions): void;
   previewImage(options: WxPreviewImageOptions): void;
   navigateTo(options: WxNavigateOptions): void;
@@ -130,6 +192,7 @@ declare const wx: {
   reportAnalytics(eventName: string, data: Record<string, string | number>): void;
   getSystemInfoSync(): WxSystemInfo;
   getAccountInfoSync(): WxAccountInfo;
+  canIUse(schema: string): boolean;
 };
 
 declare function getCurrentPages(): WxPageInstance[];

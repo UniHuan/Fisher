@@ -136,12 +136,42 @@
           <view class="ugc-card-head">
             <text class="ugc-author">{{item.authorText}}</text>
             <view class="ugc-card-meta">
+              <text wx:if="{{item.adopted}}" class="tag">运营已采纳</text>
               <text class="tag tag-soft">{{item.typeLabel}}</text>
               <text class="ugc-time">{{item.timeText}}</text>
             </view>
           </view>
           <text class="ugc-content">{{item.content}}</text>
           <text wx:if="{{item.catchText}}" class="ugc-catch">{{item.catchText}}</text>
+          <view
+            wx:if="{{item.images.length}}"
+            class="ugc-image-grid {{item.images.length === 1 ? 'cols-1' : (item.images.length >= 4 ? 'cols-3' : '')}}"
+          >
+            <image
+              wx:for="{{item.images}}"
+              wx:for-item="imageUrl"
+              wx:for-index="imageIndex"
+              wx:key="*this"
+              class="ugc-image-thumb"
+              src="{{imageUrl}}"
+              mode="aspectFill"
+              lazy-load
+              data-id="{{item.report_id}}"
+              data-index="{{imageIndex}}"
+              bindtap="previewReportImage"
+            />
+          </view>
+          <view class="ugc-card-foot">
+            <view
+              class="ugc-like {{item.liked ? 'is-liked' : ''}}"
+              data-id="{{item.report_id}}"
+              bindtap="toggleLike"
+            >
+              <text class="ugc-like-icon">{{item.liked ? '♥' : '♡'}}</text>
+              <text wx:if="{{item.likeCount > 0}}" class="ugc-like-count">{{item.likeCount}}</text>
+            </view>
+            <view class="ugc-menu" data-id="{{item.report_id}}" bindtap="openReportMenu">···</view>
+          </view>
         </view>
 
         <view wx:if="{{reportsError}}" class="ugc-more-error">

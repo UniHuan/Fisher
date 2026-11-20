@@ -54,7 +54,13 @@
       <view wx:elif="{{reports.length === 0}}" class="card empty">{{emptyText}}</view>
 
       <block wx:else>
-        <view wx:for="{{reports}}" wx:key="report_id" class="card report-card">
+        <view
+          wx:for="{{reports}}"
+          wx:key="report_id"
+          class="card report-card"
+          data-id="{{item.report_id}}"
+          bindtap="openContent"
+        >
           <view class="report-head">
             <view class="report-head-left">
               <text class="tag tag-soft">{{item.typeLabel}}</text>
@@ -63,8 +69,27 @@
             <text class="report-time">{{item.timeText}}</text>
           </view>
           <text class="report-content">{{item.content}}</text>
+          <view
+            wx:if="{{item.images.length}}"
+            class="ugc-image-grid {{item.images.length === 1 ? 'cols-1' : (item.images.length >= 4 ? 'cols-3' : '')}}"
+          >
+            <image
+              wx:for="{{item.images}}"
+              wx:for-item="imageUrl"
+              wx:for-index="imageIndex"
+              wx:key="*this"
+              class="ugc-image-thumb"
+              src="{{imageUrl}}"
+              mode="aspectFill"
+              lazy-load
+              data-id="{{item.report_id}}"
+              data-index="{{imageIndex}}"
+              catchtap="previewImage"
+            />
+          </view>
           <view class="report-foot">
             <text class="tag {{item.statusTone}}">{{item.statusLabel}}</text>
+            <text class="report-delete" data-id="{{item.report_id}}" catchtap="confirmDelete">删除</text>
           </view>
           <text wx:if="{{item.rejectText}}" class="report-reject">{{item.rejectText}}</text>
         </view>
@@ -84,13 +109,13 @@
 
     <view class="legal-block">
       <view class="legal-links">
-        <text class="legal-link">用户协议</text>
+        <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
         <text class="legal-dot">·</text>
-        <text class="legal-link">隐私政策</text>
+        <text class="legal-link" data-key="privacy" bindtap="openLegal">隐私政策</text>
         <text class="legal-dot">·</text>
-        <text class="legal-link">社区规范</text>
+        <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
       </view>
-      <text class="legal-note">法务链接将在后续版本开放</text>
+      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
     </view>
 
     <button

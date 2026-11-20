@@ -24,6 +24,57 @@ function fail(message: string): ReportValidation {
   return { ok: false, message };
 }
 
+export interface ReportImageUpload {
+  path: string;
+  /** A key from an earlier successful attempt; reused instead of uploading again. */
+  key?: string;
+}
+
+export interface SubmitReportWithImagesOptions<TInput extends object, TResult> {
+  input: TInput;
+  images: ReportImageUpload[];
+  upload: (path: string, onProgress?: (progress: number) => void) => Promise<string>;
+  create: (input: TInput & { image_keys?: string[] }) => Promise<TResult>;
+  onProgress?: (index: number, progress: number) => void;
+  onImageUploaded?: (index: number, key: string) => void;
+}
+
+export interface SubmitReportWithImagesResult<TResult> {
+  result: TResult;
+  imageKeys: string[];
+}
+
+/**
+ * Uploads every image one at a time and only calls create after all uploads
+ * succeed. Keys from a failed attempt are reused so a retry never re-uploads.
+ */
+export async function submitReportWithImages<TInput extends object, TResult>(
+  options: SubmitReportWithImagesOptions<TInput, TResult>,
+): Promise<SubmitReportWithImagesResult<TResult>> {
+  const imageKeys: string[] = [];
+  for (let index = 0; index < options.images.length; index += 1) {
+    const image = options.images[index];
+    if (image === undefined) {
+      continue;
+    }
+    if (typeof image.key === 'string' && image.key.length > 0) {
+      imageKeys.push(image.key);
+      continue;
+    }
+    const key = await options.upload(image.path, (progress) => {
+      options.onProgress?.(index, progress);
+    });
+    imageKeys.push(key);
+    options.onImageUploaded?.(index, key);
+  }
+  const input =
+    imageKeys.length > 0
+      ? { ...options.input, image_keys: imageKeys }
+      : options.input;
+  const result = await options.create(input as TInput & { image_keys?: string[] });
+  return { result, imageKeys };
+}
+
 export function validateReportDraft(draft: ReportDraft): ReportValidation {
   const content = typeof draft.content === 'string' ? draft.content.trim() : '';
   if (content.length === 0) {

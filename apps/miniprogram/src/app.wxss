@@ -202,3 +202,59 @@ input {
 .retry-button {
   margin-top: 24rpx;
 }
+
+.ugc-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.ugc-image-grid.cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.ugc-image-grid.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.ugc-image-thumb {
+  width: 100%;
+  height: 200rpx;
+  border-radius: 12rpx;
+  background: #e7ede8;
+}
+
+.ugc-image-grid.cols-1 .ugc-image-thumb {
+  height: 340rpx;
+}
+
+.ugc-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 6rpx 0;
+  color: #7a8782;
+  font-size: 24rpx;
+}
+
+.ugc-like.is-liked {
+  color: #e8623a;
+}
+
+.ugc-like-icon {
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.ugc-like-count {
+  font-size: 23rpx;
+}
+
+.ugc-menu {
+  padding: 6rpx 12rpx;
+  color: #7a8782;
+  font-size: 30rpx;
+  line-height: 1;
+  letter-spacing: 2rpx;
+}

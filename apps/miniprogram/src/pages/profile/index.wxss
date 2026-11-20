@@ -105,7 +105,16 @@
 }
 
 .report-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 12rpx;
+}
+
+.report-delete {
+  padding: 4rpx 8rpx;
+  color: #b2412a;
+  font-size: 23rpx;
 }
 
 .report-reject {

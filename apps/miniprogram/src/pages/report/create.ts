@@ -4,12 +4,15 @@ import {
   getClientConfig,
   getDictionaries,
   restrictionDateText,
+  uploadUgcImage,
   type CreateReportInput,
   type ReportContentType,
 } from '../../api';
 import {
   MAX_CONTENT_CODE_POINTS,
+  MAX_REPORT_IMAGES,
   contentCodePointCount,
+  submitReportWithImages,
   validateReportDraft,
   type ReportDraft,
 } from '../../report-form';
@@ -28,6 +31,12 @@ interface ContentTypeOption {
 interface FishOption {
   key: string;
   label: string;
+}
+
+interface DraftImage {
+  path: string;
+  key: string;
+  progress: number;
 }
 
 interface CreateData {
@@ -51,6 +60,8 @@ interface CreateData {
   fishKey: string;
   fishLabel: string;
   weight: string;
+  images: DraftImage[];
+  maxImages: number;
   termsAccepted: boolean;
   submitting: boolean;
   loggingIn: boolean;
@@ -73,6 +84,10 @@ interface CheckboxEvent {
   detail: { value: string[] };
 }
 
+interface ImageTapEvent {
+  currentTarget: { dataset: { index: string } };
+}
+
 interface CreateMethods {
   init(): Promise<void>;
   retryConfig(): void;
@@ -83,6 +98,12 @@ interface CreateMethods {
   onFishChange(event: PickerEvent): void;
   onWeightInput(event: InputEvent): void;
   onTermsChange(event: CheckboxEvent): void;
+  chooseImages(): void;
+  removeImage(event: ImageTapEvent): void;
+  previewDraftImage(event: ImageTapEvent): void;
+  updateImageProgress(index: number, progress: number): void;
+  markImageUploaded(index: number, key: string): void;
+  clearImageKeys(): void;
   submit(): Promise<void>;
   cancel(): void;
   isDirty(): boolean;
@@ -130,6 +151,8 @@ Page<CreateData, CreateMethods>({
     fishKey: '',
     fishLabel: '',
     weight: '',
+    images: [],
+    maxImages: MAX_REPORT_IMAGES,
     termsAccepted: false,
     submitting: false,
     loggingIn: false,
@@ -268,6 +291,82 @@ Page<CreateData, CreateMethods>({
     this.setData({ termsAccepted: event.detail.value.includes('terms') });
   },
 
+  chooseImages(): void {
+    if (this.data.submitting) {
+      return;
+    }
+    const remaining = MAX_REPORT_IMAGES - this.data.images.length;
+    if (remaining <= 0) {
+      wx.showToast({ title: `最多上传 ${MAX_REPORT_IMAGES} 张图片`, icon: 'none' });
+      return;
+    }
+    wx.chooseMedia({
+      count: remaining,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (result) => {
+        const additions: DraftImage[] = result.tempFiles.map((file) => ({
+          path: file.tempFilePath,
+          key: '',
+          progress: 0,
+        }));
+        const images = [...this.data.images, ...additions].slice(0, MAX_REPORT_IMAGES);
+        this.setData({ images, submitError: '' });
+        track('ugc_image_add', {
+          spot_id: this.data.spotId,
+          content_type: this.data.contentType,
+          image_count: images.length,
+        });
+        this.syncBackGuard();
+      },
+      fail: (error) => {
+        if ((error.errMsg || '').indexOf('cancel') < 0) {
+          wx.showToast({ title: '选择图片失败，请重试', icon: 'none' });
+        }
+      },
+    });
+  },
+
+  removeImage(event: ImageTapEvent): void {
+    if (this.data.submitting) {
+      return;
+    }
+    const index = Number(event.currentTarget.dataset.index);
+    const images = this.data.images.filter((_image, itemIndex) => itemIndex !== index);
+    this.setData({ images, submitError: '' });
+    this.syncBackGuard();
+  },
+
+  previewDraftImage(event: ImageTapEvent): void {
+    const index = Number(event.currentTarget.dataset.index);
+    const urls = this.data.images.map((image) => image.path);
+    if (urls.length === 0) {
+      return;
+    }
+    wx.previewImage({ current: urls[index], urls });
+  },
+
+  updateImageProgress(index: number, progress: number): void {
+    this.setData({ [`images[${index}].progress`]: progress });
+  },
+
+  markImageUploaded(index: number, key: string): void {
+    const images = this.data.images.map((image, itemIndex) =>
+      itemIndex === index ? { ...image, key, progress: 100 } : image,
+    );
+    this.setData({ images });
+  },
+
+  clearImageKeys(): void {
+    const images = this.data.images.map((image) => ({
+      ...image,
+      key: '',
+      progress: 0,
+    }));
+    this.setData({ images });
+  },
+
   async submit(): Promise<void> {
     if (this.data.submitting) {
       return;
@@ -293,6 +392,7 @@ Page<CreateData, CreateMethods>({
     }
 
     const weightText = this.data.weight.trim();
+    const imageCount = this.data.images.length;
     const draft: ReportDraft = {
       content_type: this.data.contentType,
       content: this.data.content,
@@ -301,7 +401,7 @@ Page<CreateData, CreateMethods>({
         this.data.contentType === 'catch' && weightText !== ''
           ? Number(weightText)
           : null,
-      image_count: 0,
+      image_count: imageCount,
       terms_accepted: this.data.termsAccepted,
     };
     const validation = validateReportDraft(draft);
@@ -327,18 +427,40 @@ Page<CreateData, CreateMethods>({
     track('ugc_submit', {
       spot_id: this.data.spotId,
       content_type: this.data.contentType,
-      image_count: 0,
+      image_count: imageCount,
     });
+    let uploadFailed = false;
     try {
-      const result = await createReport(input);
+      const outcome = await submitReportWithImages({
+        input,
+        images: this.data.images.map((image) => ({
+          path: image.path,
+          key: image.key,
+        })),
+        upload: async (path, onProgress) => {
+          try {
+            const uploaded = await uploadUgcImage(path, onProgress);
+            return uploaded.key;
+          } catch (error) {
+            uploadFailed = true;
+            throw error;
+          }
+        },
+        create: createReport,
+        onProgress: (index, progress) => this.updateImageProgress(index, progress),
+        onImageUploaded: (index, key) => this.markImageUploaded(index, key),
+      });
+      const result = outcome.result;
       track('ugc_submit_result', {
         spot_id: this.data.spotId,
         content_type: this.data.contentType,
         result: 'success',
         status: result.moderation_status,
-        image_count: 0,
+        image_count: imageCount,
       });
       if (result.moderation_status === 'machine_rejected') {
+        // The server consumed the uploaded keys; a retry needs fresh uploads.
+        this.clearImageKeys();
         this.setData({ submitting: false });
         wx.showModal({
           title: '内容未通过审核',
@@ -365,12 +487,20 @@ Page<CreateData, CreateMethods>({
         wx.navigateBack({ delta: 1 });
       }, 800);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '发布失败，请重试';
+      const message = uploadFailed
+        ? '图片上传失败，已填内容和已上传图片会保留，请重试'
+        : error instanceof Error
+          ? error.message
+          : '发布失败，请重试';
+      if (!uploadFailed) {
+        // A create attempt may have consumed the keys; upload again on retry.
+        this.clearImageKeys();
+      }
       track('ugc_submit_result', {
         spot_id: this.data.spotId,
         content_type: this.data.contentType,
         result: 'fail',
-        image_count: 0,
+        image_count: imageCount,
       });
       this.setData({ submitting: false, submitError: message });
     }
@@ -397,7 +527,7 @@ Page<CreateData, CreateMethods>({
   },
 
   isDirty(): boolean {
-    if (this.data.content.trim().length > 0) {
+    if (this.data.content.trim().length > 0 || this.data.images.length > 0) {
       return true;
     }
     if (

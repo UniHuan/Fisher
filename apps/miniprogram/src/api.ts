@@ -46,8 +46,13 @@ export type PublicReportItem = components['schemas']['PublicReportItemDto'];
 export type PublicReportPage = components['schemas']['PublicReportPageDto'];
 export type MyReportItem = components['schemas']['MyReportItemDto'];
 export type MyReportPage = components['schemas']['MyReportPageDto'];
+export type UploadUgcImageResult = components['schemas']['UploadUgcResponseDto'];
+export type ReportLikeResult = components['schemas']['ReportLikeResponseDto'];
+export type AbuseReportResult = components['schemas']['AbuseReportResponseDto'];
+export type DeleteReportResult = components['schemas']['DeleteReportResponseDto'];
 export type ReportContentType = 'comment' | 'catch' | 'intel';
 export type MyReportStatusFilter = 'all' | 'pending' | 'published' | 'rejected' | 'removed';
+export type AbuseReason = 'ad' | 'abuse' | 'false_info' | 'privacy' | 'other';
 
 interface ApiEnvelope<T> {
   code: number;
@@ -279,6 +284,125 @@ export function listMyReports(
     query: { status, cursor, limit },
     auth: 'required',
   });
+}
+
+export function likeReport(reportId: string): Promise<ReportLikeResult> {
+  return request<ReportLikeResult>(`/reports/${encodeURIComponent(reportId)}/like`, {
+    method: 'POST',
+    auth: 'required',
+  });
+}
+
+export function unlikeReport(reportId: string): Promise<ReportLikeResult> {
+  return request<ReportLikeResult>(`/reports/${encodeURIComponent(reportId)}/like`, {
+    method: 'DELETE',
+    auth: 'required',
+  });
+}
+
+export function abuseReport(
+  reportId: string,
+  reason: AbuseReason,
+): Promise<AbuseReportResult> {
+  return request<AbuseReportResult>(`/reports/${encodeURIComponent(reportId)}/abuse`, {
+    method: 'POST',
+    body: { reason },
+    auth: 'required',
+  });
+}
+
+export function deleteReport(reportId: string): Promise<DeleteReportResult> {
+  return request<DeleteReportResult>(`/reports/${encodeURIComponent(reportId)}`, {
+    method: 'DELETE',
+    auth: 'required',
+  });
+}
+
+function parseUploadEnvelope<T>(raw: string): Partial<ApiEnvelope<T>> | null {
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as Partial<ApiEnvelope<T>>;
+  } catch {
+    return null;
+  }
+}
+
+function uploadOnce(
+  filePath: string,
+  onProgress?: (progress: number) => void,
+): Promise<UploadUgcImageResult> {
+  return new Promise<UploadUgcImageResult>((resolve, reject) => {
+    const header: Record<string, string> = {
+      'X-Client-Type': 'miniprogram',
+      'X-Client-Version': CLIENT_VERSION,
+      'X-Request-Id': `wx-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    };
+    const token = getAccessToken();
+    if (token !== null) {
+      header.Authorization = `Bearer ${token}`;
+    }
+    const task = wx.uploadFile({
+      url: `${API_BASE}/uploads/ugc`,
+      filePath,
+      name: 'file',
+      timeout: 30000,
+      header,
+      success: (response) => {
+        const body = parseUploadEnvelope<UploadUgcImageResult>(response.data);
+        if (
+          response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          body !== null &&
+          body.code === 0 &&
+          body.data !== undefined
+        ) {
+          resolve(body.data);
+          return;
+        }
+        reject(
+          new ApiError(
+            body?.message || `上传失败 (${response.statusCode})`,
+            response.statusCode,
+            body?.code ?? 0,
+          ),
+        );
+      },
+      fail: (error) => {
+        reject(new Error(error.errMsg || '图片上传失败'));
+      },
+    });
+    if (onProgress !== undefined) {
+      task.onProgressUpdate((result) => {
+        onProgress(Math.max(0, Math.min(100, Math.round(result.progress))));
+      });
+    }
+  });
+}
+
+/** Uploads one report image and returns the work-bucket key to submit later. */
+export async function uploadUgcImage(
+  filePath: string,
+  onProgress?: (progress: number) => void,
+): Promise<UploadUgcImageResult> {
+  try {
+    return await uploadOnce(filePath, onProgress);
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status === 401 &&
+      getRefreshToken() !== null
+    ) {
+      try {
+        await refreshStoredSession();
+      } catch {
+        throw error;
+      }
+      return uploadOnce(filePath, onProgress);
+    }
+    throw error;
+  }
 }
 
 export function mediaUrl(url: string | null | undefined): string {

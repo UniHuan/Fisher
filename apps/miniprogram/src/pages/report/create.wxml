@@ -47,6 +47,31 @@
         <text class="form-counter">{{contentCount}}/{{maxContentLength}}</text>
       </view>
 
+      <view class="form-field">
+        <text class="form-label">图片（选填，最多 {{maxImages}} 张）</text>
+        <view class="image-grid">
+          <view wx:for="{{images}}" wx:key="path" class="image-cell">
+            <image
+              class="image-thumb"
+              src="{{item.path}}"
+              mode="aspectFill"
+              data-index="{{index}}"
+              bindtap="previewDraftImage"
+            />
+            <view wx:if="{{submitting && item.progress < 100}}" class="image-progress">
+              <text class="image-progress-text">{{item.progress}}%</text>
+            </view>
+            <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
+          </view>
+          <view wx:if="{{images.length < maxImages}}" class="image-add" bindtap="chooseImages">
+            <text class="image-add-icon">＋</text>
+          </view>
+        </view>
+        <text wx:if="{{submitting && images.length > 0}}" class="form-hint upload-hint">
+          正在逐张上传图片，全部成功后才会发布
+        </text>
+      </view>
+
       <block wx:if="{{contentType === 'catch'}}">
         <view class="form-field">
           <text class="form-label">鱼种</text>

@@ -1,8 +1,10 @@
 import { track } from '../../analytics';
 import {
   contentTypeLabel,
+  deleteReport as apiDeleteReport,
   getClientConfig,
   listMyReports,
+  mediaUrl,
   moderationStatusLabel,
   moderationStatusTone,
   relativeTimeText,
@@ -23,9 +25,13 @@ interface StatusFilterOption {
 
 interface DisplayMyReport {
   report_id: string;
+  spotId: string;
+  canOpen: boolean;
+  moderationStatus: string;
   typeLabel: string;
   spotName: string;
   content: string;
+  images: string[];
   statusLabel: string;
   statusTone: string;
   timeText: string;
@@ -51,9 +57,25 @@ interface ProfileData {
   hasMore: boolean;
   total: number;
   requestSeq: number;
+  termsUrl: string;
+  privacyUrl: string;
+  communityUrl: string;
+  legalNote: string;
 }
 
 interface FilterTapEvent {
+  currentTarget: { dataset: { key: string } };
+}
+
+interface ReportTapEvent {
+  currentTarget: { dataset: { id: string } };
+}
+
+interface ReportImageTapEvent {
+  currentTarget: { dataset: { id: string; index: string } };
+}
+
+interface LegalTapEvent {
   currentTarget: { dataset: { key: string } };
 }
 
@@ -67,6 +89,12 @@ interface ProfileMethods {
   selectFilter(event: FilterTapEvent): void;
   loadMoreReports(): void;
   retry(): void;
+  openContent(event: ReportTapEvent): void;
+  previewImage(event: ReportImageTapEvent): void;
+  confirmDelete(event: ReportTapEvent): void;
+  deleteReport(item: DisplayMyReport): Promise<void>;
+  openLegal(event: LegalTapEvent): void;
+  copyLegalUrl(url: string): void;
   logout(): void;
   reset(): void;
   onShow(): void;
@@ -111,6 +139,10 @@ Page<ProfileData, ProfileMethods>({
     hasMore: false,
     total: 0,
     requestSeq: 0,
+    termsUrl: '',
+    privacyUrl: '',
+    communityUrl: '',
+    legalNote: '',
   },
 
   onLoad() {
@@ -139,11 +171,22 @@ Page<ProfileData, ProfileMethods>({
   async init(): Promise<void> {
     const config = await getClientConfig().catch(() => null);
     const ugcEnabled = config?.features.ugc === true;
+    const legal = config?.legal ?? null;
+    const termsUrl = legal?.terms_url ?? '';
+    const privacyUrl = legal?.privacy_url ?? '';
+    const communityUrl = legal?.community_url ?? '';
     this.setData({
       initialized: true,
       configError: config === null ? '配置加载失败，请重试' : '',
       ugcEnabled,
       sessionReady: getSession() !== null,
+      termsUrl,
+      privacyUrl,
+      communityUrl,
+      legalNote:
+        termsUrl === '' && privacyUrl === '' && communityUrl === ''
+          ? '法务链接暂未开放'
+          : '',
     });
     if (ugcEnabled && getSession() !== null) {
       await this.loadAfterLogin();
@@ -269,9 +312,13 @@ Page<ProfileData, ProfileMethods>({
     }
     return {
       report_id: item.report_id,
+      spotId: item.spot.spot_id,
+      canOpen: item.spot.can_open,
+      moderationStatus: item.moderation_status,
       typeLabel: contentTypeLabel(item.content_type),
       spotName: item.spot.spot_name,
       content: item.content,
+      images: item.images.map((url) => mediaUrl(url)),
       statusLabel,
       statusTone: moderationStatusTone(item.moderation_status),
       timeText: relativeTimeText(item.created_at),
@@ -299,6 +346,109 @@ Page<ProfileData, ProfileMethods>({
 
   retry(): void {
     void this.loadReports(true);
+  },
+
+  openContent(event: ReportTapEvent): void {
+    const item = this.data.reports.find(
+      (report) => report.report_id === event.currentTarget.dataset.id,
+    );
+    if (item === undefined) {
+      return;
+    }
+    if (!item.canOpen) {
+      wx.showToast({ title: '该钓点暂不可访问', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: `/pages/detail/detail?spot_id=${encodeURIComponent(item.spotId)}`,
+    });
+  },
+
+  previewImage(event: ReportImageTapEvent): void {
+    const item = this.data.reports.find(
+      (report) => report.report_id === event.currentTarget.dataset.id,
+    );
+    if (item === undefined || item.images.length === 0) {
+      return;
+    }
+    const index = Number(event.currentTarget.dataset.index);
+    wx.previewImage({ current: item.images[index], urls: item.images });
+  },
+
+  confirmDelete(event: ReportTapEvent): void {
+    const item = this.data.reports.find(
+      (report) => report.report_id === event.currentTarget.dataset.id,
+    );
+    if (item === undefined) {
+      return;
+    }
+    wx.showModal({
+      title: '删除这条内容',
+      content: '删除后不可恢复，确定删除吗？',
+      confirmText: '删除',
+      confirmColor: '#b2412a',
+      cancelText: '取消',
+      success: (result) => {
+        if (result.confirm) {
+          void this.deleteReport(item);
+        }
+      },
+    });
+  },
+
+  async deleteReport(item: DisplayMyReport): Promise<void> {
+    try {
+      await apiDeleteReport(item.report_id);
+      track('my_content_delete', {
+        status: item.moderationStatus,
+        result: 'success',
+      });
+      wx.showToast({ title: '已删除', icon: 'success' });
+      await this.loadReports(true);
+    } catch {
+      track('my_content_delete', {
+        status: item.moderationStatus,
+        result: 'fail',
+      });
+      wx.showToast({ title: '删除失败，请重试', icon: 'none' });
+    }
+  },
+
+  openLegal(event: LegalTapEvent): void {
+    const key = event.currentTarget.dataset.key;
+    const urls: Record<string, string> = {
+      terms: this.data.termsUrl,
+      privacy: this.data.privacyUrl,
+      community: this.data.communityUrl,
+    };
+    const url = urls[key] ?? '';
+    if (url === '') {
+      wx.showToast({ title: '法务链接暂未开放', icon: 'none' });
+      return;
+    }
+    let webViewAvailable: boolean;
+    try {
+      webViewAvailable = wx.canIUse('web-view');
+    } catch {
+      webViewAvailable = true;
+    }
+    if (!webViewAvailable) {
+      this.copyLegalUrl(url);
+      return;
+    }
+    wx.navigateTo({
+      url: `/pages/legal/legal?url=${encodeURIComponent(url)}`,
+      fail: () => this.copyLegalUrl(url),
+    });
+  },
+
+  copyLegalUrl(url: string): void {
+    wx.setClipboardData({
+      data: url,
+      success: () => {
+        wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' });
+      },
+    });
   },
 
   logout(): void {

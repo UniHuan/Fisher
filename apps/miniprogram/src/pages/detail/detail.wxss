@@ -360,6 +360,13 @@
   font-size: 23rpx;
 }
 
+.ugc-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8rpx;
+}
+
 .ugc-more-error {
   display: flex;
   align-items: center;
