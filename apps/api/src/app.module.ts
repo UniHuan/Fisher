@@ -1,6 +1,7 @@
 import { Module, type DynamicModule, type Provider, type Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
+import { AdminFeedbackModule } from './modules/admin-feedback/admin-feedback.module';
 import { AdminReportsModule } from './modules/admin-reports/admin-reports.module';
 import { AdminSpotsModule } from './modules/admin-spots/admin-spots.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
@@ -9,6 +10,7 @@ import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { AuditLogModule } from './modules/audit/audit-log.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
 import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { HealthController } from './modules/health/health.controller';
 import { PoisModule } from './modules/pois/pois.module';
 import { PublicSpotsModule } from './modules/public-spots/public-spots.module';
@@ -49,6 +51,8 @@ export class AppModule {
         }),
         AuditLogModule,
         DictionariesModule,
+        FeedbackModule,
+        AdminFeedbackModule,
         AdminReportsModule,
         AdminSpotsModule,
         ClientConfigModule,

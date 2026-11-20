@@ -17,6 +17,44 @@
   height: 440rpx;
 }
 
+.gallery-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 440rpx;
+  background: #F5F4EE;
+}
+
+.gallery-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.gallery-placeholder-mark {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: #123B32;
+  color: #F5F4EE;
+  font-size: 34rpx;
+  font-weight: 600;
+  line-height: 88rpx;
+  text-align: center;
+}
+
+.gallery-placeholder-text {
+  color: #1E6B57;
+  font-size: 24rpx;
+  letter-spacing: 0.12em;
+}
+
+.gallery-placeholder-hint {
+  color: #1E6B57;
+  font-size: 23rpx;
+}
+
 .detail-body {
   padding: 28rpx 24rpx 0;
 }
@@ -44,6 +82,20 @@
 .tag-core {
   background: #FAE7E2;
   color: #A93226;
+}
+
+.heading-feedback {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-top: 18rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
+}
+
+.heading-feedback-link {
+  color: #1E6B57;
+  font-weight: 600;
 }
 
 .alert {

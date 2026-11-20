@@ -81,6 +81,10 @@
         bindtap="openDetail"
       >
         <image wx:if="{{item.cover}}" class="spot-cover" src="{{item.cover}}" mode="aspectFill" />
+        <view wx:else class="spot-cover spot-cover-empty">
+          <view class="spot-cover-mark">钓</view>
+          <text class="spot-cover-text">实景图待补充</text>
+        </view>
         <view class="spot-body">
           <view class="spot-head">
             <text class="spot-name">{{item.spot_name}}</text>

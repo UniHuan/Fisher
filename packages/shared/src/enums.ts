@@ -94,3 +94,30 @@ export const APP_USER_STATUS = {
 } as const;
 
 export type AppUserStatus = (typeof APP_USER_STATUS)[keyof typeof APP_USER_STATUS];
+
+export const FEEDBACK_CATEGORY = {
+  BUG: 'bug',
+  SUGGESTION: 'suggestion',
+  CONTENT: 'content',
+  PHOTO: 'photo',
+  OTHER: 'other',
+} as const;
+
+export type FeedbackCategory = (typeof FEEDBACK_CATEGORY)[keyof typeof FEEDBACK_CATEGORY];
+
+export const FEEDBACK_STATUS = {
+  OPEN: 'open',
+  REVIEWING: 'reviewing',
+  RESOLVED: 'resolved',
+  CLOSED: 'closed',
+} as const;
+
+export type FeedbackStatus = (typeof FEEDBACK_STATUS)[keyof typeof FEEDBACK_STATUS];
+
+export const FEEDBACK_IMAGE_STATUS = {
+  PENDING: 'pending',
+  USED: 'used',
+  DELETED: 'deleted',
+} as const;
+
+export type FeedbackImageStatus = (typeof FEEDBACK_IMAGE_STATUS)[keyof typeof FEEDBACK_IMAGE_STATUS];

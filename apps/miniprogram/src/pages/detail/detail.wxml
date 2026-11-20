@@ -21,6 +21,13 @@
       </swiper-item>
     </swiper>
   </view>
+  <view wx:else class="gallery gallery-empty">
+    <view class="gallery-placeholder" bindtap="openPhotoFeedback">
+      <view class="gallery-placeholder-mark">钓</view>
+      <text class="gallery-placeholder-text">实景图待补充</text>
+      <text wx:if="{{feedbackEnabled}}" class="gallery-placeholder-hint">有实景照片？点击补充</text>
+    </view>
+  </view>
 
   <view class="detail-body">
     <view class="detail-heading">
@@ -30,6 +37,10 @@
         <text wx:if="{{spot.is_core}}" class="tag tag-core">核心</text>
         <text class="tag {{openTone || 'tag-line'}}">{{openLabel}}</text>
         <text class="tag">{{feeLabel}}</text>
+      </view>
+      <view wx:if="{{feedbackEnabled}}" class="heading-feedback">
+        <text class="heading-feedback-text">信息有误或想补充？</text>
+        <text class="heading-feedback-link" bindtap="openSuggestionFeedback">意见反馈</text>
       </view>
     </view>
 

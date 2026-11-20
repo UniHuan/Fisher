@@ -48,6 +48,7 @@ interface CreateData {
   loadingConfig: boolean;
   configError: string;
   ugcEnabled: boolean;
+  feedbackEnabled: boolean;
   termsVersion: string;
   sessionReady: boolean;
   meCanPublish: boolean;
@@ -117,6 +118,7 @@ interface CreateMethods {
   updateImageProgress(index: number, progress: number): void;
   markImageUploaded(index: number, key: string): void;
   clearImageKeys(): void;
+  openFeedback(): void;
   submit(): Promise<void>;
   cancel(): void;
   isDirty(): boolean;
@@ -149,6 +151,7 @@ Page<CreateData, CreateMethods>({
     loadingConfig: true,
     configError: '',
     ugcEnabled: false,
+    feedbackEnabled: false,
     termsVersion: '',
     sessionReady: false,
     meCanPublish: true,
@@ -207,6 +210,7 @@ Page<CreateData, CreateMethods>({
       label: item.label,
     }));
     const ugcEnabled = config?.features.ugc === true;
+    const feedbackEnabled = config?.features.feedback === true;
     const termsUrl = config?.legal.terms_url ?? '';
     const privacyUrl = config?.legal.privacy_url ?? '';
     const communityUrl = config?.legal.community_url ?? '';
@@ -214,6 +218,7 @@ Page<CreateData, CreateMethods>({
     this.setData({
       loadingConfig: false,
       ugcEnabled,
+      feedbackEnabled,
       termsVersion: config?.legal.terms_version ?? '',
       fishOptions,
       fishLabels: fishOptions.map((item) => item.label),
@@ -429,6 +434,17 @@ Page<CreateData, CreateMethods>({
       progress: 0,
     }));
     this.setData({ images });
+  },
+
+  openFeedback(): void {
+    const params = ['category=bug', 'page=report-create'];
+    if (this.data.spotId !== '') {
+      params.push(`spot_id=${encodeURIComponent(this.data.spotId)}`);
+    }
+    if (this.data.spotName !== '') {
+      params.push(`spot_name=${encodeURIComponent(this.data.spotName)}`);
+    }
+    wx.navigateTo({ url: `/pages/feedback/index?${params.join('&')}` });
   },
 
   async submit(): Promise<void> {

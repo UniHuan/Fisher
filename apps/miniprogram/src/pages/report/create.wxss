@@ -313,6 +313,16 @@
   font-size: 20rpx;
 }
 
+.feedback-link {
+  display: block;
+  margin: 4rpx 0 20rpx;
+  padding: 6rpx 0;
+  color: #1E6B57;
+  font-size: 24rpx;
+  text-align: center;
+  text-decoration: underline;
+}
+
 .create-actions {
   position: fixed;
   right: 0;

@@ -32,6 +32,14 @@ export type CreateSpotBody = components['schemas']['CreateSpotDto'];
 export type UpdateSpotBody = components['schemas']['UpdateSpotDto'];
 export type TotpSetup = components['schemas']['TotpSetupDto'];
 export type TotpEnable = components['schemas']['TotpEnableDto'];
+export type AdminMe = components['schemas']['MeDto'];
+export type AdminFeedbackItem = components['schemas']['AdminFeedbackItemDto'];
+export type AdminFeedbackPage = components['schemas']['AdminFeedbackPageDto'];
+export type AdminFeedbackDetail = components['schemas']['AdminFeedbackDetailDto'];
+export type AdminFeedbackUpdate = components['schemas']['AdminFeedbackUpdateResponseDto'];
+export type FeedbackCategory = AdminFeedbackItem['category'];
+export type FeedbackStatus = AdminFeedbackItem['status'];
+export type UpdateFeedbackBody = components['schemas']['UpdateFeedbackDto'];
 export type AdminReportAuthor = components['schemas']['AdminReportAuthorDto'];
 export type AdminReportItem = components['schemas']['AdminReportItemDto'];
 export type AdminReportPage = components['schemas']['AdminReportPageDto'];
@@ -103,6 +111,13 @@ export interface AdminAbuseListQuery {
   limit?: number;
 }
 
+export interface FeedbackListQuery {
+  status?: string;
+  category?: string;
+  cursor?: string;
+  limit?: number;
+}
+
 function querySuffix(query: object): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -130,7 +145,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   csrf?: string;
   headers?: Record<string, string>;
@@ -211,6 +226,9 @@ export const api = {
   },
   refresh(): Promise<AdminSession> {
     return request<AdminSession>('/admin/auth/refresh', { method: 'POST' });
+  },
+  me(): Promise<AdminMe> {
+    return request<AdminMe>('/admin/me');
   },
   logout(csrf: string): Promise<null> {
     return request<null>('/admin/auth/logout', { method: 'POST', csrf });
@@ -396,6 +414,23 @@ export const api = {
   },
   listAuditLogs(query: AuditLogQuery): Promise<AuditLogPage> {
     return request<AuditLogPage>(`/admin/audit-logs${querySuffix(query)}`);
+  },
+  listFeedback(query: FeedbackListQuery): Promise<AdminFeedbackPage> {
+    return request<AdminFeedbackPage>(`/admin/feedback${querySuffix(query)}`);
+  },
+  getFeedback(id: string): Promise<AdminFeedbackDetail> {
+    return request<AdminFeedbackDetail>(`/admin/feedback/${id}`);
+  },
+  updateFeedback(
+    id: string,
+    body: UpdateFeedbackBody,
+    csrf: string,
+  ): Promise<AdminFeedbackUpdate> {
+    return request<AdminFeedbackUpdate>(`/admin/feedback/${id}`, {
+      method: 'PATCH',
+      body,
+      csrf,
+    });
   },
   listAdminReports(query: AdminReportListQuery): Promise<AdminReportPage> {
     return request<AdminReportPage>(`/admin/reports${querySuffix(query)}`);

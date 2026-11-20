@@ -166,6 +166,34 @@
   background: #E3E8E1;
 }
 
+.spot-cover-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  background: #F5F4EE;
+  border-bottom: 1rpx solid #E3EEE6;
+}
+
+.spot-cover-mark {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #123B32;
+  color: #F5F4EE;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 72rpx;
+  text-align: center;
+}
+
+.spot-cover-text {
+  color: #1E6B57;
+  font-size: 23rpx;
+  letter-spacing: 0.12em;
+}
+
 .spot-body {
   padding: 24rpx;
   display: flex;

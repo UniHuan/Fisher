@@ -5,6 +5,7 @@
     "pages/detail/detail",
     "pages/poi/list",
     "pages/report/create",
+    "pages/feedback/index",
     "pages/profile/index",
     "pages/legal/legal"
   ],

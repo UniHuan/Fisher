@@ -26,6 +26,8 @@
     "media-check:timeout:prod": "node dist/jobs/media-check-timeout.job.js",
     "ugc:purge": "tsx src/jobs/purge-ugc-orphans.job.ts",
     "ugc:purge:prod": "node dist/jobs/purge-ugc-orphans.job.js",
+    "feedback:purge": "tsx src/jobs/purge-feedback.job.ts",
+    "feedback:purge:prod": "node dist/jobs/purge-feedback.job.js",
     "perf:seed": "tsx scripts/seed-performance-data.ts",
     "quality:report": "tsx scripts/spot-quality-report.ts",
     "openapi:generate": "tsc -p tsconfig.openapi.json && tsx dist/openapi/scripts/generate-openapi.js && openapi-typescript ../../openapi/openapi.yaml -o ../../packages/api-client/src/schema.d.ts"

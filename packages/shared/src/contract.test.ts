@@ -3,6 +3,9 @@ import {
   ADMIN_ROLE,
   CLIENT_TYPE,
   ERROR_CODES,
+  FEEDBACK_CATEGORY,
+  FEEDBACK_IMAGE_STATUS,
+  FEEDBACK_STATUS,
   MODERATION_STATUS,
   OPEN_STATUS,
   POI_TYPE,
@@ -20,6 +23,9 @@ import type {
   AdminRole,
   ApiResponse,
   ClientType,
+  FeedbackCategory,
+  FeedbackImageStatus,
+  FeedbackStatus,
   OpenStatus,
   Paginated,
   PoiType,
@@ -105,6 +111,35 @@ describe('shared contract', () => {
       AD: 'ad', ABUSE: 'abuse', FALSE_INFO: 'false_info', PRIVACY: 'privacy', OTHER: 'other',
     });
     expect(UGC_UPLOAD_STATUS).toEqual({ PENDING: 'pending', USED: 'used', DELETED: 'deleted' });
+  });
+
+  it('exposes the trial feedback enums', () => {
+    expect(FEEDBACK_CATEGORY).toEqual({
+      BUG: 'bug',
+      SUGGESTION: 'suggestion',
+      CONTENT: 'content',
+      PHOTO: 'photo',
+      OTHER: 'other',
+    });
+    expect(FEEDBACK_STATUS).toEqual({
+      OPEN: 'open',
+      REVIEWING: 'reviewing',
+      RESOLVED: 'resolved',
+      CLOSED: 'closed',
+    });
+    expect(FEEDBACK_IMAGE_STATUS).toEqual({
+      PENDING: 'pending',
+      USED: 'used',
+      DELETED: 'deleted',
+    });
+  });
+
+  it('types the trial feedback enum union members', () => {
+    const category: FeedbackCategory = FEEDBACK_CATEGORY.PHOTO;
+    const status: FeedbackStatus = FEEDBACK_STATUS.REVIEWING;
+    const imageStatus: FeedbackImageStatus = FEEDBACK_IMAGE_STATUS.DELETED;
+
+    expect([category, status, imageStatus]).toEqual(['photo', 'reviewing', 'deleted']);
   });
 
   it('wraps success and failure', () => {

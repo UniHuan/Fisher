@@ -15,6 +15,7 @@ export interface ClientConfig {
     search: boolean;
     banned_spots: boolean;
     ugc: boolean;
+    feedback: boolean;
   };
   data_freshness: {
     core_days: number;
@@ -39,6 +40,7 @@ export const DEFAULT_CLIENT_CONFIG: ClientConfig = {
     search: true,
     banned_spots: true,
     ugc: false,
+    feedback: false,
   },
   data_freshness: {
     core_days: 30,
@@ -61,6 +63,7 @@ export const CLIENT_CONFIG_WHITELIST = [
   'features.search',
   'features.banned_spots',
   'features.ugc',
+  'features.feedback',
   'data_freshness.core_days',
   'data_freshness.normal_days',
 ] as const;
@@ -152,6 +155,8 @@ export class ClientConfigService {
           readBoolean(values, 'features.banned_spots') ??
           DEFAULT_CLIENT_CONFIG.features.banned_spots,
         ugc: readBoolean(values, 'features.ugc') ?? DEFAULT_CLIENT_CONFIG.features.ugc,
+        feedback:
+          readBoolean(values, 'features.feedback') ?? DEFAULT_CLIENT_CONFIG.features.feedback,
       },
       data_freshness: {
         core_days:

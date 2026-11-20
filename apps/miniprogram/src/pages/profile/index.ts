@@ -44,6 +44,7 @@ interface ProfileData {
   initialized: boolean;
   configError: string;
   ugcEnabled: boolean;
+  feedbackEnabled: boolean;
   sessionReady: boolean;
   loggingIn: boolean;
   nickname: string;
@@ -83,7 +84,12 @@ interface LegalTapEvent {
   currentTarget: { dataset: { key: string } };
 }
 
+interface FeedbackTapEvent {
+  currentTarget: { dataset: { category: string } };
+}
+
 interface ProfileMethods {
+  openFeedback(event: FeedbackTapEvent): void;
   init(): Promise<void>;
   retryConfig(): void;
   login(): Promise<void>;
@@ -136,6 +142,7 @@ Page<ProfileData, ProfileMethods>({
     initialized: false,
     configError: '',
     ugcEnabled: false,
+    feedbackEnabled: false,
     sessionReady: false,
     loggingIn: false,
     nickname: '',
@@ -185,6 +192,7 @@ Page<ProfileData, ProfileMethods>({
   async init(): Promise<void> {
     const config = await getClientConfig().catch(() => null);
     const ugcEnabled = config?.features.ugc === true;
+    const feedbackEnabled = config?.features.feedback === true;
     const legal = config?.legal ?? null;
     const termsUrl = legal?.terms_url ?? '';
     const privacyUrl = legal?.privacy_url ?? '';
@@ -193,6 +201,7 @@ Page<ProfileData, ProfileMethods>({
       initialized: true,
       configError: config === null ? '配置加载失败，请重试' : '',
       ugcEnabled,
+      feedbackEnabled,
       sessionReady: getSession() !== null,
       termsUrl,
       privacyUrl,
@@ -388,6 +397,13 @@ Page<ProfileData, ProfileMethods>({
     }
     const index = Number(event.currentTarget.dataset.index);
     wx.previewImage({ current: item.images[index], urls: item.images });
+  },
+
+  openFeedback(event: FeedbackTapEvent): void {
+    const category = event.currentTarget.dataset.category;
+    wx.navigateTo({
+      url: `/pages/feedback/index?category=${encodeURIComponent(category)}&page=profile`,
+    });
   },
 
   confirmDelete(event: ReportTapEvent): void {
