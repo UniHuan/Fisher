@@ -2,6 +2,7 @@
 
 import {
   App,
+  Badge,
   Button,
   Card,
   Col,
@@ -22,12 +23,14 @@ import {
   api,
   ApiError,
   resolveMediaUrl,
+  type AdminReportSummary,
   type AdminSpotListItem,
   type AdminSpotPage,
   type PublicDictionaries,
   type Session,
 } from './api';
 import { AuditLogDrawer } from './AuditLogDrawer';
+import { ContentModerationDrawer } from './ContentModerationDrawer';
 import { DictionaryDrawer } from './DictionaryDrawer';
 import { ImportDrawer } from './ImportDrawer';
 import { PoiDrawer } from './PoiDrawer';
@@ -90,8 +93,30 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [dictionaryReloadKey, setDictionaryReloadKey] = useState(0);
+  const [moderationOpen, setModerationOpen] = useState(false);
+  const [moderationSummary, setModerationSummary] = useState<AdminReportSummary | null>(null);
+  const [moderationReloadKey, setModerationReloadKey] = useState(0);
 
   const writable = session.admin.role !== 'reviewer';
+
+  useEffect(() => {
+    let active = true;
+    api
+      .reportSummary()
+      .then((result) => {
+        if (active) {
+          setModerationSummary(result);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active && isAuthError(error)) {
+          onExpired();
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [moderationReloadKey, onExpired]);
 
   useEffect(() => {
     api
@@ -316,6 +341,13 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
     },
   ];
 
+  const moderationPending =
+    moderationSummary === null
+      ? 0
+      : moderationSummary.spot_check +
+        moderationSummary.pending +
+        moderationSummary.abuse_pending;
+
   return (
     <Layout className="app-shell">
       <Layout.Header className="app-header">
@@ -329,6 +361,11 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
           </div>
         </Space>
         <Space size={12}>
+          <Badge count={moderationPending} size="small" className="moderation-badge">
+            <Button size="small" onClick={() => setModerationOpen(true)}>
+              内容审核
+            </Button>
+          </Badge>
           {session.admin.role === 'super_admin' && (
             <Button size="small" onClick={() => setDictionaryOpen(true)}>
               字典
@@ -500,6 +537,16 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
           onExpired={onExpired}
         />
       )}
+      <ContentModerationDrawer
+        open={moderationOpen}
+        session={session}
+        onClose={() => {
+          setModerationOpen(false);
+          setModerationReloadKey((value) => value + 1);
+        }}
+        onChanged={() => setModerationReloadKey((value) => value + 1)}
+        onExpired={onExpired}
+      />
     </Layout>
   );
 }
