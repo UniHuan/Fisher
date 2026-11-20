@@ -20,7 +20,12 @@ import {
 } from '../content-security/content-security.types';
 import { DictionariesRepository } from '../dictionaries/dictionaries.repository';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
-import type { CreateReportResponseDto } from './dto/create-report.dto';
+import { PREVIEW_URL_TTL_SECONDS } from '../storage/storage.service';
+import { PreviewSignerService } from '../uploads/preview-signer.service';
+import {
+  REPORT_IMAGE_KEY_PATTERN,
+  type CreateReportResponseDto,
+} from './dto/create-report.dto';
 import type { MyReportStatusFilter } from './dto/my-report-list-query.dto';
 import type { MyReportItemDto } from './dto/my-report-response.dto';
 import type { PublicReportItemDto } from './dto/public-report-response.dto';
@@ -30,6 +35,7 @@ import {
   toMyReportItem,
   toPublicReportItem,
 } from './report.mapper';
+import { ReportModerationService } from './report-moderation.service';
 import { ReportsRepository, type SpotVisibility } from './reports.repository';
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -63,6 +69,7 @@ export interface CreateReportInput {
   spot_id: string;
   content_type: string;
   content: string;
+  image_keys?: string[];
   fish_key?: string;
   catch_weight_kg?: number;
   terms_version?: string;
@@ -115,6 +122,8 @@ export class ReportsService {
     private readonly dictionaries: DictionariesRepository,
     private readonly rateLimit: RateLimitService,
     private readonly repository: ReportsRepository,
+    private readonly moderation: ReportModerationService,
+    private readonly previewSigner: PreviewSignerService,
     @Inject(CONTENT_SECURITY_PROVIDER)
     private readonly contentSecurity: ContentSecurityProvider,
   ) {}
@@ -174,6 +183,7 @@ export class ReportsService {
       throw validationError('content', 'Content must be 1 to 500 characters');
     }
     const shape = await this.resolveContentShape(input);
+    const imageKeys = await this.resolveImageKeys(input.image_keys, user.user_id);
 
     const termsVersion = this.config.get<string>('UGC_TERMS_VERSION')?.trim() ?? '';
     if (termsVersion === '') {
@@ -203,19 +213,37 @@ export class ReportsService {
       userId: user.user_id,
       contentType: input.content_type,
       content,
+      imageKeys,
       fishKey: shape.fishKey,
       catchWeightKg: shape.catchWeightKg,
       createdAt: now,
+      usedAt: now,
       terms: needsAcceptance ? { version: termsVersion, acceptedAt: now } : null,
     });
 
     const result = await this.checkText(content, appUser.openid);
-    const moderationStatus = moderationStatusFor(result.suggest);
+    let moderationStatus =
+      result.suggest === 'pass' && imageKeys.length > 0
+        ? MODERATION_STATUS.MACHINE_PENDING
+        : moderationStatusFor(result.suggest);
     await this.repository.updateModeration(
       reportId,
       moderationStatus,
       toMachineResult(result),
     );
+
+    // Images are submitted only after the text check passes; a text `review`
+    // waits for a human who copies the images on approval.
+    if (result.suggest === 'pass' && imageKeys.length > 0) {
+      try {
+        await this.moderation.submitImages(reportId, imageKeys, appUser.openid);
+      } catch {
+        this.logger.warn('Image moderation submission failed; report stays pending');
+      }
+      moderationStatus =
+        (await this.repository.findModerationStatus(reportId)) ??
+        MODERATION_STATUS.MACHINE_PENDING;
+    }
 
     return {
       report_id: reportId,
@@ -277,10 +305,43 @@ export class ReportsService {
     });
 
     return {
-      items: rows.map(toMyReportItem),
+      items: rows.map((row) =>
+        toMyReportItem(row, (key) =>
+          this.previewSigner.sign(key, 'working', PREVIEW_URL_TTL_SECONDS).url,
+        ),
+      ),
       next_cursor: this.nextCursor(rows, hasMore),
       total,
     };
+  }
+
+  private async resolveImageKeys(
+    imageKeys: string[] | undefined,
+    userId: string,
+  ): Promise<string[]> {
+    const unique = [...new Set(imageKeys ?? [])];
+    if (unique.length > 6) {
+      throw validationError('image_keys', 'At most 6 images are allowed');
+    }
+    if (unique.length === 0) {
+      return [];
+    }
+    for (const key of unique) {
+      if (!key.startsWith(`ugc/${userId}/`) || !REPORT_IMAGE_KEY_PATTERN.test(key)) {
+        throw validationError(
+          'image_keys',
+          'Image keys must belong to the current user',
+        );
+      }
+    }
+    const owned = await this.repository.findPendingUploadKeys(userId, unique);
+    if (owned.length !== unique.length) {
+      throw validationError(
+        'image_keys',
+        'Image keys must be pending uploads owned by the current user',
+      );
+    }
+    return unique;
   }
 
   private async resolveContentShape(input: CreateReportInput): Promise<ContentShape> {

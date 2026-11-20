@@ -4,6 +4,10 @@ import { ClientConfigModule } from '../config/client-config.module';
 import { ContentSecurityModule } from '../content-security/content-security.module';
 import { DictionariesModule } from '../dictionaries/dictionaries.module';
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
+import { StorageModule } from '../storage/storage.module';
+// UploadsModule exports the preview signer used for author-only image URLs.
+import { UploadsModule } from '../uploads/uploads.module';
+import { ReportModerationService } from './report-moderation.service';
 import { ReportsController } from './reports.controller';
 import { ReportsRepository } from './reports.repository';
 import { ReportsService } from './reports.service';
@@ -23,6 +27,8 @@ export class ReportsModule {
         ClientConfigModule,
         DictionariesModule,
         RateLimitModule,
+        StorageModule,
+        UploadsModule,
         // AppAuthModule is global (registered once at the root with the test
         // auth provider), so the guards resolve AppAuthService from there.
         ContentSecurityModule.register({
@@ -30,8 +36,8 @@ export class ReportsModule {
         }),
       ],
       controllers: [ReportsController],
-      providers: [ReportsService, ReportsRepository],
-      exports: [ReportsService, ReportsRepository],
+      providers: [ReportsService, ReportsRepository, ReportModerationService],
+      exports: [ReportsService, ReportsRepository, ReportModerationService],
     };
   }
 }

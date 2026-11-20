@@ -1,10 +1,10 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { copyFile, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { StorageAdapter, StorageArea } from './storage.types';
 
 const STORAGE_KEY_PATTERN =
-  /^(spots\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp|imports\/[A-Za-z0-9]{26}\/[A-Za-z0-9-]+\.(xlsx|csv))$/;
+  /^(spots\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp|ugc\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp|imports\/[A-Za-z0-9]{26}\/[A-Za-z0-9-]+\.(xlsx|csv))$/;
 
 function assertStorageKey(key: string): void {
   if (!STORAGE_KEY_PATTERN.test(key)) {
@@ -49,6 +49,16 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
+  async deletePublishedObject(key: string): Promise<void> {
+    try {
+      await unlink(this.resolve('published', key));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
   async getSignedUrl(key: string, expiresSeconds: number): Promise<string> {
     assertStorageKey(key);
     const expires = Math.floor(Date.now() / 1000) + Math.max(1, Math.floor(expiresSeconds));
@@ -68,18 +78,6 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async getObject(key: string, area: StorageArea): Promise<Buffer> {
     return readFile(this.resolve(area, key));
-  }
-
-  verifySignedUrl(key: string, expires: number, signature: string): boolean {
-    if (!STORAGE_KEY_PATTERN.test(key) || !Number.isInteger(expires)) {
-      return false;
-    }
-    if (expires < Math.floor(Date.now() / 1000)) {
-      return false;
-    }
-    const expected = Buffer.from(this.sign(key, expires));
-    const actual = Buffer.from(signature);
-    return expected.length === actual.length && timingSafeEqual(expected, actual);
   }
 
   private sign(key: string, expires: number): string {

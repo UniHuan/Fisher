@@ -46,6 +46,10 @@ export class OssStorageAdapter implements StorageAdapter {
     await this.workClient.delete(key);
   }
 
+  async deletePublishedObject(key: string): Promise<void> {
+    await this.publicClient.delete(key);
+  }
+
   async getSignedUrl(key: string, expiresSeconds: number): Promise<string> {
     return this.workClient.signatureUrl(key, {
       expires: Math.max(1, Math.floor(expiresSeconds)),

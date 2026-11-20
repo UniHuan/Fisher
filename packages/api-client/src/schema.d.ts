@@ -659,6 +659,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads/ugc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload and compress a report image
+         * @description Accepts JPG, PNG and WebP up to 10 MB, re-encodes to WebP and returns the private work-bucket key. At most 30 images per user per day.
+         */
+        post: operations["UploadsUgcController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/imports/{id}": {
         parameters: {
             query?: never;
@@ -921,6 +941,13 @@ export interface components {
              */
             content: string;
             /**
+             * @description Work-bucket keys returned by POST /uploads/ugc; at most 6 after deduplication, each owned by the current user
+             * @example [
+             *       "ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            image_keys?: string[];
+            /**
              * @description Required for catch content
              * @example luofei
              */
@@ -960,8 +987,10 @@ export interface components {
             /** @example 今天鱼口不错 */
             content: string;
             /**
-             * @description Public paths for visible images; pending/rejected images stay empty
-             * @example []
+             * @description Public paths for visible images; 15-minute signed work-bucket previews for pending, rejected and removed images
+             * @example [
+             *       "/api/v1/uploads/preview?key=...&area=working&expires=...&signature=..."
+             *     ]
              */
             images: string[];
             /**
@@ -1006,8 +1035,10 @@ export interface components {
             /** @example 今天鱼口不错 */
             content: string;
             /**
-             * @description Relative public image paths; empty until image uploads land
-             * @example []
+             * @description Relative public image paths served by the cacheable UGC image route
+             * @example [
+             *       "/api/v1/uploads/public/ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
              */
             images: string[];
             /** @example luofei */
@@ -1916,6 +1947,16 @@ export interface components {
              * @enum {string}
              */
             purpose: "cover" | "detail";
+        };
+        UploadUgcResponseDto: {
+            /** @example ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            key: string;
+            /** @example 1280 */
+            width: number;
+            /** @example 960 */
+            height: number;
+            /** @example 182400 */
+            size_bytes: number;
         };
     };
     responses: never;
@@ -5640,6 +5681,103 @@ export interface operations {
                 };
             };
             /** @description Storage unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    UploadsUgcController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Compressed WebP work-bucket key and dimensions */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["UploadUgcResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
             503: {
                 headers: {
                     [name: string]: unknown;

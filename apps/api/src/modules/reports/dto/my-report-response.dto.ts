@@ -33,8 +33,9 @@ export class MyReportItemDto {
 
   @ApiProperty({
     type: [String],
-    example: [],
-    description: 'Public paths for visible images; pending/rejected images stay empty',
+    example: ['/api/v1/uploads/preview?key=...&area=working&expires=...&signature=...'],
+    description:
+      'Public paths for visible images; 15-minute signed work-bucket previews for pending, rejected and removed images',
   })
   images!: string[];
 

@@ -63,16 +63,24 @@ export function toPublicReportItem(
   };
 }
 
-export function toMyReportItem(row: MyReportRow): MyReportItemDto {
+/**
+ * Author-only view. Public rows expose the cacheable public route; pending,
+ * rejected and removed rows expose short-lived signed work-bucket previews so
+ * the author can still see what they submitted.
+ */
+export function toMyReportItem(
+  row: MyReportRow,
+  previewUrlFor?: (key: string) => string,
+): MyReportItemDto {
   return {
     report_id: row.report_id,
     content_type: row.content_type,
     content: row.content,
-    // Pending and rejected images live in the private work bucket; Task 8 adds
-    // signed preview URLs. Only publicly visible rows expose image paths today.
     images: isPubliclyVisibleStatus(row.moderation_status)
       ? publicReportImages(row.report_id, row.images)
-      : [],
+      : previewUrlFor === undefined
+        ? []
+        : row.images.map(previewUrlFor),
     moderation_status: row.moderation_status,
     reject_reason: row.reject_reason,
     created_at: row.created_at.toISOString(),

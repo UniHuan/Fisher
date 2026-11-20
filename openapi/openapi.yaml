@@ -2560,6 +2560,102 @@ paths:
       summary: Upload and compress a spot image
       tags:
         - admin uploads
+  /api/v1/uploads/ugc:
+    post:
+      description: Accepts JPG, PNG and WebP up to 10 MB, re-encodes to WebP and
+        returns the private work-bucket key. At most 30 images per user per day.
+      operationId: UploadsUgcController_create
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Compressed WebP work-bucket key and dimensions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UploadUgcResponseDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40302)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "413":
+          description: Payload too large (41301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "429":
+          description: Too many requests (42901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "503":
+          description: Dependency unavailable (50301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: Upload and compress a report image
+      tags:
+        - uploads
   /api/v1/admin/imports/{id}:
     get:
       operationId: ImportsController_job
@@ -3118,6 +3214,15 @@ components:
             count as one.
           example: 今天罗非爆护，巴掌大，钓了十几条。
           maxLength: 2000
+        image_keys:
+          maxItems: 6
+          description: Work-bucket keys returned by POST /uploads/ugc; at most 6 after
+            deduplication, each owned by the current user
+          example:
+            - ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp
+          type: array
+          items:
+            type: string
         fish_key:
           type: string
           description: Required for catch content
@@ -3177,8 +3282,10 @@ components:
           type: string
           example: 今天鱼口不错
         images:
-          example: []
-          description: Public paths for visible images; pending/rejected images stay empty
+          example:
+            - /api/v1/uploads/preview?key=...&area=working&expires=...&signature=...
+          description: Public paths for visible images; 15-minute signed work-bucket
+            previews for pending, rejected and removed images
           type: array
           items:
             type: string
@@ -3268,8 +3375,9 @@ components:
           type: string
           example: 今天鱼口不错
         images:
-          example: []
-          description: Relative public image paths; empty until image uploads land
+          example:
+            - /api/v1/uploads/public/ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp
+          description: Relative public image paths served by the cacheable UGC image route
           type: array
           items:
             type: string
@@ -5131,3 +5239,23 @@ components:
         - height
         - size_bytes
         - purpose
+    UploadUgcResponseDto:
+      type: object
+      properties:
+        key:
+          type: string
+          example: ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp
+        width:
+          type: integer
+          example: 1280
+        height:
+          type: integer
+          example: 960
+        size_bytes:
+          type: integer
+          example: 182400
+      required:
+        - key
+        - width
+        - height
+        - size_bytes

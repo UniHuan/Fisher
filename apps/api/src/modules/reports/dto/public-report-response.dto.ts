@@ -26,8 +26,8 @@ export class PublicReportItemDto {
 
   @ApiProperty({
     type: [String],
-    example: [],
-    description: 'Relative public image paths; empty until image uploads land',
+    example: ['/api/v1/uploads/public/ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp'],
+    description: 'Relative public image paths served by the cacheable UGC image route',
   })
   images!: string[];
 

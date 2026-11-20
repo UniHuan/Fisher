@@ -1,17 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MODERATION_STATUS, REPORT_CONTENT_TYPE } from '@szfisher/shared';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
   Length,
+  Matches,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
 
 const CONTENT_TYPES: readonly string[] = Object.values(REPORT_CONTENT_TYPE);
+
+/** Work-bucket keys produced by `POST /uploads/ugc`; ownership is checked later. */
+export const REPORT_IMAGE_KEY_PATTERN =
+  /^ugc\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp$/;
 
 export class CreateReportDto {
   @ApiProperty({ example: '01HX0000000000000000000000' })
@@ -32,6 +39,21 @@ export class CreateReportDto {
   @IsString()
   @MaxLength(2000)
   content!: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 6,
+    description:
+      'Work-bucket keys returned by POST /uploads/ugc; at most 6 after deduplication, each owned by the current user',
+    example: ['ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp'],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(REPORT_IMAGE_KEY_PATTERN, { each: true })
+  image_keys?: string[];
 
   @ApiPropertyOptional({ description: 'Required for catch content', maxLength: 64, example: 'luofei' })
   @IsOptional()

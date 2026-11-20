@@ -1,3 +1,4 @@
+import type { ConfigService } from '@nestjs/config';
 import {
   WechatAccessTokenError,
   WechatAccessTokenService,
@@ -10,7 +11,18 @@ interface TokenStub {
 }
 
 function makeProvider(tokens: TokenStub): WechatContentSecurityProvider {
-  return new WechatContentSecurityProvider(tokens as unknown as WechatAccessTokenService);
+  const config = {
+    get: (key: string) =>
+      ({
+        WECHAT_MSG_TOKEN: 'test-msg-token',
+        WECHAT_MSG_AES_KEY: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG',
+        WECHAT_MINI_APPID: 'wx-test-appid',
+      })[key],
+  } as unknown as ConfigService;
+  return new WechatContentSecurityProvider(
+    tokens as unknown as WechatAccessTokenService,
+    config,
+  );
 }
 
 function jsonResponse(body: unknown, ok = true): Response {
@@ -100,5 +112,51 @@ describe('WechatContentSecurityProvider', () => {
     const result = await makeProvider(tokens).checkText({ content: 'x', openid: 'y' });
 
     expect(result).toEqual({ suggest: 'review', errorCode: 'request-failed' });
+  });
+
+  it('submits media for asynchronous review and returns the trace id', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ errcode: 0, trace_id: 'media-trace-1' }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const tokens: TokenStub = {
+      getAccessToken: jest.fn().mockResolvedValue('access-token'),
+      invalidate: jest.fn(),
+    };
+
+    const result = await makeProvider(tokens).checkMedia({
+      imageUrl: 'https://api.example.com/preview?sig=x',
+      openid: 'openid-x',
+    });
+
+    expect(result).toEqual({ traceId: 'media-trace-1' });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      'https://api.weixin.qq.com/wxa/media_check_async?access_token=access-token',
+    );
+    expect(JSON.parse(String(init.body))).toEqual({
+      media_url: 'https://api.example.com/preview?sig=x',
+      media_type: 2,
+      version: 2,
+      scene: 2,
+      openid: 'openid-x',
+    });
+  });
+
+  it('throws a safe ContentSecurityMediaError when media submission fails', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ errcode: 40001 })) as unknown as typeof fetch;
+    const tokens: TokenStub = {
+      getAccessToken: jest.fn().mockResolvedValue('access-token'),
+      invalidate: jest.fn(),
+    };
+
+    const provider = makeProvider(tokens);
+    await expect(
+      provider.checkMedia({ imageUrl: 'https://api.example.com/x', openid: 'openid-x' }),
+    ).rejects.toMatchObject({ reason: 'errcode-40001' });
+    // One token refresh retry, then the same errcode is surfaced.
+    expect(tokens.invalidate).toHaveBeenCalledTimes(1);
   });
 });

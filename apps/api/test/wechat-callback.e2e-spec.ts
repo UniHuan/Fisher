@@ -22,27 +22,27 @@ describe('WeChat media callback URL verification', () => {
 
   it('returns echostr for a valid signature', async () => {
     const timestamp = String(Math.floor(Date.now() / 1000));
-    const nonce = 'test-nonce';
+    const nonce = 'testnonce';
     const signature = wechatSignature(TOKEN, timestamp, nonce);
     const response = await request(server)
       .get('/api/v1/wechat/media-check/callback')
-      .query({ signature, timestamp, nonce, echostr: 'hello-wechat' })
+      .query({ signature, timestamp, nonce, echostr: 'helloWeChat' })
       .expect(200);
-    expect(response.text).toBe('hello-wechat');
+    expect(response.text).toBe('helloWeChat');
   });
 
   it('rejects a tampered signature', async () => {
     const timestamp = String(Math.floor(Date.now() / 1000));
     const response = await request(server)
       .get('/api/v1/wechat/media-check/callback')
-      .query({ signature: 'bad', timestamp, nonce: 'test-nonce', echostr: 'hello' })
+      .query({ signature: '0'.repeat(40), timestamp, nonce: 'testnonce', echostr: 'hello' })
       .expect(403);
     expect(response.body.code).toBe(40301);
   });
 
   it('rejects a stale timestamp even with a valid signature', async () => {
     const timestamp = String(Math.floor(Date.now() / 1000) - 3600);
-    const nonce = 'test-nonce';
+    const nonce = 'testnonce';
     const signature = wechatSignature(TOKEN, timestamp, nonce);
     await request(server)
       .get('/api/v1/wechat/media-check/callback')

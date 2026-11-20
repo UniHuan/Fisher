@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { OPEN_STATUS, SPOT_STATUS } from '@szfisher/shared';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { ERROR_CODES, OPEN_STATUS, SPOT_STATUS, UGC_UPLOAD_STATUS } from '@szfisher/shared';
 import type { Prisma, Report, Spot } from '@prisma/client';
+import { AppError } from '../../common/errors/app-error';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ReportCursor } from './report-cursor';
 import type { MyReportRow, PublicReportRow } from './report.mapper';
@@ -31,6 +32,9 @@ export interface CreateReportRowInput {
   /** Millisecond-precision write time; keeps the pagination cursor exact. */
   createdAt: Date;
   terms: { version: string; acceptedAt: Date } | null;
+  /** Owned pending UgcUpload keys, already deduplicated by the service. */
+  imageKeys: string[];
+  usedAt: Date;
 }
 
 export interface PublicListParams {
@@ -81,9 +85,31 @@ export class ReportsRepository {
     });
   }
 
-  /** Creates the report and records first-time terms acceptance in one transaction. */
+  /**
+   * Creates the report, marks its uploads used and records first-time terms
+   * acceptance in one transaction. If any upload stopped being an owned pending
+   * row between validation and here, the whole insert rolls back.
+   */
   createReport(input: CreateReportRowInput): Promise<Report> {
     return this.prisma.$transaction(async (tx) => {
+      if (input.imageKeys.length > 0) {
+        const claimed = await tx.ugcUpload.updateMany({
+          where: {
+            user_id: input.userId,
+            object_key: { in: input.imageKeys },
+            status: UGC_UPLOAD_STATUS.PENDING,
+            deleted_at: null,
+          },
+          data: { status: UGC_UPLOAD_STATUS.USED, used_at: input.usedAt },
+        });
+        if (claimed.count !== input.imageKeys.length) {
+          throw new AppError(
+            ERROR_CODES.VALIDATION,
+            HttpStatus.BAD_REQUEST,
+            'Image keys must be pending uploads owned by the current user',
+          );
+        }
+      }
       if (input.terms !== null) {
         await tx.appUser.update({
           where: { user_id: input.userId },
@@ -100,6 +126,7 @@ export class ReportsRepository {
           user_id: input.userId,
           content_type: input.contentType,
           content: input.content,
+          images: input.imageKeys,
           fish_key: input.fishKey,
           catch_weight_kg: input.catchWeightKg,
           // Explicit ms-precision value instead of the microsecond-precision
@@ -108,6 +135,30 @@ export class ReportsRepository {
         },
       });
     });
+  }
+
+  async findPendingUploadKeys(userId: string, keys: string[]): Promise<string[]> {
+    if (keys.length === 0) {
+      return [];
+    }
+    const rows = await this.prisma.ugcUpload.findMany({
+      where: {
+        user_id: userId,
+        object_key: { in: keys },
+        status: UGC_UPLOAD_STATUS.PENDING,
+        deleted_at: null,
+      },
+      select: { object_key: true },
+    });
+    return rows.map((row) => row.object_key);
+  }
+
+  async findModerationStatus(reportId: string): Promise<string | null> {
+    const row = await this.prisma.report.findUnique({
+      where: { report_id: reportId },
+      select: { moderation_status: true },
+    });
+    return row?.moderation_status ?? null;
   }
 
   updateModeration(

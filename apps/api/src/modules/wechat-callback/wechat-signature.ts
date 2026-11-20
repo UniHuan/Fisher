@@ -20,8 +20,36 @@ export function verifyWechatSignature(
   nonce: string,
   signature: string,
 ): boolean {
-  const expected = wechatSignature(token, timestamp, nonce);
+  return safeEqualHex(wechatSignature(token, timestamp, nonce), signature);
+}
+
+/**
+ * Safe-mode message pushes sign the sorted token, timestamp, nonce and the
+ * ciphertext, binding the signature to the exact `Encrypt` value.
+ */
+export function wechatMsgSignature(
+  token: string,
+  timestamp: string,
+  nonce: string,
+  encrypt: string,
+): string {
+  return createHash('sha1')
+    .update([token, timestamp, nonce, encrypt].sort().join(''))
+    .digest('hex');
+}
+
+export function verifyWechatMsgSignature(
+  token: string,
+  timestamp: string,
+  nonce: string,
+  encrypt: string,
+  signature: string,
+): boolean {
+  return safeEqualHex(wechatMsgSignature(token, timestamp, nonce, encrypt), signature);
+}
+
+function safeEqualHex(expected: string, actual: string): boolean {
   const left = Buffer.from(expected);
-  const right = Buffer.from(signature);
+  const right = Buffer.from(actual);
   return left.length === right.length && timingSafeEqual(left, right);
 }

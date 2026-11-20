@@ -20,6 +20,10 @@
     "analytics:purge:prod": "node dist/jobs/purge-analytics.job.js",
     "rate-limits:purge": "tsx src/jobs/purge-rate-limits.job.ts",
     "rate-limits:purge:prod": "node dist/jobs/purge-rate-limits.job.js",
+    "media-check:timeout": "tsx src/jobs/media-check-timeout.job.ts",
+    "media-check:timeout:prod": "node dist/jobs/media-check-timeout.job.js",
+    "ugc:purge": "tsx src/jobs/purge-ugc-orphans.job.ts",
+    "ugc:purge:prod": "node dist/jobs/purge-ugc-orphans.job.js",
     "perf:seed": "tsx scripts/seed-performance-data.ts",
     "quality:report": "tsx scripts/spot-quality-report.ts",
     "openapi:generate": "tsc -p tsconfig.openapi.json && tsx dist/openapi/scripts/generate-openapi.js && openapi-typescript ../../openapi/openapi.yaml -o ../../packages/api-client/src/schema.d.ts"
