@@ -112,6 +112,24 @@
       </block>
     </block>
 
+    <view wx:if="{{feedbackEnabled}}" class="settings-card">
+      <view class="settings-row" data-category="suggestion" bindtap="openFeedback">
+        <view class="settings-row-main">
+          <text class="settings-row-title">意见反馈</text>
+          <text class="settings-row-desc">问题、建议与体验反馈</text>
+        </view>
+        <text class="settings-chevron">›</text>
+      </view>
+      <view class="settings-divider"></view>
+      <view class="settings-row" data-category="photo" bindtap="openFeedback">
+        <view class="settings-row-main">
+          <text class="settings-row-title">钓点实拍</text>
+          <text class="settings-row-desc">提交钓点照片，审核后展示</text>
+        </view>
+        <text class="settings-chevron">›</text>
+      </view>
+    </view>
+
     <view class="settings-card">
       <view class="settings-row" data-key="terms" bindtap="openLegal">
         <view class="settings-row-main">

@@ -92,6 +92,7 @@ interface DetailData {
   }>;
   canNavigate: boolean;
   ugcVisible: boolean;
+  feedbackEnabled: boolean;
   reports: DisplayReport[];
   reportTotal: number;
   reportCursor: string | null;
@@ -148,6 +149,7 @@ interface DetailMethods {
   previewReportImage(event: ReportImageTapEvent): void;
   toggleLike(event: ReportTapEvent): Promise<void>;
   openReportMenu(event: ReportTapEvent): Promise<void>;
+  openFeedbackPage(): void;
   ensureActionSession(): Promise<boolean>;
   openAbuseReasons(report: DisplayReport): void;
   submitAbuse(report: DisplayReport, reason: AbuseReason): Promise<void>;
@@ -209,6 +211,7 @@ Page<DetailData, DetailMethods>({
     markers: [],
     canNavigate: false,
     ugcVisible: false,
+    feedbackEnabled: false,
     reports: [],
     reportTotal: 0,
     reportCursor: null,
@@ -264,8 +267,9 @@ Page<DetailData, DetailMethods>({
     const config = configResult.status === 'fulfilled' ? configResult.value : null;
     const spot = spotResult.value;
     const ugcVisible = config?.features.ugc === true && !spot.is_banned;
+    const feedbackEnabled = config?.features.feedback === true;
 
-    this.setData({ dictionaries, ugcVisible });
+    this.setData({ dictionaries, ugcVisible, feedbackEnabled });
     this.display(spot);
     this.setData({ loading: false });
     track('spot_detail_view', { spot_id: spot.spot_id, source: 'list' });
@@ -591,9 +595,18 @@ Page<DetailData, DetailMethods>({
       wx.showToast({ title: '列表已刷新，请重试', icon: 'none' });
       return;
     }
+    const itemList = report.isMine ? ['删除'] : ['举报'];
+    if (this.data.feedbackEnabled) {
+      itemList.push('意见反馈');
+    }
+    const feedbackIndex = this.data.feedbackEnabled ? itemList.length - 1 : -1;
     wx.showActionSheet({
-      itemList: report.isMine ? ['删除'] : ['举报'],
+      itemList,
       success: (result) => {
+        if (result.tapIndex === feedbackIndex) {
+          this.openFeedbackPage();
+          return;
+        }
         if (report.isMine) {
           if (result.tapIndex === 0) {
             this.confirmDeleteReport(report);
@@ -605,6 +618,18 @@ Page<DetailData, DetailMethods>({
         }
       },
     });
+  },
+
+  openFeedbackPage(): void {
+    const spotName = this.data.spot?.spot_name ?? '';
+    const params = ['page=detail'];
+    if (currentSpotId !== '') {
+      params.push(`spot_id=${encodeURIComponent(currentSpotId)}`);
+    }
+    if (spotName !== '') {
+      params.push(`spot_name=${encodeURIComponent(spotName)}`);
+    }
+    wx.navigateTo({ url: `/pages/feedback/index?${params.join('&')}` });
   },
 
   async ensureActionSession(): Promise<boolean> {

@@ -144,6 +144,7 @@ interface WxOpenSettingOptions {
 }
 
 interface WxSystemInfo {
+  model?: string;
   platform?: string;
   system?: string;
   version?: string;

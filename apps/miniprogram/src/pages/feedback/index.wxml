@@ -1,0 +1,127 @@
+<view class="page feedback-page">
+  <view wx:if="{{loadingConfig}}" class="empty">正在加载反馈配置…</view>
+
+  <view wx:elif="{{configError}}" class="card empty">
+    <text>{{configError}}</text>
+    <button class="primary-button retry-button" bindtap="retryConfig">重新加载</button>
+  </view>
+
+  <view wx:elif="{{!feedbackEnabled}}" class="card empty">反馈功能暂未开放</view>
+
+  <view wx:elif="{{!sessionReady}}" class="card login-card">
+    <text class="login-title">登录后提交反馈</text>
+    <text class="login-text">登录仅获取微信身份标识，不读取昵称、头像和手机号。</text>
+    <button
+      class="primary-button login-button"
+      bindtap="login"
+      loading="{{loggingIn}}"
+      disabled="{{loggingIn}}"
+    >{{loggingIn ? '正在登录' : '微信登录'}}</button>
+  </view>
+
+  <block wx:else>
+    <view class="feedback-intro">
+      <text class="feedback-kicker">体验反馈</text>
+      <text class="feedback-title">告诉我们哪里可以更好</text>
+      <view wx:if="{{spotName || spotId}}" class="spot-chip">
+        <text class="spot-chip-label">钓点</text>
+        <text class="spot-chip-name">{{spotName || '当前钓点'}}</text>
+      </view>
+    </view>
+
+    <view class="feedback-section">
+      <text class="section-label">类型</text>
+      <view class="category-grid">
+        <view
+          wx:for="{{categories}}"
+          wx:key="key"
+          class="category-chip {{category === item.key ? 'is-active' : ''}}"
+          data-category="{{item.key}}"
+          bindtap="selectCategory"
+        >
+          <text class="category-name">{{item.label}}</text>
+          <text class="category-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="feedback-section">
+      <view class="section-head">
+        <text class="section-label">描述</text>
+        <text class="section-meta">{{contentCount}}/{{maxContentLength}}</text>
+      </view>
+      <textarea
+        class="content-textarea"
+        value="{{content}}"
+        placeholder="遇到了什么问题，或希望怎么改进？写清楚步骤和现象，方便我们定位。"
+        maxlength="500"
+        bindinput="onContentInput"
+      />
+      <text class="section-hint">至少 {{minContentLength}} 字，最多 {{maxContentLength}} 字。</text>
+    </view>
+
+    <view class="feedback-section">
+      <view class="section-head">
+        <text class="section-label">截图</text>
+        <text class="section-meta">{{images.length}}/{{maxImages}}</text>
+      </view>
+      <view class="image-grid">
+        <view wx:for="{{images}}" wx:key="path" class="image-cell">
+          <image
+            class="image-thumb"
+            src="{{item.path}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            bindtap="previewImage"
+          />
+          <view wx:if="{{submitting && item.progress < 100}}" class="image-progress">
+            <text class="image-progress-text">{{item.progress}}%</text>
+          </view>
+          <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
+        </view>
+        <view wx:if="{{images.length < maxImages}}" class="image-add" bindtap="chooseImages">
+          <text class="image-add-icon">＋</text>
+        </view>
+      </view>
+      <text class="section-hint">选填，最多 {{maxImages}} 张，提交前会逐张上传。</text>
+      <text wx:if="{{submitting && images.length > 0}}" class="section-hint upload-hint">正在逐张上传图片，全部成功后才会提交</text>
+    </view>
+
+    <view wx:if="{{category === 'photo'}}" class="consent-card">
+      <checkbox-group bindchange="onPhotoConsentChange">
+        <label class="consent-label">
+          <checkbox value="photo-consent" checked="{{photoConsent}}" color="#1E6B57" />
+          <text class="consent-text">{{photoConsentText}}</text>
+        </label>
+      </checkbox-group>
+      <text class="consent-hint">照片仅用于对应钓点页，审核通过后才会展示。</text>
+    </view>
+
+    <view class="feedback-section">
+      <view class="section-head">
+        <text class="section-label">联系方式</text>
+        <text class="section-meta">选填</text>
+      </view>
+      <input
+        class="contact-input"
+        value="{{contact}}"
+        placeholder="微信号或手机号，方便我们回访"
+        maxlength="{{maxContactLength}}"
+        bindinput="onContactInput"
+      />
+      <text class="section-hint">只在需要回访时联系你，不会公开展示。</text>
+    </view>
+
+    <view wx:if="{{submitError}}" class="form-error">{{submitError}}</view>
+
+    <view class="feedback-actions">
+      <text class="privacy-note">反馈不公开，90 天后自动删除</text>
+      <button
+        class="primary-button submit-button"
+        bindtap="submit"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+      >提交反馈</button>
+    </view>
+  </block>
+</view>

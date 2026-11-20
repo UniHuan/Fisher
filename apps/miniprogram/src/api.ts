@@ -47,6 +47,10 @@ export type PublicReportPage = components['schemas']['PublicReportPageDto'];
 export type MyReportItem = components['schemas']['MyReportItemDto'];
 export type MyReportPage = components['schemas']['MyReportPageDto'];
 export type UploadUgcImageResult = components['schemas']['UploadUgcResponseDto'];
+export type UploadFeedbackImageResult =
+  components['schemas']['UploadFeedbackImageResponseDto'];
+export type CreateFeedbackInput = components['schemas']['CreateFeedbackDto'];
+export type CreateFeedbackResult = components['schemas']['CreateFeedbackResponseDto'];
 export type ReportLikeResult = components['schemas']['ReportLikeResponseDto'];
 export type AbuseReportResult = components['schemas']['AbuseReportResponseDto'];
 export type DeleteReportResult = components['schemas']['DeleteReportResponseDto'];
@@ -342,11 +346,12 @@ function parseUploadEnvelope<T>(raw: string): Partial<ApiEnvelope<T>> | null {
   }
 }
 
-function uploadOnce(
+function uploadFileOnce<T>(
+  endpoint: string,
   filePath: string,
   onProgress?: (progress: number) => void,
-): Promise<UploadUgcImageResult> {
-  return new Promise<UploadUgcImageResult>((resolve, reject) => {
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     const header: Record<string, string> = {
       'X-Client-Type': 'miniprogram',
       'X-Client-Version': CLIENT_VERSION,
@@ -357,13 +362,13 @@ function uploadOnce(
       header.Authorization = `Bearer ${token}`;
     }
     const task = wx.uploadFile({
-      url: `${API_BASE}/uploads/ugc`,
+      url: `${API_BASE}${endpoint}`,
       filePath,
       name: 'file',
       timeout: 30000,
       header,
       success: (response) => {
-        const body = parseUploadEnvelope<UploadUgcImageResult>(response.data);
+        const body = parseUploadEnvelope<T>(response.data);
         if (
           response.statusCode >= 200 &&
           response.statusCode < 300 &&
@@ -394,13 +399,13 @@ function uploadOnce(
   });
 }
 
-/** Uploads one report image and returns the work-bucket key to submit later. */
-export async function uploadUgcImage(
+async function uploadWithRefresh<T>(
+  endpoint: string,
   filePath: string,
   onProgress?: (progress: number) => void,
-): Promise<UploadUgcImageResult> {
+): Promise<T> {
   try {
-    return await uploadOnce(filePath, onProgress);
+    return await uploadFileOnce<T>(endpoint, filePath, onProgress);
   } catch (error) {
     if (
       error instanceof ApiError &&
@@ -412,10 +417,40 @@ export async function uploadUgcImage(
       } catch {
         throw error;
       }
-      return uploadOnce(filePath, onProgress);
+      return uploadFileOnce<T>(endpoint, filePath, onProgress);
     }
     throw error;
   }
+}
+
+/** Uploads one report image and returns the work-bucket key to submit later. */
+export function uploadUgcImage(
+  filePath: string,
+  onProgress?: (progress: number) => void,
+): Promise<UploadUgcImageResult> {
+  return uploadWithRefresh<UploadUgcImageResult>('/uploads/ugc', filePath, onProgress);
+}
+
+/** Uploads one private feedback image and returns its key to attach later. */
+export function uploadFeedbackImage(
+  filePath: string,
+  onProgress?: (progress: number) => void,
+): Promise<UploadFeedbackImageResult> {
+  return uploadWithRefresh<UploadFeedbackImageResult>(
+    '/feedback/images',
+    filePath,
+    onProgress,
+  );
+}
+
+export function createFeedback(
+  input: CreateFeedbackInput,
+): Promise<CreateFeedbackResult> {
+  return request<CreateFeedbackResult>('/feedback', {
+    method: 'POST',
+    body: input,
+    auth: 'required',
+  });
 }
 
 export function mediaUrl(url: string | null | undefined): string {
