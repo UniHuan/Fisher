@@ -134,6 +134,30 @@ interface AdminAbuseItem {
   };
 }
 
+interface AdminReportHistoryAudit {
+  log_id: string;
+  action: string;
+  status_before: string | null;
+  status_after: string | null;
+  reason: string | null;
+  admin_id: string;
+  created_at: string;
+}
+
+interface AdminReportHistoryAbuse {
+  abuse_id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  handled_at: string | null;
+}
+
+interface AdminReportHistory {
+  report_id: string;
+  audit: AdminReportHistoryAudit[];
+  abuses: AdminReportHistoryAbuse[];
+}
+
 interface SeedReportOptions {
   userId: string;
   spotId: string;
@@ -452,6 +476,45 @@ describe('Admin moderation (e2e)', () => {
     expect(oldItem?.sla_overdue).toBe(true);
     expect(oldItem?.age_hours).toBeGreaterThanOrEqual(25);
     expect(oldItem?.age_hours).toBeLessThan(26);
+
+    // Spot name and SLA filters are applied by the server before pagination, so
+    // items and total stay consistent on later cursor pages.
+    const byName = await listQueue(reviewer, {
+      queue: 'spot_check',
+      spot_name: spot.spot_name,
+      limit: 50,
+    });
+    expect(byName.total).toBe(3);
+    expect(byName.items).toHaveLength(3);
+    expect(byName.items.every((item) => item.spot_id === spot.spot_id)).toBe(true);
+
+    const byOtherName = await listQueue(reviewer, {
+      queue: 'spot_check',
+      spot_name: pageSpot.spot_name,
+      limit: 50,
+    });
+    expect(byOtherName.total).toBe(3);
+    expect(byOtherName.items.every((item) => item.spot_id === pageSpot.spot_id)).toBe(true);
+
+    const overdueOnly = await listQueue(reviewer, {
+      queue: 'spot_check',
+      spot_id: spot.spot_id,
+      sla_overdue: 'true',
+      limit: 50,
+    });
+    expect(overdueOnly.total).toBe(1);
+    expect(overdueOnly.items.map((item) => item.report_id)).toEqual([oldPublished.report_id]);
+
+    const freshOnly = await listQueue(reviewer, {
+      queue: 'spot_check',
+      spot_id: spot.spot_id,
+      sla_overdue: 'false',
+      limit: 50,
+    });
+    expect(freshOnly.total).toBe(2);
+    expect(freshOnly.items.map((item) => item.report_id)).toEqual(
+      expect.arrayContaining([publishedReport.report_id, catchReport.report_id]),
+    );
 
     const pending = await listQueue(reviewer, {
       queue: 'pending',
@@ -865,6 +928,33 @@ describe('Admin moderation (e2e)', () => {
     expect(oldItem?.report.moderation_status).toBe(MODERATION_STATUS.PUBLISHED);
     expect(oldItem?.report.spot_id).toBe(spot.spot_id);
 
+    const byNameResponse = await request(server)
+      .get('/api/v1/admin/abuse-reports')
+      .query({ status: 'pending', spot_name: spot.spot_name, limit: 50 })
+      .set(adminRequest(reviewer))
+      .expect(200);
+    const byName = bodyData<{ items: AdminAbuseItem[]; total: number }>(byNameResponse);
+    expect(byName.total).toBe(3);
+    expect(byName.items.every((item) => item.report.spot_id === spot.spot_id)).toBe(true);
+
+    const overdueResponse = await request(server)
+      .get('/api/v1/admin/abuse-reports')
+      .query({ status: 'pending', spot_name: spot.spot_name, sla_overdue: 'true', limit: 50 })
+      .set(adminRequest(reviewer))
+      .expect(200);
+    const overdue = bodyData<{ items: AdminAbuseItem[]; total: number }>(overdueResponse);
+    expect(overdue.total).toBe(1);
+    expect(overdue.items.map((item) => item.abuse_id)).toEqual([oldAbuse.abuse_id]);
+
+    const otherSpotResponse = await request(server)
+      .get('/api/v1/admin/abuse-reports')
+      .query({ status: 'pending', spot_name: `${spot.spot_name}-missing`, limit: 50 })
+      .set(adminRequest(reviewer))
+      .expect(200);
+    const otherSpot = bodyData<{ items: AdminAbuseItem[]; total: number }>(otherSpotResponse);
+    expect(otherSpot.total).toBe(0);
+    expect(otherSpot.items).toHaveLength(0);
+
     await request(server)
       .post(`/api/v1/admin/abuse-reports/${oldAbuse.abuse_id}/handle`)
       .set(adminRequest(reviewer))
@@ -926,6 +1016,79 @@ describe('Admin moderation (e2e)', () => {
       where: { admin_id: reviewer.admin.adminId, action: 'abuse.handle' },
     });
     expect(auditCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('returns report scoped audit and abuse history to reviewers', async () => {
+    const reviewer = await loginAs(app, ADMIN_ROLE.REVIEWER);
+    const owner = await loginUser('openid-admin-audit');
+    const reporter = await loginUser('openid-admin-audit-target');
+    const spot = await seedOpenSpot();
+    const report = await seedReport({
+      userId: owner.user_id,
+      spotId: spot.spot_id,
+      status: MODERATION_STATUS.PUBLISHED,
+    });
+    const abuse = await prisma.reportAbuse.create({
+      data: {
+        abuse_id: ulid(),
+        report_id: report.report_id,
+        user_id: reporter.user_id,
+        reason: ABUSE_REASON.AD,
+      },
+    });
+
+    await request(server)
+      .post(`/api/v1/admin/reports/${report.report_id}/approve`)
+      .set(adminRequest(reviewer))
+      .expect(200);
+    await request(server)
+      .post(`/api/v1/admin/reports/${report.report_id}/remove`)
+      .set(adminRequest(reviewer))
+      .send({ reason: '复核下架' })
+      .expect(200);
+
+    const response = await request(server)
+      .get(`/api/v1/admin/reports/${report.report_id}/history`)
+      .set(adminRequest(reviewer))
+      .expect(200);
+    const history = bodyData<AdminReportHistory>(response);
+    expect(history.report_id).toBe(report.report_id);
+    expect(history.audit.map((entry) => entry.action)).toEqual(
+      expect.arrayContaining(['report.approve', 'report.remove']),
+    );
+    const approveEntry = history.audit.find((entry) => entry.action === 'report.approve');
+    expect(approveEntry).toMatchObject({
+      status_before: MODERATION_STATUS.PUBLISHED,
+      status_after: MODERATION_STATUS.HUMAN_APPROVED,
+      reason: null,
+      admin_id: reviewer.admin.adminId,
+    });
+    const removeEntry = history.audit.find((entry) => entry.action === 'report.remove');
+    expect(removeEntry).toMatchObject({
+      status_before: MODERATION_STATUS.HUMAN_APPROVED,
+      status_after: MODERATION_STATUS.REMOVED,
+      reason: '复核下架',
+      admin_id: reviewer.admin.adminId,
+    });
+
+    expect(history.abuses).toHaveLength(1);
+    expect(history.abuses[0]).toMatchObject({
+      abuse_id: abuse.abuse_id,
+      reason: ABUSE_REASON.AD,
+      status: 'pending',
+      handled_at: null,
+    });
+    // Reporter identity must never reach the admin drawer.
+    expect(Object.keys(history.abuses[0] ?? {})).not.toContain('user_id');
+    const serialized = JSON.stringify(history);
+    expect(serialized).not.toContain(reporter.user_id);
+    expect(serialized).not.toContain(owner.user_id);
+    expect(serialized).not.toContain('openid');
+
+    await request(server)
+      .get(`/api/v1/admin/reports/${ulid()}/history`)
+      .set(adminRequest(reviewer))
+      .expect(404);
   });
 
   it('restricts publishing for 1 to 30 days without blocking login', async () => {

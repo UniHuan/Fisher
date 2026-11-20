@@ -67,6 +67,23 @@ export interface AdminAbuseRow {
   };
 }
 
+export interface AdminReportAuditRow {
+  log_id: string;
+  action: string;
+  admin_id: string;
+  before_json: Prisma.JsonValue | null;
+  after_json: Prisma.JsonValue | null;
+  created_at: Date;
+}
+
+export interface AdminReportAbuseRow {
+  abuse_id: string;
+  reason: string;
+  status: string;
+  created_at: Date;
+  handled_at: Date | null;
+}
+
 export interface AdminAppUserRow {
   user_id: string;
   status: string;
@@ -80,10 +97,17 @@ export interface AdminQueueCursor {
   id: string;
 }
 
+export interface AdminSlaFilter {
+  cutoff: Date;
+  overdue: boolean;
+}
+
 export interface AdminReportListParams {
   statuses: readonly string[];
   contentType?: string;
   spotId?: string;
+  spotName?: string;
+  slaFilter?: AdminSlaFilter;
   cursor: AdminQueueCursor | null;
   limit: number;
 }
@@ -96,6 +120,8 @@ export interface AdminReportListResult {
 
 export interface AdminAbuseListParams {
   status: string;
+  spotName?: string;
+  slaFilter?: AdminSlaFilter;
   cursor: AdminQueueCursor | null;
   limit: number;
 }
@@ -255,6 +281,20 @@ export class AdminReportsRepository {
       moderation_status: { in: [...params.statuses] },
       ...(params.contentType === undefined ? {} : { content_type: params.contentType }),
       ...(params.spotId === undefined ? {} : { spot_id: params.spotId }),
+      ...(params.spotName === undefined
+        ? {}
+        : {
+            spot: {
+              is: { spot_name: { contains: params.spotName, mode: 'insensitive' } },
+            },
+          }),
+      ...(params.slaFilter === undefined
+        ? {}
+        : {
+            created_at: params.slaFilter.overdue
+              ? { lt: params.slaFilter.cutoff }
+              : { gte: params.slaFilter.cutoff },
+          }),
     };
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.report.findMany({
@@ -351,6 +391,37 @@ export class AdminReportsRepository {
     return new Map(rows.map((row) => [row.report_id, row._count._all]));
   }
 
+  /** Report scoped audit trail. Only structured before/after fields are selected. */
+  listReportAudits(reportId: string): Promise<AdminReportAuditRow[]> {
+    return this.prisma.auditLog.findMany({
+      where: { entity_type: 'report', entity_id: reportId },
+      select: {
+        log_id: true,
+        action: true,
+        admin_id: true,
+        before_json: true,
+        after_json: true,
+        created_at: true,
+      },
+      orderBy: [{ created_at: 'desc' }, { log_id: 'desc' }],
+    });
+  }
+
+  /** Per-report abuse rows. Reporter user_id is deliberately not selected. */
+  listReportAbuses(reportId: string): Promise<AdminReportAbuseRow[]> {
+    return this.prisma.reportAbuse.findMany({
+      where: { report_id: reportId },
+      select: {
+        abuse_id: true,
+        reason: true,
+        status: true,
+        created_at: true,
+        handled_at: true,
+      },
+      orderBy: [{ created_at: 'desc' }, { abuse_id: 'desc' }],
+    });
+  }
+
   findAbuse(abuseId: string): Promise<AdminAbuseRow | null> {
     return this.prisma.reportAbuse.findUnique({
       where: { abuse_id: abuseId },
@@ -359,7 +430,27 @@ export class AdminReportsRepository {
   }
 
   async listAbuses(params: AdminAbuseListParams): Promise<AdminAbuseListResult> {
-    const base: Prisma.ReportAbuseWhereInput = { status: params.status };
+    const base: Prisma.ReportAbuseWhereInput = {
+      status: params.status,
+      ...(params.spotName === undefined
+        ? {}
+        : {
+            report: {
+              is: {
+                spot: {
+                  is: { spot_name: { contains: params.spotName, mode: 'insensitive' } },
+                },
+              },
+            },
+          }),
+      ...(params.slaFilter === undefined
+        ? {}
+        : {
+            created_at: params.slaFilter.overdue
+              ? { lt: params.slaFilter.cutoff }
+              : { gte: params.slaFilter.cutoff },
+          }),
+    };
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.reportAbuse.findMany({
         where: withAbuseCursor(base, params.cursor),

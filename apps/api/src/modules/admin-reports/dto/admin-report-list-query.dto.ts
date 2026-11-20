@@ -1,7 +1,27 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ABUSE_STATUS, REPORT_CONTENT_TYPE } from '@szfisher/shared';
-import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { Transform, Type, type TransformFnParams } from 'class-transformer';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+
+function toBoolean({ value }: TransformFnParams): unknown {
+  if (value === true || value === 'true' || value === '1') {
+    return true;
+  }
+  if (value === false || value === 'false' || value === '0') {
+    return false;
+  }
+  return value;
+}
 
 export const ADMIN_REPORT_QUEUES = [
   'spot_check',
@@ -43,6 +63,27 @@ export class AdminReportListQueryDto {
   spot_id?: string;
 
   @ApiPropertyOptional({
+    description: 'Partial, case-insensitive spot name filter applied before pagination',
+    minLength: 1,
+    maxLength: 60,
+    example: '深圳湾',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 60)
+  spot_name?: string;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      'Only rows older than the 24-hour SLA, applied before pagination so totals match',
+  })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  sla_overdue?: boolean;
+
+  @ApiPropertyOptional({
     description: 'Opaque cursor: base64(created_at|report_id)',
     maxLength: 256,
   })
@@ -69,6 +110,27 @@ export class AdminAbuseListQueryDto {
   @IsOptional()
   @IsIn(ADMIN_ABUSE_STATUSES)
   status?: AdminAbuseStatus;
+
+  @ApiPropertyOptional({
+    description: 'Partial, case-insensitive spot name filter applied before pagination',
+    minLength: 1,
+    maxLength: 60,
+    example: '深圳湾',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 60)
+  spot_name?: string;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      'Only abuse reports older than the 24-hour SLA, applied before pagination so totals match',
+  })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  sla_overdue?: boolean;
 
   @ApiPropertyOptional({
     description: 'Opaque cursor: base64(created_at|abuse_id)',

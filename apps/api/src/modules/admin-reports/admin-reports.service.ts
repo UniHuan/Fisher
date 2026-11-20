@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { ERROR_CODES, MODERATION_STATUS } from '@szfisher/shared';
 import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
@@ -8,6 +9,7 @@ import { PREVIEW_URL_TTL_SECONDS, StorageService } from '../storage/storage.serv
 import { PreviewSignerService } from '../uploads/preview-signer.service';
 import {
   ADMIN_PUBLIC_STATUSES,
+  ADMIN_SLA_HOURS,
   AdminReportsRepository,
   decodeAdminCursor,
   encodeAdminCursor,
@@ -25,6 +27,7 @@ import type {
   AdminAbuseItemDto,
   AdminAbusePageDto,
   AdminReportActionDto,
+  AdminReportHistoryDto,
   AdminReportItemDto,
   AdminReportPageDto,
   AdminReportSummaryDto,
@@ -35,6 +38,7 @@ import type { AbuseHandleAction, HandleAbuseDto } from './dto/handle-abuse.dto';
 import type { BanUserDto, RestrictUserDto } from './dto/restrict-user.dto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 
@@ -75,6 +79,28 @@ function isPublicStatus(status: string): boolean {
   return ADMIN_PUBLIC_STATUSES.includes(status);
 }
 
+/** Reads one string field from an audit JSON payload without exposing the blob. */
+function jsonStringField(value: Prisma.JsonValue | null, field: string): string | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const found = (value as Record<string, unknown>)[field];
+  return typeof found === 'string' ? found : null;
+}
+
+function slaFilter(
+  now: Date,
+  overdue: boolean | undefined,
+): { cutoff: Date; overdue: boolean } | undefined {
+  if (overdue === undefined) {
+    return undefined;
+  }
+  return {
+    cutoff: new Date(now.getTime() - ADMIN_SLA_HOURS * HOUR_MS),
+    overdue,
+  };
+}
+
 function pageSize(limit: number | undefined): number {
   if (limit === undefined) {
     return DEFAULT_PAGE_SIZE;
@@ -112,6 +138,8 @@ export class AdminReportsService {
       statuses: QUEUE_STATUSES[queue],
       contentType: query.content_type,
       spotId: query.spot_id,
+      spotName: query.spot_name,
+      slaFilter: slaFilter(now, query.sla_overdue),
       cursor: decodeCursor(query.cursor),
       limit,
     });
@@ -133,6 +161,38 @@ export class AdminReportsService {
 
   async summary(): Promise<AdminReportSummaryDto> {
     return this.repository.summaryCounts(new Date());
+  }
+
+  /**
+   * Report scoped history for the detail drawer. Reviewers may read it because
+   * it is bounded to this report and exposes only action, statuses, reason,
+   * actor and time; content bodies, image URLs and reporter identities stay out.
+   */
+  async reportHistory(reportId: string): Promise<AdminReportHistoryDto> {
+    const report = await this.requireReport(reportId);
+    const [audits, abuses] = await Promise.all([
+      this.repository.listReportAudits(report.report_id),
+      this.repository.listReportAbuses(report.report_id),
+    ]);
+    return {
+      report_id: report.report_id,
+      audit: audits.map((row) => ({
+        log_id: row.log_id,
+        action: row.action,
+        status_before: jsonStringField(row.before_json, 'moderation_status'),
+        status_after: jsonStringField(row.after_json, 'moderation_status'),
+        reason: jsonStringField(row.after_json, 'reason'),
+        admin_id: row.admin_id,
+        created_at: row.created_at.toISOString(),
+      })),
+      abuses: abuses.map((row) => ({
+        abuse_id: row.abuse_id,
+        reason: row.reason,
+        status: row.status,
+        created_at: row.created_at.toISOString(),
+        handled_at: row.handled_at === null ? null : row.handled_at.toISOString(),
+      })),
+    };
   }
 
   async approve(
@@ -295,6 +355,8 @@ export class AdminReportsService {
     const limit = pageSize(query.limit);
     const { rows, total, hasMore } = await this.repository.listAbuses({
       status: query.status ?? 'pending',
+      spotName: query.spot_name,
+      slaFilter: slaFilter(now, query.sla_overdue),
       cursor: decodeCursor(query.cursor),
       limit,
     });

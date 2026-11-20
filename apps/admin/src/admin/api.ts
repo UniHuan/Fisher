@@ -37,6 +37,9 @@ export type AdminReportItem = components['schemas']['AdminReportItemDto'];
 export type AdminReportPage = components['schemas']['AdminReportPageDto'];
 export type AdminReportSummary = components['schemas']['AdminReportSummaryDto'];
 export type AdminReportAction = components['schemas']['AdminReportActionDto'];
+export type AdminReportAuditItem = components['schemas']['AdminReportAuditItemDto'];
+export type AdminReportHistoryAbuse = components['schemas']['AdminReportHistoryAbuseDto'];
+export type AdminReportHistory = components['schemas']['AdminReportHistoryDto'];
 export type AdminAbuseItem = components['schemas']['AdminAbuseItemDto'];
 export type AdminAbusePage = components['schemas']['AdminAbusePageDto'];
 export type AdminAbuseHandleResult = components['schemas']['AdminAbuseHandleResponseDto'];
@@ -86,12 +89,16 @@ export interface AdminReportListQuery {
   queue?: AdminReportQueue;
   content_type?: string;
   spot_id?: string;
+  spot_name?: string;
+  sla_overdue?: boolean;
   cursor?: string;
   limit?: number;
 }
 
 export interface AdminAbuseListQuery {
   status?: AdminAbuseStatus;
+  spot_name?: string;
+  sla_overdue?: boolean;
   cursor?: string;
   limit?: number;
 }
@@ -395,6 +402,9 @@ export const api = {
   },
   reportSummary(): Promise<AdminReportSummary> {
     return request<AdminReportSummary>('/admin/reports/summary');
+  },
+  reportHistory(id: string): Promise<AdminReportHistory> {
+    return request<AdminReportHistory>(`/admin/reports/${id}/history`);
   },
   approveReport(id: string, csrf: string): Promise<AdminReportAction> {
     return request<AdminReportAction>(`/admin/reports/${id}/approve`, {

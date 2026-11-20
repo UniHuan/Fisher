@@ -1458,6 +1458,22 @@ paths:
             minLength: 26
             maxLength: 26
             type: string
+        - name: spot_name
+          required: false
+          in: query
+          description: Partial, case-insensitive spot name filter applied before pagination
+          schema:
+            minLength: 1
+            maxLength: 60
+            example: 深圳湾
+            type: string
+        - name: sla_overdue
+          required: false
+          in: query
+          description: Only rows older than the 24-hour SLA, applied before pagination so
+            totals match
+          schema:
+            type: boolean
         - name: cursor
           required: false
           in: query
@@ -1541,6 +1557,69 @@ paths:
         "500": *a42
       security: *a43
       summary: Summarize queue, abuse and SLA counts
+      tags: *a44
+  /api/v1/admin/reports/{id}/history:
+    get:
+      description: Scoped to report:read so reviewers can inspect prior actions on the
+        content they moderate. Returns actions, status transitions, reasons,
+        actors and times; never content bodies, image URLs or reporter
+        identities.
+      operationId: AdminReportsController_history
+      parameters:
+        - *a37
+        - *a38
+        - name: id
+          required: true
+          in: path
+          description: Report ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: Report scoped audit and abuse history
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminReportHistoryDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40402)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: *a43
+      summary: Read one report audit trail and its abuse reports
       tags: *a44
   /api/v1/admin/reports/{id}/approve:
     post:
@@ -1887,6 +1966,22 @@ paths:
               - pending
               - removed
               - dismissed
+        - name: spot_name
+          required: false
+          in: query
+          description: Partial, case-insensitive spot name filter applied before pagination
+          schema:
+            minLength: 1
+            maxLength: 60
+            example: 深圳湾
+            type: string
+        - name: sla_overdue
+          required: false
+          in: query
+          description: Only abuse reports older than the 24-hour SLA, applied before
+            pagination so totals match
+          schema:
+            type: boolean
         - name: cursor
           required: false
           in: query
@@ -5078,6 +5173,98 @@ components:
         - abuse_pending
         - media_check_unfinished
         - sla_overdue
+    AdminReportAuditItemDto:
+      type: object
+      properties:
+        log_id:
+          type: string
+          example: 01HX0000000000000000000000
+        action:
+          type: string
+          example: report.approve
+        status_before:
+          type: string
+          nullable: true
+          example: published
+        status_after:
+          type: string
+          nullable: true
+          example: human_approved
+        reason:
+          type: string
+          nullable: true
+          example: null
+        admin_id:
+          type: string
+          example: 01HX0000000000000000000001
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - log_id
+        - action
+        - status_before
+        - status_after
+        - reason
+        - admin_id
+        - created_at
+    AdminReportHistoryAbuseDto:
+      type: object
+      properties:
+        abuse_id:
+          type: string
+          example: 01HX0000000000000000000000
+        reason:
+          type: string
+          enum: &a76
+            - ad
+            - abuse
+            - false_info
+            - privacy
+            - other
+          example: ad
+        status:
+          type: string
+          enum:
+            - pending
+            - removed
+            - dismissed
+          example: pending
+        created_at:
+          type: string
+          format: date-time
+        handled_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+      required:
+        - abuse_id
+        - reason
+        - status
+        - created_at
+        - handled_at
+    AdminReportHistoryDto:
+      type: object
+      properties:
+        report_id:
+          type: string
+          example: 01HX0000000000000000000000
+        audit:
+          description: Report scoped audit actions, newest first; no content or image
+            payloads
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminReportAuditItemDto"
+        abuses:
+          description: Abuse reports for this content; reporter identity is never returned
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminReportHistoryAbuseDto"
+      required:
+        - report_id
+        - audit
+        - abuses
     AdminReportActionDto:
       type: object
       properties:
@@ -5164,12 +5351,7 @@ components:
           example: 01HX0000000000000000000001
         reason:
           type: string
-          enum:
-            - ad
-            - abuse
-            - false_info
-            - privacy
-            - other
+          enum: *a76
           example: ad
         status:
           type: string
@@ -5704,7 +5886,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: &a76
+          example: &a77
             - luofei
             - jiyu
           type: array
@@ -5732,7 +5914,7 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: &a77
+          example: &a78
             - tai_diao
             - lu_ya
           type: array
@@ -5740,7 +5922,7 @@ components:
             type: string
         open_status:
           type: string
-          enum: &a78
+          enum: &a79
             - open
             - paused
             - banned
@@ -5766,7 +5948,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: &a79
+          example: &a80
             - spots/a.jpg
           type: array
           items:
@@ -5784,7 +5966,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: &a80
+          enum: &a81
             - official
             - operation
             - user_report
@@ -5838,7 +6020,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: *a76
+          example: *a77
           type: array
           items:
             type: string
@@ -5864,13 +6046,13 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: *a77
+          example: *a78
           type: array
           items:
             type: string
         open_status:
           type: string
-          enum: *a78
+          enum: *a79
           nullable: true
           example: open
         ban_note:
@@ -5893,7 +6075,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: *a79
+          example: *a80
           type: array
           items:
             type: string
@@ -5910,7 +6092,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: *a80
+          enum: *a81
           nullable: true
           description: Defaults to operation
     AdminSpotDeleteResponseDto:
@@ -6030,7 +6212,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: &a81
+          example: &a82
             - luofei
             - jiyu
           type: array
@@ -6050,7 +6232,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: &a82
+          enum: &a83
             - open
             - paused
             - banned
@@ -6071,7 +6253,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: &a83
+          enum: &a84
             - fresh
             - stale
             - expired
@@ -6334,7 +6516,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: *a81
+          example: *a82
           type: array
           items:
             type: string
@@ -6352,7 +6534,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: *a82
+          enum: *a83
           example: open
         is_core:
           type: boolean
@@ -6370,7 +6552,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: *a83
+          enum: *a84
           example: fresh
         distance_m:
           type: integer
@@ -6505,7 +6687,7 @@ components:
           example: 深圳湾公园停车场
         poi_type:
           type: string
-          enum: &a84
+          enum: &a85
             - food
             - parking
             - toilet
@@ -6536,7 +6718,7 @@ components:
           example: manual
         status:
           type: string
-          enum: &a85
+          enum: &a86
             - active
             - hidden
           example: active
@@ -6684,7 +6866,7 @@ components:
           example: 深圳湾公园停车场
         poi_type:
           type: string
-          enum: *a84
+          enum: *a85
           example: parking
         latitude:
           type: string
@@ -6709,7 +6891,7 @@ components:
           example: manual
         status:
           type: string
-          enum: *a85
+          enum: *a86
           example: active
         created_at:
           type: string

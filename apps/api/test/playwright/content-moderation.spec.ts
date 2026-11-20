@@ -28,7 +28,9 @@ let reviewerAccount: RoleAccount;
 let operatorAccount: RoleAccount;
 let authorId = '';
 let spotId = '';
+let decoySpotId = '';
 const reportIds: string[] = [];
+const decoyReportIds: string[] = [];
 const imagePaths: string[] = [];
 const adminIds: string[] = [];
 let ugcFeatureBefore = 'false';
@@ -193,6 +195,42 @@ test.beforeAll(async () => {
   });
   spotId = spot.spot_id;
 
+  // Twenty older published reports on another spot fill the unfiltered first
+  // page. The spot name filter must be applied by the server before paging,
+  // otherwise the rows below are invisible.
+  const decoySpot = await prisma.spot.create({
+    data: {
+      spot_id: ulid(),
+      spot_name: `${PREFIX} 干扰钓点`,
+      district: '南山区',
+      address: '深圳市南山区Playwright干扰地址',
+      latitude: '22.519000',
+      longitude: '113.954000',
+      nav_latitude: '22.519000',
+      nav_longitude: '113.954000',
+      fish_types: ['罗非'],
+      fee_status: 'free',
+      water_type: 'sea',
+      venue_type: 'wild',
+      open_status: 'open',
+      status: 'published',
+      source: 'operation',
+    },
+  });
+  decoySpotId = decoySpot.spot_id;
+  const oldCreatedAt = Date.now() - 48 * 60 * 60 * 1000;
+  const decoys = Array.from({ length: 20 }, (_value, index) => ({
+    report_id: ulid(),
+    user_id: authorId,
+    spot_id: decoySpotId,
+    content_type: 'comment',
+    content: `${PREFIX} 干扰内容 ${index}`,
+    moderation_status: 'published',
+    created_at: new Date(oldCreatedAt + index * 1000),
+  }));
+  await prisma.report.createMany({ data: decoys });
+  decoyReportIds.push(...decoys.map((row) => row.report_id));
+
   await seedReport({ content: APPROVE_CONTENT, image: true });
   await seedReport({ content: REJECT_CONTENT });
   await seedReport({ content: OPERATOR_CONTENT, contentType: 'intel' });
@@ -203,12 +241,15 @@ test.afterAll(async () => {
   for (const directory of imagePaths) {
     rmSync(directory, { recursive: true, force: true });
   }
-  await prisma.report.deleteMany({ where: { report_id: { in: reportIds } } });
+  await prisma.report.deleteMany({
+    where: { report_id: { in: [...reportIds, ...decoyReportIds] } },
+  });
   if (authorId !== '') {
     await prisma.appUser.deleteMany({ where: { user_id: authorId } });
   }
-  if (spotId !== '') {
-    await prisma.spot.deleteMany({ where: { spot_id: spotId } });
+  const spotIds = [spotId, decoySpotId].filter((value) => value !== '');
+  if (spotIds.length > 0) {
+    await prisma.spot.deleteMany({ where: { spot_id: { in: spotIds } } });
   }
   if (adminIds.length > 0) {
     await prisma.auditLog.deleteMany({ where: { admin_id: { in: adminIds } } });
@@ -238,6 +279,18 @@ test('reviewer approves content and must pick a reject reason', async ({ page })
   await expect
     .poll(async () => thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBeGreaterThan(0);
+
+  // The spot name filter runs on the server, so the total reflects only the
+  // four reports on this spot even though twenty older decoy reports exist.
+  await expect(page.locator('.moderation-list-footer')).toContainText('共 4 条');
+  const overdueCheckbox = page.getByRole('checkbox', { name: '仅看超时' });
+  await overdueCheckbox.check();
+  await expect(page.getByText('这个队列暂时没有内容')).toBeVisible();
+  await expect(
+    page.locator('.ant-table-row').filter({ hasText: APPROVE_CONTENT }),
+  ).toHaveCount(0);
+  await overdueCheckbox.uncheck();
+  await expect(row).toBeVisible();
 
   await row.getByRole('button', { name: /^通\s*过$/ }).click();
   const confirm = page.locator('.ant-modal-confirm:visible');

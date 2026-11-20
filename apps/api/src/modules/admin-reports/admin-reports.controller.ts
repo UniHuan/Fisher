@@ -37,6 +37,7 @@ import {
   AdminAbuseHandleResponseDto,
   AdminAbusePageDto,
   AdminReportActionDto,
+  AdminReportHistoryDto,
   AdminReportPageDto,
   AdminReportSummaryDto,
   AdminUserBanResponseDto,
@@ -131,6 +132,21 @@ export class AdminReportsController {
   @ApiEnvelopeResponse(AdminReportSummaryDto, { description: 'Moderation summary counts' })
   summary(): Promise<AdminReportSummaryDto> {
     return this.reports.summary();
+  }
+
+  @Get('reports/:id/history')
+  @ApiOperation({
+    summary: 'Read one report audit trail and its abuse reports',
+    description:
+      'Scoped to report:read so reviewers can inspect prior actions on the content they moderate. Returns actions, status transitions, reasons, actors and times; never content bodies, image URLs or reporter identities.',
+  })
+  @ApiParam(REPORT_ID_PARAM)
+  @ApiEnvelopeResponse(AdminReportHistoryDto, {
+    description: 'Report scoped audit and abuse history',
+  })
+  @ApiCommonErrorResponses([...READ_ERROR_CODES, ERROR_CODES.REPORT_NOT_FOUND])
+  history(@Param('id') reportId: string): Promise<AdminReportHistoryDto> {
+    return this.reports.reportHistory(reportId);
   }
 
   @Post('reports/:id/approve')

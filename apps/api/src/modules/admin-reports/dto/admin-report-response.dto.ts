@@ -153,6 +153,63 @@ export class AdminReportSummaryDto {
   sla_overdue!: number;
 }
 
+export class AdminReportAuditItemDto {
+  @ApiProperty({ example: '01HX0000000000000000000000' })
+  log_id!: string;
+
+  @ApiProperty({ example: 'report.approve' })
+  action!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: 'published' })
+  status_before!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'human_approved' })
+  status_after!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  reason!: string | null;
+
+  @ApiProperty({ example: '01HX0000000000000000000001' })
+  admin_id!: string;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  created_at!: string;
+}
+
+export class AdminReportHistoryAbuseDto {
+  @ApiProperty({ example: '01HX0000000000000000000000' })
+  abuse_id!: string;
+
+  @ApiProperty({ enum: ABUSE_REASONS, example: 'ad' })
+  reason!: string;
+
+  @ApiProperty({ enum: ['pending', 'removed', 'dismissed'], example: 'pending' })
+  status!: string;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  created_at!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  handled_at!: string | null;
+}
+
+export class AdminReportHistoryDto {
+  @ApiProperty({ example: '01HX0000000000000000000000' })
+  report_id!: string;
+
+  @ApiProperty({
+    type: () => [AdminReportAuditItemDto],
+    description: 'Report scoped audit actions, newest first; no content or image payloads',
+  })
+  audit!: AdminReportAuditItemDto[];
+
+  @ApiProperty({
+    type: () => [AdminReportHistoryAbuseDto],
+    description: 'Abuse reports for this content; reporter identity is never returned',
+  })
+  abuses!: AdminReportHistoryAbuseDto[];
+}
+
 export class AdminReportActionDto {
   @ApiProperty({ example: '01HX0000000000000000000000' })
   report_id!: string;

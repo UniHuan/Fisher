@@ -453,6 +453,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/reports/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one report audit trail and its abuse reports
+         * @description Scoped to report:read so reviewers can inspect prior actions on the content they moderate. Returns actions, status transitions, reasons, actors and times; never content bodies, image URLs or reporter identities.
+         */
+        get: operations["AdminReportsController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/reports/{id}/approve": {
         parameters: {
             query?: never;
@@ -1602,6 +1622,51 @@ export interface components {
              * @example 2
              */
             sla_overdue: number;
+        };
+        AdminReportAuditItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            log_id: string;
+            /** @example report.approve */
+            action: string;
+            /** @example published */
+            status_before: string | null;
+            /** @example human_approved */
+            status_after: string | null;
+            /** @example null */
+            reason: string | null;
+            /** @example 01HX0000000000000000000001 */
+            admin_id: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReportHistoryAbuseDto: {
+            /** @example 01HX0000000000000000000000 */
+            abuse_id: string;
+            /**
+             * @example ad
+             * @enum {string}
+             */
+            reason: "ad" | "abuse" | "false_info" | "privacy" | "other";
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "removed" | "dismissed";
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            handled_at: string | null;
+        };
+        AdminReportHistoryDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /** @description Report scoped audit actions, newest first; no content or image payloads */
+            audit: components["schemas"]["AdminReportAuditItemDto"][];
+            /** @description Abuse reports for this content; reporter identity is never returned */
+            abuses: components["schemas"]["AdminReportHistoryAbuseDto"][];
         };
         AdminReportActionDto: {
             /** @example 01HX0000000000000000000000 */
@@ -4822,6 +4887,10 @@ export interface operations {
                 content_type?: "comment" | "catch" | "intel";
                 /** @description Spot ULID filter */
                 spot_id?: string;
+                /** @description Partial, case-insensitive spot name filter applied before pagination */
+                spot_name?: string;
+                /** @description Only rows older than the 24-hour SLA, applied before pagination so totals match */
+                sla_overdue?: boolean;
                 /** @description Opaque cursor: base64(created_at|report_id) */
                 cursor?: string;
                 limit?: number;
@@ -4931,6 +5000,81 @@ export interface operations {
             };
             /** @description Forbidden (40301) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_history: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Report scoped audit and abuse history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportHistoryDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5342,6 +5486,10 @@ export interface operations {
             query?: {
                 /** @description Abuse report handling status */
                 status?: "pending" | "removed" | "dismissed";
+                /** @description Partial, case-insensitive spot name filter applied before pagination */
+                spot_name?: string;
+                /** @description Only abuse reports older than the 24-hour SLA, applied before pagination so totals match */
+                sla_overdue?: boolean;
                 /** @description Opaque cursor: base64(created_at|abuse_id) */
                 cursor?: string;
                 limit?: number;

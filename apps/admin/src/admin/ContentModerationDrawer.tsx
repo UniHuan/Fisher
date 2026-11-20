@@ -22,14 +22,17 @@ import {
   Typography,
   type TableProps,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   api,
   ApiError,
   resolveMediaUrl,
   type AdminAbuseHandleAction,
   type AdminAbuseItem,
+  type AdminReportAuditItem,
   type AdminReportAuthor,
+  type AdminReportHistory,
+  type AdminReportHistoryAbuse,
   type AdminReportItem,
   type AdminReportQueue,
   type AdminReportSummary,
@@ -91,6 +94,25 @@ const ABUSE_REASON_LABEL: Record<string, string> = {
 };
 
 const MODERATION_REASONS = ['广告引流', '辱骂攻击', '虚假误导', '隐私侵权', '其他'];
+
+const ACTION_LABEL: Record<string, string> = {
+  'report.approve': '通过',
+  'report.reject': '驳回',
+  'report.remove': '下架',
+  'report.adopt': '采纳',
+};
+
+const ABUSE_STATUS_LABEL: Record<string, string> = {
+  pending: '待处理',
+  removed: '已下架',
+  dismissed: '已驳回',
+};
+
+const ABUSE_STATUS_COLOR: Record<string, string> = {
+  pending: 'orange',
+  removed: 'red',
+  dismissed: 'default',
+};
 
 function isAuthError(error: unknown): boolean {
   return error instanceof ApiError && (error.code === 40101 || error.code === 40102);
@@ -493,10 +515,102 @@ function AbuseHandleModal({
 
 interface ReportDetailDrawerProps {
   item: AdminReportItem | null;
+  history: AdminReportHistory | null;
+  historyLoading: boolean;
+  historyError: string | null;
+  onRetryHistory: () => void;
   onClose: () => void;
 }
 
-function ReportDetailDrawer({ item, onClose }: ReportDetailDrawerProps) {
+function ReportDetailDrawer({
+  item,
+  history,
+  historyLoading,
+  historyError,
+  onRetryHistory,
+  onClose,
+}: ReportDetailDrawerProps) {
+  const auditColumns: TableProps<AdminReportAuditItem>['columns'] = [
+    {
+      title: '时间',
+      dataIndex: 'created_at',
+      width: 150,
+      render: (value: string) => formatDateTime(value),
+    },
+    {
+      title: '动作',
+      dataIndex: 'action',
+      width: 88,
+      render: (value: string) => <Tag>{ACTION_LABEL[value] ?? value}</Tag>,
+    },
+    {
+      title: '状态变化',
+      key: 'status',
+      width: 172,
+      render: (_value, row) => {
+        if (row.status_before === null && row.status_after === null) {
+          return <span className="muted-text">无状态变化</span>;
+        }
+        const before =
+          row.status_before === null
+            ? '无'
+            : STATUS_LABEL[row.status_before] ?? row.status_before;
+        const after =
+          row.status_after === null
+            ? '无'
+            : STATUS_LABEL[row.status_after] ?? row.status_after;
+        return `${before} → ${after}`;
+      },
+    },
+    {
+      title: '原因',
+      dataIndex: 'reason',
+      render: (value: string | null) => value ?? '无',
+    },
+    {
+      title: '操作人',
+      dataIndex: 'admin_id',
+      width: 112,
+      render: (value: string) => (
+        <Typography.Text code ellipsis={{ tooltip: value }}>
+          {value.slice(-8)}
+        </Typography.Text>
+      ),
+    },
+  ];
+
+  const abuseHistoryColumns: TableProps<AdminReportHistoryAbuse>['columns'] = [
+    {
+      title: '原因',
+      dataIndex: 'reason',
+      width: 110,
+      render: (value: string) => (
+        <Tag color="orange">{ABUSE_REASON_LABEL[value] ?? value}</Tag>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 100,
+      render: (value: string) => (
+        <Tag color={ABUSE_STATUS_COLOR[value] ?? 'default'}>
+          {ABUSE_STATUS_LABEL[value] ?? value}
+        </Tag>
+      ),
+    },
+    {
+      title: '举报时间',
+      dataIndex: 'created_at',
+      width: 160,
+      render: (value: string) => formatDateTime(value),
+    },
+    {
+      title: '处理时间',
+      dataIndex: 'handled_at',
+      render: (value: string | null) => (value === null ? '未处理' : formatDateTime(value)),
+    },
+  ];
+
   return (
     <Drawer
       title="内容详情"
@@ -574,16 +688,41 @@ function ReportDetailDrawer({ item, onClose }: ReportDetailDrawerProps) {
               : JSON.stringify(item.machine_result, null, 2)}
           </pre>
           <Typography.Title level={5}>审核记录</Typography.Title>
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="创建时间">
-              {formatDateTime(item.created_at)}
-            </Descriptions.Item>
-            <Descriptions.Item label="审核时间">
-              {item.audit_time === null ? '未审核' : formatDateTime(item.audit_time)}
-            </Descriptions.Item>
-            <Descriptions.Item label="审核人">{item.auditor_id ?? '无'}</Descriptions.Item>
-            <Descriptions.Item label="驳回原因">{item.reject_reason ?? '无'}</Descriptions.Item>
-          </Descriptions>
+          {historyError !== null && (
+            <Alert
+              type="error"
+              showIcon
+              message="审核记录加载失败"
+              description={historyError}
+              action={
+                <Button size="small" onClick={onRetryHistory}>
+                  重试
+                </Button>
+              }
+              className="moderation-error"
+            />
+          )}
+          <Table<AdminReportAuditItem>
+            rowKey="log_id"
+            size="small"
+            loading={historyLoading}
+            columns={auditColumns}
+            dataSource={history?.audit ?? []}
+            pagination={false}
+            scroll={{ x: 620 }}
+            locale={{ emptyText: <Empty description="暂无审核记录" /> }}
+          />
+          <Typography.Title level={5}>举报记录</Typography.Title>
+          <Table<AdminReportHistoryAbuse>
+            rowKey="abuse_id"
+            size="small"
+            loading={historyLoading}
+            columns={abuseHistoryColumns}
+            dataSource={history?.abuses ?? []}
+            pagination={false}
+            scroll={{ x: 560 }}
+            locale={{ emptyText: <Empty description="暂无举报" /> }}
+          />
         </>
       )}
     </Drawer>
@@ -615,6 +754,10 @@ export function ContentModerationDrawer({
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [detail, setDetail] = useState<AdminReportItem | null>(null);
+  const [history, setHistory] = useState<AdminReportHistory | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [decision, setDecision] = useState<{
     mode: 'reject' | 'remove';
     item: AdminReportItem;
@@ -627,7 +770,16 @@ export function ContentModerationDrawer({
 
   const writable = session.admin.role !== 'reviewer';
   const keyword = spotFilter.trim();
-  const nameFilterActive = keyword !== '' && !ULID_PATTERN.test(keyword);
+  const detailReportId = detail?.report_id ?? null;
+
+  useEffect(() => {
+    if (!open) {
+      setDetail(null);
+      setDecision(null);
+      setUserAction(null);
+      setAbuseAction(null);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -659,21 +811,33 @@ export function ContentModerationDrawer({
     setLoading(true);
     setError(null);
     const spotId = ULID_PATTERN.test(keyword) ? keyword : undefined;
+    const spotName =
+      keyword !== '' && spotId === undefined ? keyword : undefined;
+    const overdue = overdueOnly ? true : undefined;
     const task: Promise<void> =
       activeTab === 'abuse'
-        ? api.listAbuseReports({ status: 'pending', limit: PAGE_SIZE }).then((page) => {
-            if (!active) {
-              return;
-            }
-            setAbuses(page.items);
-            setAbuseTotal(page.total);
-            setAbuseCursor(page.next_cursor);
-          })
+        ? api
+            .listAbuseReports({
+              status: 'pending',
+              spot_name: spotName,
+              sla_overdue: overdue,
+              limit: PAGE_SIZE,
+            })
+            .then((page) => {
+              if (!active) {
+                return;
+              }
+              setAbuses(page.items);
+              setAbuseTotal(page.total);
+              setAbuseCursor(page.next_cursor);
+            })
         : api
             .listAdminReports({
               queue: activeTab,
               content_type: contentType,
               spot_id: spotId,
+              spot_name: spotName,
+              sla_overdue: overdue,
               limit: PAGE_SIZE,
             })
             .then((page) => {
@@ -703,7 +867,44 @@ export function ContentModerationDrawer({
     return () => {
       active = false;
     };
-  }, [open, activeTab, contentType, keyword, reloadKey, onExpired]);
+  }, [open, activeTab, contentType, keyword, overdueOnly, reloadKey, onExpired]);
+
+  useEffect(() => {
+    if (detailReportId === null) {
+      setHistory(null);
+      setHistoryError(null);
+      setHistoryLoading(false);
+      return;
+    }
+    let active = true;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    api
+      .reportHistory(detailReportId)
+      .then((result) => {
+        if (active) {
+          setHistory(result);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!active) {
+          return;
+        }
+        if (isAuthError(cause)) {
+          onExpired();
+          return;
+        }
+        setHistoryError(errorText(cause));
+      })
+      .finally(() => {
+        if (active) {
+          setHistoryLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [detailReportId, historyReloadKey, onExpired]);
 
   const refresh = (): void => {
     setReloadKey((value) => value + 1);
@@ -713,11 +914,16 @@ export function ContentModerationDrawer({
   const loadMore = async (): Promise<void> => {
     setLoadingMore(true);
     setError(null);
+    const spotId = ULID_PATTERN.test(keyword) ? keyword : undefined;
+    const spotName = keyword !== '' && spotId === undefined ? keyword : undefined;
+    const overdue = overdueOnly ? true : undefined;
     try {
       if (activeTab === 'abuse') {
         if (abuseCursor !== null) {
           const page = await api.listAbuseReports({
             status: 'pending',
+            spot_name: spotName,
+            sla_overdue: overdue,
             cursor: abuseCursor,
             limit: PAGE_SIZE,
           });
@@ -729,7 +935,9 @@ export function ContentModerationDrawer({
         const page = await api.listAdminReports({
           queue: activeTab,
           content_type: contentType,
-          spot_id: ULID_PATTERN.test(keyword) ? keyword : undefined,
+          spot_id: spotId,
+          spot_name: spotName,
+          sla_overdue: overdue,
           cursor: reportCursor,
           limit: PAGE_SIZE,
         });
@@ -793,26 +1001,6 @@ export function ContentModerationDrawer({
       onOk: runConfirm(() => api.adoptReport(item.report_id, session.csrf), '已采纳'),
     });
   };
-
-  const visibleReports = useMemo(
-    () =>
-      reports.filter(
-        (item) =>
-          (!nameFilterActive || item.spot_name.includes(keyword)) &&
-          (!overdueOnly || item.sla_overdue),
-      ),
-    [reports, nameFilterActive, keyword, overdueOnly],
-  );
-
-  const visibleAbuses = useMemo(
-    () =>
-      abuses.filter(
-        (item) =>
-          (!nameFilterActive || item.report.spot_name.includes(keyword)) &&
-          (!overdueOnly || item.sla_overdue),
-      ),
-    [abuses, nameFilterActive, keyword, overdueOnly],
-  );
 
   const reportColumns: TableProps<AdminReportItem>['columns'] = [
     {
@@ -1128,7 +1316,7 @@ export function ContentModerationDrawer({
           size="small"
           loading={loading}
           columns={abuseColumns}
-          dataSource={visibleAbuses}
+          dataSource={abuses}
           scroll={{ x: 760 }}
           pagination={false}
           locale={{
@@ -1141,7 +1329,7 @@ export function ContentModerationDrawer({
           size="small"
           loading={loading}
           columns={reportColumns}
-          dataSource={visibleReports}
+          dataSource={reports}
           scroll={{ x: 940 }}
           pagination={false}
           locale={{
@@ -1165,6 +1353,10 @@ export function ContentModerationDrawer({
 
       <ReportDetailDrawer
         item={detail}
+        history={history}
+        historyLoading={historyLoading}
+        historyError={historyError}
+        onRetryHistory={() => setHistoryReloadKey((value) => value + 1)}
         onClose={() => {
           setDetail(null);
         }}
