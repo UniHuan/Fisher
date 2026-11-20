@@ -12,6 +12,7 @@ import { PoisModule } from './modules/pois/pois.module';
 import { PublicSpotsModule } from './modules/public-spots/public-spots.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { WechatCallbackModule } from './modules/wechat-callback/wechat-callback.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -38,6 +39,7 @@ export class AppModule {
         PoisModule,
         StorageModule,
         UploadsModule,
+        WechatCallbackModule,
       ],
       controllers: [HealthController, ...extraControllers],
     };

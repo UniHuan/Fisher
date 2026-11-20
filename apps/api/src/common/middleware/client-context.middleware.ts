@@ -6,7 +6,12 @@ import type { RequestWithContext } from '../types/request-context';
 
 const CLIENT_TYPES: readonly string[] = Object.values(CLIENT_TYPE);
 const PUBLIC_PATHS = new Set(['/health', '/ready']);
-const PUBLIC_ASSET_PREFIXES = ['/api/v1/uploads/preview', '/api/v1/uploads/public/'];
+const PUBLIC_ASSET_PREFIXES = [
+  '/api/v1/uploads/preview',
+  '/api/v1/uploads/public/',
+  // WeChat server-to-server message push does not send client headers.
+  '/api/v1/wechat/',
+];
 
 function isClientType(value: unknown): value is ClientType {
   return typeof value === 'string' && CLIENT_TYPES.includes(value);
