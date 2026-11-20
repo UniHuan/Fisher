@@ -212,6 +212,7 @@
   color: #5C6B64;
   font-size: 23rpx;
   line-height: 1.55;
+  word-break: break-word;
 }
 
 .poi-empty {
