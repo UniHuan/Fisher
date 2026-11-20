@@ -27,6 +27,8 @@ interface LoadOptions {
 interface ContentTypeOption {
   key: ReportContentType;
   label: string;
+  mark: string;
+  desc: string;
 }
 
 interface FishOption {
@@ -124,9 +126,9 @@ interface CreateMethods {
 }
 
 const CONTENT_TYPES: ContentTypeOption[] = [
-  { key: 'comment', label: '评论' },
-  { key: 'catch', label: '鱼获' },
-  { key: 'intel', label: '情报' },
+  { key: 'comment', label: '评论', mark: '评', desc: '现场观察' },
+  { key: 'catch', label: '鱼获', mark: '获', desc: '鱼种与重量' },
+  { key: 'intel', label: '情报', mark: '报', desc: '收费与鱼情' },
 ];
 
 function decodeOption(value: string | undefined): string {
