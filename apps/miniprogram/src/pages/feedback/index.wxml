@@ -31,18 +31,16 @@
 
     <view class="feedback-section">
       <text class="section-label">类型</text>
-      <view class="category-grid">
+      <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
         <view
           wx:for="{{categories}}"
           wx:key="key"
           class="category-chip {{category === item.key ? 'is-active' : ''}}"
           data-category="{{item.key}}"
           bindtap="selectCategory"
-        >
-          <text class="category-name">{{item.label}}</text>
-          <text class="category-desc">{{item.desc}}</text>
-        </view>
-      </view>
+        >{{item.label}}</view>
+      </scroll-view>
+      <text class="category-hint">{{categoryDesc || '选择一个最接近的类型。'}}</text>
     </view>
 
     <view class="feedback-section">
@@ -54,7 +52,7 @@
         class="content-textarea"
         value="{{content}}"
         placeholder="遇到了什么问题，或希望怎么改进？写清楚步骤和现象，方便我们定位。"
-        maxlength="500"
+        maxlength="{{maxContentLength}}"
         bindinput="onContentInput"
       />
       <text class="section-hint">至少 {{minContentLength}} 字，最多 {{maxContentLength}} 字。</text>
