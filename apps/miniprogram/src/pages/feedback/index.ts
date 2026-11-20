@@ -48,6 +48,7 @@ interface FeedbackData {
   loggingIn: boolean;
   categories: FeedbackCategoryOption[];
   category: FeedbackCategory | '';
+  categoryDesc: string;
   content: string;
   contentCount: number;
   minContentLength: number;
@@ -134,6 +135,7 @@ Page<FeedbackData, FeedbackMethods>({
     loggingIn: false,
     categories: CATEGORIES,
     category: '',
+    categoryDesc: '',
     content: '',
     contentCount: 0,
     minContentLength: MIN_CONTENT_CODE_POINTS,
@@ -153,8 +155,11 @@ Page<FeedbackData, FeedbackMethods>({
 
   onLoad(options: LoadOptions) {
     const category = decodeOption(options.category);
+    const initialCategory = isFeedbackCategory(category) ? category : '';
+    const initialDesc = CATEGORIES.find((item) => item.key === initialCategory)?.desc ?? '';
     this.setData({
-      category: isFeedbackCategory(category) ? category : '',
+      category: initialCategory,
+      categoryDesc: initialDesc,
       spotId: decodeOption(options.spot_id),
       spotName: decodeOption(options.spot_name),
       pagePath: decodeOption(options.page),
@@ -216,7 +221,8 @@ Page<FeedbackData, FeedbackMethods>({
     if (!isFeedbackCategory(category) || category === this.data.category) {
       return;
     }
-    this.setData({ category, submitError: '' });
+    const option = CATEGORIES.find((item) => item.key === category);
+    this.setData({ category, categoryDesc: option?.desc ?? '', submitError: '' });
   },
 
   onContentInput(event: InputEvent): void {
