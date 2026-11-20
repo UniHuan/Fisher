@@ -164,7 +164,7 @@ Page<MapData, MapMethods>({
             label: {
               content: String(cluster.count),
               color: '#ffffff',
-              bgColor: '#0f6b5c',
+              bgColor: '#1E6B57',
               borderRadius: 12,
               padding: 3,
               fontSize: 11,
