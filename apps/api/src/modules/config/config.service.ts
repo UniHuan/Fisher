@@ -166,10 +166,13 @@ export class ClientConfigService {
   }
 
   private getLegalConfig(): ClientConfig['legal'] {
-    const baseUrl = this.config.get<string>('LEGAL_BASE_URL') ?? DEFAULT_LEGAL_BASE_URL;
+    // Compose passes unset optional env vars as "", and ConfigService falls back to
+    // process.env when the validated env omits the key. Normalize before defaulting.
+    const configuredBase = this.config.get<string>('LEGAL_BASE_URL')?.trim();
+    const baseUrl = (configuredBase || DEFAULT_LEGAL_BASE_URL).replace(/\/+$/, '');
+    const configuredVersion = this.config.get<string>('UGC_TERMS_VERSION')?.trim();
     return {
-      terms_version:
-        this.config.get<string>('UGC_TERMS_VERSION') ?? DEFAULT_CLIENT_CONFIG.legal.terms_version,
+      terms_version: configuredVersion || DEFAULT_CLIENT_CONFIG.legal.terms_version,
       terms_url: `${baseUrl}/terms`,
       privacy_url: `${baseUrl}/privacy`,
       community_url: `${baseUrl}/community`,
