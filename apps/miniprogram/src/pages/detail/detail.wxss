@@ -50,6 +50,11 @@
   letter-spacing: 0.12em;
 }
 
+.gallery-placeholder-hint {
+  color: #1E6B57;
+  font-size: 23rpx;
+}
+
 .detail-body {
   padding: 28rpx 24rpx 0;
 }
@@ -77,6 +82,20 @@
 .tag-core {
   background: #FAE7E2;
   color: #A93226;
+}
+
+.heading-feedback {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-top: 18rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
+}
+
+.heading-feedback-link {
+  color: #1E6B57;
+  font-weight: 600;
 }
 
 .alert {

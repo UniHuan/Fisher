@@ -33,6 +33,8 @@ interface DisplayPoiGroup {
 
 type ReportFilterKey = 'all' | ReportContentType;
 
+type SpotFeedbackCategory = 'suggestion' | 'photo' | '';
+
 interface ReportFilter {
   key: ReportFilterKey;
   label: string;
@@ -149,7 +151,9 @@ interface DetailMethods {
   previewReportImage(event: ReportImageTapEvent): void;
   toggleLike(event: ReportTapEvent): Promise<void>;
   openReportMenu(event: ReportTapEvent): Promise<void>;
-  openFeedbackPage(): void;
+  openSpotFeedback(category: SpotFeedbackCategory): void;
+  openSuggestionFeedback(): void;
+  openPhotoFeedback(): void;
   ensureActionSession(): Promise<boolean>;
   openAbuseReasons(report: DisplayReport): void;
   submitAbuse(report: DisplayReport, reason: AbuseReason): Promise<void>;
@@ -604,7 +608,7 @@ Page<DetailData, DetailMethods>({
       itemList,
       success: (result) => {
         if (result.tapIndex === feedbackIndex) {
-          this.openFeedbackPage();
+          this.openSpotFeedback('');
           return;
         }
         if (report.isMine) {
@@ -620,16 +624,31 @@ Page<DetailData, DetailMethods>({
     });
   },
 
-  openFeedbackPage(): void {
+  openSpotFeedback(category: SpotFeedbackCategory): void {
+    if (!this.data.feedbackEnabled) {
+      return;
+    }
     const spotName = this.data.spot?.spot_name ?? '';
-    const params = ['page=detail'];
+    const params: string[] = [];
+    if (category !== '') {
+      params.push(`category=${category}`);
+    }
     if (currentSpotId !== '') {
       params.push(`spot_id=${encodeURIComponent(currentSpotId)}`);
     }
     if (spotName !== '') {
       params.push(`spot_name=${encodeURIComponent(spotName)}`);
     }
+    params.push('page=detail');
     wx.navigateTo({ url: `/pages/feedback/index?${params.join('&')}` });
+  },
+
+  openSuggestionFeedback(): void {
+    this.openSpotFeedback('suggestion');
+  },
+
+  openPhotoFeedback(): void {
+    this.openSpotFeedback('photo');
   },
 
   async ensureActionSession(): Promise<boolean> {

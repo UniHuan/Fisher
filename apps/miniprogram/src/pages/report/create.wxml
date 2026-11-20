@@ -139,7 +139,7 @@
       {{restrictionText || '当前账号暂不能发布内容'}}
     </view>
     <view wx:if="{{submitError}}" class="form-error">{{submitError}}</view>
-    <text wx:if="{{feedbackEnabled}}" class="feedback-link" bindtap="openFeedback">反馈这个问题</text>
+    <text wx:if="{{feedbackEnabled && submitError}}" class="feedback-link" bindtap="openFeedback">反馈这个问题</text>
 
     <view class="create-actions">
       <text class="publish-note">发布后先审核，通过后会出现在钓点详情页</text>
