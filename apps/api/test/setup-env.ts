@@ -12,3 +12,5 @@ process.env.CSRF_SECRET ??= 'test-csrf-secret-0123456789abcdefghij';
 process.env.TOTP_ENCRYPTION_KEY ??= 'test-totp-encryption-key-0123456789abcdef';
 process.env.STORAGE_DRIVER ??= 'local';
 process.env.STORAGE_LOCAL_ROOT ??= join(tmpdir(), 'szfisher-api-test-storage');
+
+process.env.WECHAT_MSG_TOKEN ??= 'test-msg-token';

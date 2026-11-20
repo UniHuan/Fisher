@@ -53,6 +53,8 @@ const baseEnvSchema = z.object({
   // Optional at boot so local/manual POI management works without a Tencent key.
   // Empty is treated as missing by the provider; compose passes it through as "".
   TENCENT_MAP_SERVER_KEY: z.string().optional(),
+  // V1.1 WeChat message push URL verification; optional so V1.0 boots without UGC.
+  WECHAT_MSG_TOKEN: z.string().optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
 });
 
