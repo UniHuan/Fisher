@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AdminUser, IdempotencyKey } from '@prisma/client';
-import { ADMIN_ROLE, ERROR_CODES, type AdminRole } from '@szfisher/shared';
+import { ERROR_CODES, type AdminRole } from '@szfisher/shared';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError } from '../../common/errors/app-error';
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
@@ -192,15 +192,10 @@ export class AdminAuthService {
       return { kind: 'mfa_required', body: { mfa_required: true, mfa_token: mfaToken } };
     }
 
-    const profile = toAdminProfile(admin);
-    if (profile.role === ADMIN_ROLE.SUPER_ADMIN) {
-      const mfaToken = await this.createMfaChallenge(admin.admin_id, meta, now);
-      return { kind: 'must_bind_totp', body: { must_bind_totp: true, mfa_token: mfaToken } };
-    }
-
-    const session = await this.completeLogin(admin, now);
-    await this.recordAuthAudit('auth.login', admin.admin_id, request);
-    return { kind: 'session', session };
+    // Every admin role must bind TOTP before receiving a session. Password-only
+    // access is reserved for bootstrap and is never issued to a real account.
+    const mfaToken = await this.createMfaChallenge(admin.admin_id, meta, now);
+    return { kind: 'must_bind_totp', body: { must_bind_totp: true, mfa_token: mfaToken } };
   }
 
   async setupTotp(mfaToken: string, request: RequestWithContext): Promise<TotpSetupResult> {
@@ -240,6 +235,7 @@ export class AdminAuthService {
     const updated = await this.users.enableTotp(admin.admin_id, generated.hashes, now);
     await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
     const session = await this.completeLogin(updated, now);
+    await this.recordAuthAudit('auth.login', admin.admin_id, request);
     await this.recordAuthAudit('auth.totp_enabled', admin.admin_id, request);
     return { session, recovery_codes: generated.plain };
   }
@@ -264,6 +260,7 @@ export class AdminAuthService {
     }
     await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
     const session = await this.completeLogin(admin, now);
+    await this.recordAuthAudit('auth.login', admin.admin_id, request);
     await this.recordAuthAudit('auth.totp_verified', admin.admin_id, request);
     return session;
   }
@@ -290,6 +287,7 @@ export class AdminAuthService {
     await this.users.saveRecoveryCodeHashes(admin.admin_id, result.remaining);
     await this.users.deleteMfaChallenge(challenge.actor_id, challenge.key);
     const session = await this.completeLogin(admin, now);
+    await this.recordAuthAudit('auth.login', admin.admin_id, request);
     await this.recordAuthAudit('auth.recovery_used', admin.admin_id, request);
     return { session, remaining_recovery_codes: result.remaining.length };
   }
