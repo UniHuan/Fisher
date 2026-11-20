@@ -195,10 +195,10 @@ SMOKE_ADMIN_ORIGIN=https://fish-admin-staging.unihuan.com \
 - [ ] `photo` 类型显示授权提示，未勾选不能提交；勾选后可提交钓点实拍
 - [ ] 运营按授权审核把实拍转为钓点图片，来源、作者、授权方式、许可证、审核人和上线日期已登记
 - [ ] 无图钓点在列表和详情显示「实景图待补充」品牌占位，不显示假图
-- [ ] `features.feedback=false` 时三个入口隐藏，提交和上传返回 `FEATURE_DISABLED`，后台仍可读取历史反馈
+- [ ] `features.feedback=false` 时所有反馈入口隐藏，提交和上传返回 `FEATURE_DISABLED`，后台仍可读取历史反馈
 - [ ] 反馈图片没有公开 URL，公开钓点和 UGC 图片路由无法读取 `feedback/` key
 - [ ] `feedback:purge` 已配置并成功执行；24 小时未使用图片和 90 天前反馈被清理
-- [ ] `feedback:read` 和 `feedback:handle` 对三种后台角色生效，未授权角色看不到入口
+- [ ] `feedback:read` 和 `feedback:handle` 对三种后台角色生效，`super_admin`、`operator`、`reviewer` 都能看到入口并处理反馈
 - [ ] API 和 Nginx 日志不出现反馈正文、联系方式、图片 key、Token 或 openid
 
 ## 9. 安全验收
