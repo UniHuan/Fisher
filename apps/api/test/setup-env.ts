@@ -14,3 +14,7 @@ process.env.STORAGE_DRIVER ??= 'local';
 process.env.STORAGE_LOCAL_ROOT ??= join(tmpdir(), 'szfisher-api-test-storage');
 
 process.env.WECHAT_MSG_TOKEN ??= 'test-msg-token';
+process.env.APP_JWT_ACCESS_SECRET ??= 'test-app-jwt-access-secret-0123456789abcdef';
+process.env.WECHAT_MINI_APPID ??= 'wx-test-appid';
+process.env.WECHAT_MINI_SECRET ??= 'wx-test-secret';
+process.env.UGC_TERMS_VERSION ??= '2026-11-20';

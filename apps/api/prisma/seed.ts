@@ -117,6 +117,7 @@ const DEFAULT_CONFIGS: ConfigEntry[] = [
   { config_key: 'regular_spot_verify_days', config_value: '90', description: '普通钓点核实周期（天）' },
   { config_key: 'idempotency_key_ttl_hours', config_value: '24', description: '幂等键保留时长（小时）' },
   { config_key: 'analytics_event_retention_days', config_value: '180', description: '埋点明细保留时长（天）' },
+  { config_key: 'features.ugc', config_value: 'false', description: 'V1.1 钓友情报开关' },
 ];
 
 export async function seedDictionaries(prisma: PrismaClient): Promise<void> {

@@ -55,6 +55,13 @@ const baseEnvSchema = z.object({
   TENCENT_MAP_SERVER_KEY: z.string().optional(),
   // V1.1 WeChat message push URL verification; optional so V1.0 boots without UGC.
   WECHAT_MSG_TOKEN: z.string().optional(),
+  // V1.1 mini program login, content security and legal copy; optional so V1.0 boots.
+  APP_JWT_ACCESS_SECRET: z.string().min(32).optional(),
+  WECHAT_MINI_APPID: z.string().min(1).optional(),
+  WECHAT_MINI_SECRET: z.string().min(1).optional(),
+  WECHAT_MSG_AES_KEY: z.string().min(1).optional(),
+  UGC_TERMS_VERSION: z.string().min(1).optional(),
+  LEGAL_BASE_URL: z.string().url().optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
 });
 
