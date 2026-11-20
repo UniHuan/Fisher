@@ -1,6 +1,13 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ERROR_CODES, OPEN_STATUS, SPOT_STATUS, UGC_UPLOAD_STATUS } from '@szfisher/shared';
-import type { Prisma, Report, Spot } from '@prisma/client';
+import {
+  ERROR_CODES,
+  MODERATION_STATUS,
+  OPEN_STATUS,
+  SPOT_STATUS,
+  UGC_UPLOAD_STATUS,
+} from '@szfisher/shared';
+import { Prisma } from '@prisma/client';
+import type { Report, Spot } from '@prisma/client';
 import { AppError } from '../../common/errors/app-error';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ReportCursor } from './report-cursor';
@@ -51,6 +58,23 @@ export interface MyListParams {
   statuses: readonly string[] | null;
   cursor: ReportCursor | null;
   limit: number;
+}
+
+export interface ActionReportView {
+  report_id: string;
+  user_id: string;
+  images: string[];
+  moderation_status: string;
+  deleted_at: Date | null;
+  spot: SpotVisibility;
+}
+
+export interface CreateAbuseInput {
+  abuseId: string;
+  reportId: string;
+  userId: string;
+  reason: string;
+  createdAt: Date;
 }
 
 const REPORT_ORDER: Prisma.ReportOrderByWithRelationInput[] = [
@@ -172,6 +196,147 @@ export class ReportsRepository {
         moderation_status: moderationStatus,
         machine_result: machineResult,
       },
+    });
+  }
+
+  findActionReport(reportId: string): Promise<ActionReportView | null> {
+    return this.prisma.report.findUnique({
+      where: { report_id: reportId },
+      select: {
+        report_id: true,
+        user_id: true,
+        images: true,
+        moderation_status: true,
+        deleted_at: true,
+        spot: {
+          select: { spot_id: true, status: true, open_status: true, deleted_at: true },
+        },
+      },
+    });
+  }
+
+  /**
+   * Idempotent like. The insert only succeeds while the content is publicly
+   * visible, and the cached count moves in the same transaction, so concurrent
+   * or repeated likes can never double-count.
+   */
+  likeReport(
+    reportId: string,
+    userId: string,
+    visibleStatuses: readonly string[],
+  ): Promise<number | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const inserted = await tx.$executeRaw`
+        INSERT INTO report_like (report_id, user_id)
+        SELECT ${reportId}, ${userId}
+        WHERE EXISTS (
+          SELECT 1
+          FROM report r
+          JOIN spot s ON s.spot_id = r.spot_id
+          WHERE r.report_id = ${reportId}
+            AND r.deleted_at IS NULL
+            AND r.moderation_status IN (${Prisma.join(visibleStatuses)})
+            AND s.status = ${SPOT_STATUS.PUBLISHED}
+            AND s.deleted_at IS NULL
+            AND (s.open_status IS NULL OR s.open_status <> ${OPEN_STATUS.BANNED})
+        )
+        ON CONFLICT (report_id, user_id) DO NOTHING
+      `;
+      if (inserted > 0) {
+        await tx.report.update({
+          where: { report_id: reportId },
+          data: { like_count: { increment: 1 } },
+        });
+      }
+      const row = await tx.report.findUnique({
+        where: { report_id: reportId },
+        select: { like_count: true, moderation_status: true, deleted_at: true },
+      });
+      if (
+        row === null ||
+        row.deleted_at !== null ||
+        !visibleStatuses.includes(row.moderation_status)
+      ) {
+        return null;
+      }
+      return row.like_count;
+    });
+  }
+
+  /** Idempotent unlike; the count never drops below zero. */
+  unlikeReport(reportId: string, userId: string): Promise<number | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const removed = await tx.$executeRaw`
+        DELETE FROM report_like
+        WHERE report_id = ${reportId} AND user_id = ${userId}
+      `;
+      if (removed > 0) {
+        await tx.$executeRaw`
+          UPDATE report
+          SET like_count = GREATEST(like_count - 1, 0)
+          WHERE report_id = ${reportId}
+        `;
+      }
+      const row = await tx.report.findUnique({
+        where: { report_id: reportId },
+        select: { like_count: true },
+      });
+      return row?.like_count ?? null;
+    });
+  }
+
+  /** The unique (report_id, user_id) index turns a repeat report into a no-op. */
+  async createAbuse(input: CreateAbuseInput): Promise<void> {
+    await this.prisma.reportAbuse.createMany({
+      data: [
+        {
+          abuse_id: input.abuseId,
+          report_id: input.reportId,
+          user_id: input.userId,
+          reason: input.reason,
+          created_at: input.createdAt,
+        },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  /**
+   * Author deletion: clear the content, mark the uploads deleted and cancel any
+   * pending media checks in one transaction. Returns false when another request
+   * already deleted the report, so the caller can answer 404.
+   */
+  markAuthorDeleted(reportId: string, imageKeys: string[], now: Date): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.report.updateMany({
+        where: { report_id: reportId, deleted_at: null },
+        data: {
+          deleted_at: now,
+          moderation_status: MODERATION_STATUS.REMOVED,
+          reject_reason: 'author_deleted',
+          content: '',
+          images: [],
+          fish_key: null,
+          catch_weight_kg: null,
+        },
+      });
+      if (updated.count === 0) {
+        return false;
+      }
+      if (imageKeys.length > 0) {
+        await tx.ugcUpload.updateMany({
+          where: {
+            object_key: { in: imageKeys },
+            status: { not: UGC_UPLOAD_STATUS.DELETED },
+          },
+          data: { status: UGC_UPLOAD_STATUS.DELETED, deleted_at: now },
+        });
+      }
+      await tx.reportMediaCheck.updateMany({
+        where: { report_id: reportId, status: 'pending' },
+        data: { status: 'canceled', checked_at: now },
+      });
+      return true;
     });
   }
 

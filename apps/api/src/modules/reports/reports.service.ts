@@ -19,17 +19,32 @@ import {
   type ContentSecurityTextResult,
 } from '../content-security/content-security.types';
 import { DictionariesRepository } from '../dictionaries/dictionaries.repository';
+import type { RateLimitRule } from '../rate-limit/rate-limit.types';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
-import { PREVIEW_URL_TTL_SECONDS } from '../storage/storage.service';
+import { PREVIEW_URL_TTL_SECONDS, StorageService } from '../storage/storage.service';
 import { PreviewSignerService } from '../uploads/preview-signer.service';
+import {
+  type AbuseReportResponseDto,
+  type DeleteReportResponseDto,
+  type ReportLikeResponseDto,
+} from './dto/abuse-report.dto';
 import { REPORT_IMAGE_KEY_PATTERN, type CreateReportResponseDto } from './dto/create-report.dto';
 import type { MyReportStatusFilter } from './dto/my-report-list-query.dto';
 import type { MyReportItemDto } from './dto/my-report-response.dto';
 import type { PublicReportItemDto } from './dto/public-report-response.dto';
 import { decodeReportCursor, encodeReportCursor } from './report-cursor';
-import { canOpenSpot, toMyReportItem, toPublicReportItem } from './report.mapper';
+import {
+  canOpenSpot,
+  isPublicReportVisible,
+  toMyReportItem,
+  toPublicReportItem,
+} from './report.mapper';
 import { ReportModerationService } from './report-moderation.service';
-import { ReportsRepository, type SpotVisibility } from './reports.repository';
+import {
+  ReportsRepository,
+  type ActionReportView,
+  type SpotVisibility,
+} from './reports.repository';
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 20;
@@ -38,6 +53,8 @@ const NEW_USER_WINDOW_MS = 24 * 60 * 60 * 1000;
 const DAILY_REPORT_RULE_SECONDS = 24 * 60 * 60;
 const DAILY_REPORT_LIMIT = 10;
 const NEW_USER_REPORT_LIMIT = 3;
+const LIKE_RULE: RateLimitRule = { limit: 60, windowSeconds: 60 };
+const ABUSE_DAILY_RULE: RateLimitRule = { limit: 20, windowSeconds: 24 * 60 * 60 };
 
 export const PUBLIC_REPORT_STATUSES: readonly string[] = [
   MODERATION_STATUS.PUBLISHED,
@@ -105,6 +122,23 @@ function isSpotPubliclyVisible(spot: SpotVisibility): boolean {
   return canOpenSpot(spot);
 }
 
+function reportNotFoundError(): AppError {
+  return new AppError(ERROR_CODES.REPORT_NOT_FOUND, HttpStatus.NOT_FOUND, 'Content not found');
+}
+
+function reportForbiddenError(message: string): AppError {
+  return new AppError(ERROR_CODES.REPORT_FORBIDDEN, HttpStatus.FORBIDDEN, message);
+}
+
+/** Fixed-window rate-limit keys mirror the spec: action, subject, window. */
+function utcMinuteKey(now: Date): string {
+  return now.toISOString().slice(0, 16).replace(/[-:T]/g, '');
+}
+
+function utcDayKey(now: Date): string {
+  return now.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
@@ -117,6 +151,7 @@ export class ReportsService {
     private readonly repository: ReportsRepository,
     private readonly moderation: ReportModerationService,
     private readonly previewSigner: PreviewSignerService,
+    private readonly storage: StorageService,
     @Inject(CONTENT_SECURITY_PROVIDER)
     private readonly contentSecurity: ContentSecurityProvider,
   ) {}
@@ -240,6 +275,101 @@ export class ReportsService {
     };
   }
 
+  async like(
+    reportId: string,
+    appUser: AppUserContext | undefined,
+  ): Promise<ReportLikeResponseDto> {
+    const user = this.requireAppUser(appUser);
+    await this.assertUgcEnabled();
+    await this.requireVisibleReport(reportId);
+    const now = new Date();
+    await this.enforceActionLimit(
+      `like:user:${user.userId}:${utcMinuteKey(now)}`,
+      LIKE_RULE,
+      'Like rate limit reached',
+    );
+    const likeCount = await this.repository.likeReport(
+      reportId,
+      user.userId,
+      PUBLIC_REPORT_STATUSES,
+    );
+    if (likeCount === null) {
+      throw reportNotFoundError();
+    }
+    return { liked: true, like_count: likeCount };
+  }
+
+  async unlike(
+    reportId: string,
+    appUser: AppUserContext | undefined,
+  ): Promise<ReportLikeResponseDto> {
+    const user = this.requireAppUser(appUser);
+    await this.assertUgcEnabled();
+    await this.requireVisibleReport(reportId);
+    const now = new Date();
+    await this.enforceActionLimit(
+      `like:user:${user.userId}:${utcMinuteKey(now)}`,
+      LIKE_RULE,
+      'Like rate limit reached',
+    );
+    const likeCount = await this.repository.unlikeReport(reportId, user.userId);
+    if (likeCount === null) {
+      throw reportNotFoundError();
+    }
+    return { liked: false, like_count: likeCount };
+  }
+
+  async reportAbuse(
+    reportId: string,
+    input: { reason: string },
+    appUser: AppUserContext | undefined,
+  ): Promise<AbuseReportResponseDto> {
+    const user = this.requireAppUser(appUser);
+    await this.assertUgcEnabled();
+    const report = await this.requireVisibleReport(reportId);
+    if (report.user_id === user.userId) {
+      throw reportForbiddenError('Cannot report your own content');
+    }
+    const now = new Date();
+    await this.enforceActionLimit(
+      `abuse:user:${user.userId}:${utcDayKey(now)}`,
+      ABUSE_DAILY_RULE,
+      'Daily abuse report limit reached',
+    );
+    await this.repository.createAbuse({
+      abuseId: ulid(),
+      reportId,
+      userId: user.userId,
+      reason: input.reason,
+      createdAt: now,
+    });
+    return { reported: true };
+  }
+
+  async deleteReport(
+    reportId: string,
+    appUser: AppUserContext | undefined,
+  ): Promise<DeleteReportResponseDto> {
+    const user = this.requireAppUser(appUser);
+    await this.assertUgcEnabled();
+    const report = await this.repository.findActionReport(reportId);
+    if (report === null || report.deleted_at !== null) {
+      throw reportNotFoundError();
+    }
+    if (report.user_id !== user.userId) {
+      throw reportForbiddenError('Only the author can delete this content');
+    }
+    const now = new Date();
+    const marked = await this.repository.markAuthorDeleted(reportId, report.images, now);
+    if (!marked) {
+      throw reportNotFoundError();
+    }
+    // The row is already tombstoned, so a storage failure cannot keep the
+    // content public; log it for the cleanup job instead of failing the request.
+    await this.removeStoredImages(report.report_id, report.images);
+    return { deleted: true };
+  }
+
   async listPublic(
     spotId: string,
     query: { content_type?: string; cursor?: string; limit?: number },
@@ -302,6 +432,54 @@ export class ReportsService {
       next_cursor: this.nextCursor(rows, hasMore),
       total,
     };
+  }
+
+  private requireAppUser(appUser: AppUserContext | undefined): AppUserContext {
+    if (appUser === undefined) {
+      throw new AppError(
+        ERROR_CODES.UNAUTHENTICATED,
+        HttpStatus.UNAUTHORIZED,
+        'Authentication required',
+      );
+    }
+    return appUser;
+  }
+
+  private async requireVisibleReport(reportId: string): Promise<ActionReportView> {
+    const report = await this.repository.findActionReport(reportId);
+    if (report === null || !isPublicReportVisible(report, report.spot)) {
+      throw reportNotFoundError();
+    }
+    return report;
+  }
+
+  private async enforceActionLimit(
+    key: string,
+    rule: RateLimitRule,
+    message: string,
+  ): Promise<void> {
+    const decision = await this.rateLimit.hit(key, rule);
+    if (!decision.allowed) {
+      throw new AppError(ERROR_CODES.RATE_LIMITED, HttpStatus.TOO_MANY_REQUESTS, message);
+    }
+  }
+
+  private async removeStoredImages(reportId: string, imageKeys: string[]): Promise<void> {
+    for (const key of imageKeys) {
+      const basename = key.split('/').pop() ?? '';
+      if (basename !== '') {
+        try {
+          await this.storage.deletePublished(`ugc/${reportId}/${basename}`);
+        } catch {
+          this.logger.warn('Published image removal failed; cleanup job will retry');
+        }
+      }
+      try {
+        await this.storage.deleteObject(key);
+      } catch {
+        this.logger.warn('Work image removal failed; cleanup job will retry');
+      }
+    }
   }
 
   private async resolveImageKeys(

@@ -672,6 +672,261 @@ paths:
       summary: Publish a text-only comment, catch or intel report
       tags: &a28
         - reports
+  /api/v1/reports/{id}/like:
+    post:
+      description: "Idempotent: a repeated like returns the current count without
+        inserting a second row. At most 60 like actions per user per minute."
+      operationId: ReportsController_like
+      parameters:
+        - *a26
+        - *a27
+        - name: id
+          required: true
+          in: path
+          description: Report ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "201":
+          description: The like exists and the current like count
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ReportLikeResponseDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40302, 40304)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40402)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "429":
+          description: Too many requests (42901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: Like a published report
+      tags: *a28
+    delete:
+      description: "Idempotent: removing a like that does not exist still returns the
+        current count. Shares the 60 like actions per user per minute limit."
+      operationId: ReportsController_unlike
+      parameters:
+        - *a26
+        - *a27
+        - name: id
+          required: true
+          in: path
+          description: Report ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: The like is gone and the current like count
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ReportLikeResponseDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40302, 40304)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40402)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "429":
+          description: Too many requests (42901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: Remove a like from a published report
+      tags: *a28
+  /api/v1/reports/{id}/abuse:
+    post:
+      description: Authors cannot report their own content. A duplicate report from
+        the same user succeeds without a second row. At most 20 reports per user
+        per day.
+      operationId: ReportsController_abuse
+      parameters:
+        - *a26
+        - *a27
+        - name: id
+          required: true
+          in: path
+          description: Report ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbuseReportDto"
+      responses:
+        "201":
+          description: The abuse report was accepted (or already existed)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AbuseReportResponseDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40302, 40304)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40402)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "429":
+          description: Too many requests (42901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: Report published content for abuse
+      tags: *a28
+  /api/v1/reports/{id}:
+    delete:
+      description: Only the author may delete. Content and images are cleared
+        immediately; a tombstone with the report id, author and timestamps
+        remains for admin audit.
+      operationId: ReportsController_remove
+      parameters:
+        - *a26
+        - *a27
+        - name: id
+          required: true
+          in: path
+          description: Report ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: The report is tombstoned and no longer visible
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/DeleteReportResponseDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40302, 40304)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40402)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - bearer: []
+      summary: Delete own report
+      tags: *a28
   /api/v1/reports/mine:
     get:
       operationId: ReportsController_mine
@@ -3243,6 +3498,50 @@ components:
         - spot_id
         - content_type
         - content
+    ReportLikeResponseDto:
+      type: object
+      properties:
+        liked:
+          type: boolean
+          example: true
+        like_count:
+          type: integer
+          example: 18
+      required:
+        - liked
+        - like_count
+    AbuseReportResponseDto:
+      type: object
+      properties:
+        reported:
+          type: boolean
+          example: true
+          description: Always true; a duplicate report from the same user is success
+      required:
+        - reported
+    AbuseReportDto:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum:
+            - ad
+            - abuse
+            - false_info
+            - privacy
+            - other
+          example: ad
+          description: Abuse category; free text is deliberately not collected
+      required:
+        - reason
+    DeleteReportResponseDto:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+          example: true
+      required:
+        - deleted
     MyReportSpotDto:
       type: object
       properties:

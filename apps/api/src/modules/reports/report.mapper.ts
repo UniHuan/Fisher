@@ -13,7 +13,7 @@ export type MyReportRow = Report & {
   spot: Pick<Spot, 'spot_id' | 'spot_name' | 'open_status' | 'status' | 'deleted_at'>;
 };
 
-type SpotVisibility = Pick<Spot, 'status' | 'open_status' | 'deleted_at'>;
+export type SpotVisibility = Pick<Spot, 'status' | 'open_status' | 'deleted_at'>;
 
 /** Published content images are served from the public UGC route (Task 8). */
 export function publicReportImages(reportId: string, images: string[]): string[] {
@@ -35,6 +35,19 @@ export function canOpenSpot(spot: SpotVisibility): boolean {
 export function isPubliclyVisibleStatus(status: string): boolean {
   return (
     status === MODERATION_STATUS.PUBLISHED || status === MODERATION_STATUS.HUMAN_APPROVED
+  );
+}
+
+/** Likes and abuse reports are only accepted on content a visitor could read. */
+export function isPublicReportVisible(
+  report: { moderation_status: string; deleted_at: Date | null },
+  spot: SpotVisibility | null,
+): boolean {
+  return (
+    report.deleted_at === null &&
+    isPubliclyVisibleStatus(report.moderation_status) &&
+    spot !== null &&
+    canOpenSpot(spot)
   );
 }
 
