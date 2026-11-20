@@ -80,6 +80,18 @@ docker push "$REGISTRY/szfisher-admin:$TAG"
 - `TENCENT_MAP_SERVER_KEY`，不配置时手动 POI 管理仍可用，自动同步会失败并记录原因
 - `LOG_LEVEL`，默认 `info`
 
+V1.1 UGC 新增变量，staging 与 production 各用独立值：
+
+- `APP_JWT_ACCESS_SECRET`：C 端 access token 密钥，至少 32 字符，必须与后台 `JWT_ACCESS_SECRET` 不同。
+- `WECHAT_MINI_APPID`：小程序 AppID，公开值。
+- `WECHAT_MINI_SECRET`：小程序 AppSecret，只放服务端 0600 环境文件，不写日志。
+- `WECHAT_MSG_TOKEN`：微信消息推送 Token，与微信控制台一致。
+- `WECHAT_MSG_AES_KEY`：微信消息推送 EncodingAESKey，43 字符，安全模式解密。
+- `UGC_TERMS_VERSION`：社区规范版本，必须与已上线法务页面版本一致。
+- `LEGAL_BASE_URL`：法务页面根地址，默认 `https://fish.unihuan.com/legal`。
+
+缺少任一 UGC 变量时，C 端登录和内容安全接口返回 503，`features.ugc` 保持关闭。变量只写入 `/etc/szfisher/staging.env`、生产 KMS 或参数仓库，不进入镜像、Compose 文件、日志或仓库。
+
 `NEXT_PUBLIC_API_BASE_URL` 是构建参数，不是运行时变量。修改 API 域名必须重建 admin 镜像并刷新 CDN。
 
 ## 4. 迁移 Job
@@ -242,3 +254,66 @@ docker compose --env-file /etc/szfisher/production.env \
 ```
 
 API 会把公开列表、搜索和详情结果写入 `analytics_event`，字段经过白名单过滤，不写入坐标、Token 或联系方式；客户端事件仍由微信自定义分析承载。
+
+## 13. V1.1 UGC 上线、定时任务与回滚
+
+### 13.1 微信与法务前置
+
+- 微信公众平台消息推送：URL 使用 `https://fish-api-staging.unihuan.com/api/v1/wechat/media-check/callback`（生产替换为 `https://fish-api.unihuan.com/api/v1/wechat/media-check/callback`），消息加密方式选择安全模式，数据格式选择 JSON，Token 与 EncodingAESKey 必须和服务器环境变量一致。
+- 小程序开发设置：`request`、`uploadFile`、`downloadFile` 合法域名加入 `https://fish-api-staging.unihuan.com`；业务域名加入 `https://fish.unihuan.com`。
+- 法务页面：`https://fish.unihuan.com/legal/terms`、`/legal/privacy`、`/legal/community` 上线后，把页面版本写入 `UGC_TERMS_VERSION`，两边必须一致。
+- 上线前向微信确认小程序类目覆盖公开 UGC。未确认前保持 `features.ugc=false`，不绕过类目限制。
+- 完整验收项见 [V1.1 UGC 验收记录](../qa/v1.1-ugc-acceptance.md)。
+
+### 13.2 功能开关
+
+`features.ugc` 存在 `config` 表，种子值为 `false`，V1.0 部署不受影响。staging 验收时再打开，生产最后打开：
+
+```sql
+INSERT INTO config (config_key, config_value, description)
+VALUES ('features.ugc', 'true', 'V1.1 钓友情报开关')
+ON CONFLICT (config_key) DO UPDATE SET config_value = 'true';
+```
+
+回滚立即关闭：
+
+```sql
+UPDATE config SET config_value = 'false' WHERE config_key = 'features.ugc';
+```
+
+关闭后公开列表返回空，写接口和上传返回 `FEATURE_DISABLED`，公开 UGC 图片路由返回 404；已发布内容保留在数据库和发布桶，不删除用户内容。
+
+### 13.3 定时任务
+
+以下任务通过 Postgres advisory lock 协调，多个 API 实例同时运行也只有一个实例执行。由 systemd timer 或 cron 在 API 主机触发：
+
+```bash
+# 图片审核回调超时，建议每 1 至 5 分钟一次
+docker compose --env-file /etc/szfisher/staging.env \
+  -f infra/docker/docker-compose.prod.yml exec -T api \
+  node apps/api/dist/jobs/media-check-timeout.job.js
+
+# 清理 24 小时未使用的上传和超过 30 天的驳回图片，建议每小时或每日一次
+docker compose --env-file /etc/szfisher/staging.env \
+  -f infra/docker/docker-compose.prod.yml exec -T api \
+  node apps/api/dist/jobs/purge-ugc-orphans.job.js
+
+# 清理过期限流计数，建议每日一次
+docker compose --env-file /etc/szfisher/staging.env \
+  -f infra/docker/docker-compose.prod.yml exec -T api \
+  node apps/api/dist/jobs/purge-rate-limits.job.js
+```
+
+生产环境把 `--env-file` 换成 `/etc/szfisher/production.env`。任务输出为单行 JSON，记录 `expired`、`deleted` 或 `locked` 字段，不包含正文、图片 URL、Token 或 openid。
+
+### 13.4 公开图片读取
+
+V1.1 先由 API 提供公开图片：
+
+```text
+GET /api/v1/uploads/public/ugc/:reportId/:file
+```
+
+只有 `features.ugc=true`、内容处于 `published` 或 `human_approved`、钓点已发布且非禁钓时返回 200，其余情况返回 404。CDN 就绪后再切换，不改数据库中的图片 key。
+
+管理端 `infra/nginx/admin.conf` 的 `img-src` 已包含 `https://fish-api.unihuan.com` 和 `https://fish-api-staging.unihuan.com`，审核抽屉预览 UGC 图片不需要额外 CSP 改动。
