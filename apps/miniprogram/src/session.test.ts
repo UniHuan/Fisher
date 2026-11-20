@@ -86,6 +86,12 @@ function authorization(options: WxRequestOptions): string {
   return options.header?.Authorization ?? '';
 }
 
+async function flushMicrotasks(): Promise<void> {
+  for (let index = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 beforeEach(() => {
   storage.clear();
   loginMock.mockReset();
@@ -152,6 +158,88 @@ describe('session.refreshSession', () => {
     expect(second.can_publish).toBe(true);
     expect(session.getAccessToken()).toBe('new-access');
     expect(storedSession()?.refresh_token).toBe('refresh-new');
+  });
+
+  it('keeps logout final when a refresh resolves after logout starts', async () => {
+    storage.set(
+      'szfisher.session',
+      JSON.stringify(sessionPayload('old-access', 'refresh-old')),
+    );
+    const refreshCallbacks: Array<(response: WxResponse) => void> = [];
+    let logoutData: unknown = null;
+    let logoutAuth = '';
+    requestMock.mockImplementation((options: WxRequestOptions) => {
+      if (requestUrl(options).includes('/api/v1/auth/refresh')) {
+        if (options.success !== undefined) {
+          refreshCallbacks.push(options.success);
+        }
+        return;
+      }
+      if (requestUrl(options).includes('/api/v1/auth/logout')) {
+        logoutData = options.data;
+        logoutAuth = authorization(options);
+        options.success?.(successResponse(null));
+        return;
+      }
+      expect(requestUrl(options)).toContain('/api/v1/auth/me');
+      if (authorization(options) === 'Bearer new-access') {
+        options.success?.(successResponse(mePayload()));
+        return;
+      }
+      options.success?.(errorResponse(401, 40102, 'Access token expired'));
+    });
+
+    const mePromise = api.getMe().catch(() => undefined);
+    await flushMicrotasks();
+    expect(refreshCallbacks.length).toBe(1);
+
+    // Logout starts while the refresh is still in flight.
+    const logoutPromise = session.logout();
+    const resolveRefresh = refreshCallbacks[0];
+    if (resolveRefresh === undefined) {
+      throw new Error('refresh request was not started');
+    }
+    resolveRefresh(successResponse(sessionPayload('new-access', 'refresh-new')));
+
+    await logoutPromise;
+    await mePromise;
+
+    expect(storage.has('szfisher.session')).toBe(false);
+    expect(session.getSession()).toBeNull();
+    expect(logoutData).toEqual({ refresh_token: 'refresh-new' });
+    expect(logoutAuth).toBe('Bearer new-access');
+  });
+
+  it('does not restore a session that was cleared while a refresh was in flight', async () => {
+    storage.set(
+      'szfisher.session',
+      JSON.stringify(sessionPayload('old-access', 'refresh-old')),
+    );
+    const refreshCallbacks: Array<(response: WxResponse) => void> = [];
+    requestMock.mockImplementation((options: WxRequestOptions) => {
+      if (requestUrl(options).includes('/api/v1/auth/refresh')) {
+        if (options.success !== undefined) {
+          refreshCallbacks.push(options.success);
+        }
+        return;
+      }
+      options.success?.(errorResponse(401, 40102, 'Access token expired'));
+    });
+
+    const mePromise = api.getMe().catch(() => undefined);
+    await flushMicrotasks();
+    expect(refreshCallbacks.length).toBe(1);
+
+    session.clearSession();
+    const resolveRefresh = refreshCallbacks[0];
+    if (resolveRefresh === undefined) {
+      throw new Error('refresh request was not started');
+    }
+    resolveRefresh(successResponse(sessionPayload('new-access', 'refresh-new')));
+    await mePromise;
+
+    expect(storage.has('szfisher.session')).toBe(false);
+    expect(session.getSession()).toBeNull();
   });
 
   it('clears the stored session when the refresh fails', async () => {

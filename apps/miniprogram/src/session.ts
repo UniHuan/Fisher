@@ -16,6 +16,11 @@ const RESTRICTION_KEY = 'szfisher.restriction-notice';
 
 let loginPromise: Promise<AppSession> | null = null;
 let refreshPromise: Promise<AppSession> | null = null;
+let logoutPromise: Promise<void> | null = null;
+let loggingOut = false;
+// Incremented by every clear. A refresh that started under an older epoch must
+// never write its result back: logout has to stay final.
+let sessionEpoch = 0;
 
 function readStorage<T>(key: string): T | null {
   try {
@@ -72,6 +77,7 @@ export function getRefreshToken(): string | null {
 }
 
 export function clearSession(): void {
+  sessionEpoch += 1;
   try {
     wx.removeStorageSync(SESSION_KEY);
   } catch {
@@ -118,6 +124,9 @@ export function ensureSession(): Promise<AppSession> {
 }
 
 export function refreshSession(): Promise<AppSession> {
+  if (loggingOut) {
+    return Promise.reject(new Error('已退出登录'));
+  }
   if (refreshPromise !== null) {
     return refreshPromise;
   }
@@ -125,13 +134,22 @@ export function refreshSession(): Promise<AppSession> {
   if (current === null) {
     return Promise.reject(new Error('未登录'));
   }
+  const epoch = sessionEpoch;
   refreshPromise = refreshTokens(current.refresh_token)
     .then((session) => {
+      if (sessionEpoch !== epoch) {
+        // Logout (or another clear) happened while this refresh was in flight.
+        return session;
+      }
       writeStorage(SESSION_KEY, session);
       return session;
     })
     .catch((error: unknown) => {
-      clearSession();
+      // Only clear the session this refresh belongs to; a newer login must
+      // not be wiped by a stale failure.
+      if (sessionEpoch === epoch) {
+        clearSession();
+      }
       throw error;
     })
     .finally(() => {
@@ -140,18 +158,45 @@ export function refreshSession(): Promise<AppSession> {
   return refreshPromise;
 }
 
-export function logout(): Promise<void> {
-  const current = getSession();
-  if (current === null) {
+async function performLogout(): Promise<void> {
+  loggingOut = true;
+  try {
+    // Wait for an in-flight refresh so the remote revocation uses the live
+    // rotated tokens instead of an already-expired pair.
+    const pending = refreshPromise;
+    if (pending !== null) {
+      try {
+        await pending;
+      } catch {
+        // A failed refresh already cleared the stored session.
+      }
+    }
+    const current = getSession();
+    if (current === null) {
+      clearSession();
+      return;
+    }
+    // Start the remote revocation while the live access token is still stored.
+    const remote = apiLogout(current.refresh_token);
     clearSession();
-    return Promise.resolve();
+    try {
+      await remote;
+    } catch {
+      // Local logout still succeeds when revocation fails.
+    }
+  } finally {
+    loggingOut = false;
   }
-  // Start the remote revocation while the access token is still stored.
-  const remote = apiLogout(current.refresh_token);
-  clearSession();
-  return remote
-    .then(() => undefined)
-    .catch(() => undefined);
+}
+
+export function logout(): Promise<void> {
+  if (logoutPromise !== null) {
+    return logoutPromise;
+  }
+  logoutPromise = performLogout().finally(() => {
+    logoutPromise = null;
+  });
+  return logoutPromise;
 }
 
 function noticeKey(notice: AppNotice): string {
