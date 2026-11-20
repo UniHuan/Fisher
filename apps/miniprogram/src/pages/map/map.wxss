@@ -1,11 +1,11 @@
 .map-page {
   min-height: 100vh;
-  background: #f0f3f1;
+  background: #edf1ec;
 }
 
 .map-wrap {
   position: relative;
-  height: 66vh;
+  height: 64vh;
   background: #dfe5e2;
 }
 
@@ -18,12 +18,12 @@
   position: absolute;
   right: 28rpx;
   top: 28rpx;
-  padding: 14rpx 22rpx;
+  padding: 14rpx 24rpx;
   border-radius: 999rpx;
   background: #ffffff;
-  color: #0f6b5c;
+  color: #0e6b5e;
   font-size: 24rpx;
-  box-shadow: 0 8rpx 22rpx rgba(23, 33, 30, 0.14);
+  box-shadow: 0 8rpx 22rpx rgba(11, 43, 38, 0.14);
 }
 
 .map-hint {
@@ -32,8 +32,8 @@
   right: 28rpx;
   bottom: 28rpx;
   padding: 18rpx 22rpx;
-  border-radius: 8rpx;
-  background: rgba(23, 33, 30, 0.84);
+  border-radius: 12rpx;
+  background: rgba(11, 43, 38, 0.86);
   color: #ffffff;
   font-size: 24rpx;
   display: flex;
@@ -42,7 +42,7 @@
 }
 
 .map-error {
-  background: rgba(163, 58, 44, 0.92);
+  background: rgba(178, 65, 42, 0.94);
 }
 
 .map-retry {
@@ -52,23 +52,16 @@
 .map-card {
   display: flex;
   gap: 20rpx;
-  margin: 22rpx 24rpx;
-  padding: 18rpx;
+  margin: 20rpx 24rpx;
+  padding: 24rpx;
 }
 
 .map-cover {
+  flex: 0 0 200rpx;
   width: 200rpx;
   height: 150rpx;
-  border-radius: 8rpx;
-  background: #eef1ef;
-}
-
-.map-cover-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9aa5a1;
-  font-size: 22rpx;
+  border-radius: 12rpx;
+  background: #e7ede8;
 }
 
 .map-card-body {
@@ -80,30 +73,39 @@
 }
 
 .map-card-title {
-  font-size: 30rpx;
+  color: #13211c;
+  font-size: 31rpx;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .map-card-meta {
-  color: #68736f;
+  color: #5e6b66;
   font-size: 24rpx;
 }
 
 .map-tags {
   display: flex;
+  flex-wrap: wrap;
   gap: 8rpx;
 }
 
 .map-detail-button {
-  margin-top: 6rpx;
-  font-size: 25rpx;
+  margin-top: 10rpx;
+  width: 200rpx;
+  height: 64rpx;
   line-height: 64rpx;
+  font-size: 25rpx;
 }
 
 .map-empty {
-  margin: 22rpx 24rpx;
+  margin: 20rpx 24rpx;
   padding: 30rpx;
-  color: #68736f;
+  background: #fbfcf8;
+  border: 1rpx solid #d7e0d9;
+  border-radius: 16rpx;
+  color: #5e6b66;
   font-size: 25rpx;
+  line-height: 1.6;
   text-align: center;
 }

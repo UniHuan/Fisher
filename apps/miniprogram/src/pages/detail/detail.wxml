@@ -8,8 +8,8 @@
 </view>
 
 <view wx:elif="{{spot}}" class="detail-page">
-  <view class="gallery">
-    <swiper wx:if="{{images.length}}" class="gallery-swiper" indicator-dots circular>
+  <view wx:if="{{images.length}}" class="gallery">
+    <swiper class="gallery-swiper" indicator-dots circular>
       <swiper-item wx:for="{{images}}" wx:key="*this">
         <image
           class="gallery-image"
@@ -20,7 +20,6 @@
         />
       </swiper-item>
     </swiper>
-    <view wx:else class="gallery-empty">暂无实拍图</view>
   </view>
 
   <view class="detail-body">
@@ -28,7 +27,8 @@
       <text class="detail-title">{{spot.spot_name}}</text>
       <view class="tag-row">
         <text class="tag">{{spot.district || '区域未填'}}</text>
-        <text class="tag {{openTone}}">{{openLabel}}</text>
+        <text wx:if="{{spot.is_core}}" class="tag tag-core">核心</text>
+        <text class="tag {{openTone || 'tag-line'}}">{{openLabel}}</text>
         <text class="tag">{{feeLabel}}</text>
       </view>
     </view>
