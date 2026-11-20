@@ -2180,6 +2180,8 @@ export interface components {
             banned_spots: boolean;
             /** @example false */
             ugc: boolean;
+            /** @example false */
+            feedback: boolean;
         };
         DataFreshnessDto: {
             /** @example 30 */

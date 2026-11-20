@@ -46,6 +46,7 @@ model Spot {
   spot_pois     SpotPoi[]
   poi_sync_runs PoiSyncRun[]
   reports       Report[]
+  feedback      TrialFeedback[]
 
   // The PRD 10.7 spot indexes (status, district), (status, is_core, verified_at),
   // (status, sort_weight, verified_at), (latitude, longitude) and (updated_at) are
@@ -116,6 +117,8 @@ model AppUser {
   report_abuses   ReportAbuse[]
   sessions        UserSession[]
   uploads         UgcUpload[]
+  feedback        TrialFeedback[]
+  feedback_images FeedbackImage[]
 
   @@index([status, created_at])
   @@map("app_user")
@@ -179,10 +182,11 @@ model AdminUser {
   created_at              DateTime  @default(now()) @db.Timestamptz(6)
   updated_at              DateTime  @updatedAt @db.Timestamptz(6)
 
-  audit_logs      AuditLog[]
-  import_jobs     ImportJob[]
-  auditor_reports Report[]    @relation("ReportAuditor")
-  adopted_reports Report[]    @relation("ReportAdoptedBy")
+  audit_logs       AuditLog[]
+  import_jobs      ImportJob[]
+  auditor_reports  Report[]        @relation("ReportAuditor")
+  adopted_reports  Report[]        @relation("ReportAdoptedBy")
+  handled_feedback TrialFeedback[] @relation("FeedbackHandler")
 
   @@map("admin_user")
 }
@@ -430,4 +434,48 @@ model RateLimitCounter {
   @@id([counter_key, window_start])
   @@index([expires_at])
   @@map("rate_limit_counter")
+}
+
+model TrialFeedback {
+  feedback_id String    @id @db.Char(26)
+  user_id     String    @db.Char(26)
+  category    String    @db.VarChar(16)
+  content     String    @db.VarChar(500)
+  contact     String?   @db.VarChar(80)
+  page        String?   @db.VarChar(255)
+  spot_id     String?   @db.Char(26)
+  app_version String?   @db.VarChar(32)
+  device_info Json?     @db.JsonB
+  image_keys  String[]  @default([])
+  status      String    @default("open") @db.VarChar(16)
+  handler_id  String?   @db.Char(26)
+  handled_at  DateTime? @db.Timestamptz(6)
+  note        String?   @db.Text
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  user    AppUser    @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+  spot    Spot?      @relation(fields: [spot_id], references: [spot_id], onDelete: Restrict)
+  handler AdminUser? @relation("FeedbackHandler", fields: [handler_id], references: [admin_id], onDelete: Restrict)
+
+  @@index([status, created_at])
+  @@index([user_id, created_at])
+  @@index([category, created_at])
+  @@map("trial_feedback")
+}
+
+model FeedbackImage {
+  image_id   String    @id @db.Char(26)
+  user_id    String    @db.Char(26)
+  object_key String    @unique @db.VarChar(255)
+  size_bytes Int
+  status     String    @default("pending") @db.VarChar(16)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@index([user_id, created_at])
+  @@index([status, created_at])
+  @@map("feedback_image")
 }

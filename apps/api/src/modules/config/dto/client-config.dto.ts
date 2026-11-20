@@ -23,6 +23,9 @@ export class FeatureFlagsDto {
 
   @ApiProperty({ example: false })
   ugc!: boolean;
+
+  @ApiProperty({ example: false })
+  feedback!: boolean;
 }
 
 export class DataFreshnessDto {

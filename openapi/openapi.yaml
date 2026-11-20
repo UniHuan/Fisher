@@ -6206,11 +6206,15 @@ components:
         ugc:
           type: boolean
           example: false
+        feedback:
+          type: boolean
+          example: false
       required:
         - map_tab
         - search
         - banned_spots
         - ugc
+        - feedback
     DataFreshnessDto:
       type: object
       properties:
