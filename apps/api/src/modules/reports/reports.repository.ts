@@ -303,8 +303,10 @@ export class ReportsRepository {
 
   /**
    * Author deletion: clear the content, mark the uploads deleted and cancel any
-   * pending media checks in one transaction. Returns false when another request
-   * already deleted the report, so the caller can answer 404.
+   * pending media checks in one transaction. `images` is deliberately kept as a
+   * retry pointer; the service clears it only after both buckets accepted the
+   * deletes. Returns false when another request already deleted the report, so
+   * the caller can answer 404.
    */
   markAuthorDeleted(reportId: string, imageKeys: string[], now: Date): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
@@ -315,7 +317,6 @@ export class ReportsRepository {
           moderation_status: MODERATION_STATUS.REMOVED,
           reject_reason: 'author_deleted',
           content: '',
-          images: [],
           fish_key: null,
           catch_weight_kg: null,
         },
@@ -337,6 +338,14 @@ export class ReportsRepository {
         data: { status: 'canceled', checked_at: now },
       });
       return true;
+    });
+  }
+
+  /** Drops the retry pointer once every stored object for a tombstone is gone. */
+  async clearReportImages(reportId: string): Promise<void> {
+    await this.prisma.report.updateMany({
+      where: { report_id: reportId, deleted_at: { not: null } },
+      data: { images: [] },
     });
   }
 

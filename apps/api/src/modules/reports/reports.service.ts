@@ -365,8 +365,12 @@ export class ReportsService {
       throw reportNotFoundError();
     }
     // The row is already tombstoned, so a storage failure cannot keep the
-    // content public; log it for the cleanup job instead of failing the request.
-    await this.removeStoredImages(report.report_id, report.images);
+    // content public. Keep `images` as the durable retry pointer for the purge
+    // job and clear it only once both buckets accepted every delete.
+    const removed = await this.removeStoredImages(report.report_id, report.images);
+    if (removed) {
+      await this.repository.clearReportImages(report.report_id);
+    }
     return { deleted: true };
   }
 
@@ -464,22 +468,31 @@ export class ReportsService {
     }
   }
 
-  private async removeStoredImages(reportId: string, imageKeys: string[]): Promise<void> {
+  /**
+   * Attempts every object delete. Returns false when any bucket call failed so
+   * the caller can keep the report's `images` retry pointer for the purge job.
+   * Keys and user ids are never logged.
+   */
+  private async removeStoredImages(reportId: string, imageKeys: string[]): Promise<boolean> {
+    let allRemoved = true;
     for (const key of imageKeys) {
       const basename = key.split('/').pop() ?? '';
       if (basename !== '') {
         try {
           await this.storage.deletePublished(`ugc/${reportId}/${basename}`);
         } catch {
-          this.logger.warn('Published image removal failed; cleanup job will retry');
+          allRemoved = false;
+          this.logger.warn('Published image removal failed; the purge job will retry');
         }
       }
       try {
         await this.storage.deleteObject(key);
       } catch {
-        this.logger.warn('Work image removal failed; cleanup job will retry');
+        allRemoved = false;
+        this.logger.warn('Work image removal failed; the purge job will retry');
       }
     }
+    return allRemoved;
   }
 
   private async resolveImageKeys(

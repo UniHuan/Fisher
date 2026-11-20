@@ -681,8 +681,17 @@ describe('UGC image moderation (e2e)', () => {
     const rejectedRow = await prisma.report.findUniqueOrThrow({
       where: { report_id: rejected.report_id },
     });
-    expect(rejectedRow.images).toEqual([rejectedImage.key]);
+    // The purge job clears the now-dangling retry pointer.
+    expect(rejectedRow.images).toEqual([]);
 
+    // A shared work object survives for the live report.
     expect(workingFileExists(sharedKey)).toBe(true);
+    const sharedTerminal = await prisma.report.findFirstOrThrow({
+      where: {
+        images: { has: sharedKey },
+        moderation_status: MODERATION_STATUS.REMOVED,
+      },
+    });
+    expect(sharedTerminal.images).toEqual([sharedKey]);
   });
 });

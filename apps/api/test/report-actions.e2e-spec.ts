@@ -5,10 +5,12 @@ import { ABUSE_REASON, ERROR_CODES } from '@szfisher/shared';
 import sharp from 'sharp';
 import request from 'supertest';
 import { ulid } from 'ulid';
+import { purgeUgcOrphans } from '../src/jobs/purge-ugc-orphans.job';
 import { WECHAT_AUTH_PROVIDER } from '../src/modules/app-auth/wechat-auth.provider';
 import { CONTENT_SECURITY_PROVIDER } from '../src/modules/content-security/content-security.types';
 import { RateLimitService } from '../src/modules/rate-limit/rate-limit.service';
 import { ReportModerationService } from '../src/modules/reports/report-moderation.service';
+import { StorageService } from '../src/modules/storage/storage.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { createTestApp } from './create-test-app';
 import { cleanupAdminSpotTestData, seedSpot } from './admin-spots.helpers';
@@ -40,6 +42,8 @@ const TEST_OPENIDS = [
   'openid-action-delete-other',
   'openid-action-delete-images',
   'openid-action-delete-pending',
+  'openid-action-delete-retry',
+  'openid-action-purge-upload',
   'openid-action-hidden',
 ] as const;
 
@@ -558,6 +562,69 @@ describe('Report actions (e2e)', () => {
     expect(upload.deleted_at).not.toBeNull();
     expect(existsSync(workingFile(image.key))).toBe(false);
     expect(await mineItems(owner)).toHaveLength(0);
+  });
+
+  it('keeps report images for the purge job when object deletion fails', async () => {
+    const spotId = await seedOpenSpot();
+    const owner = await loginAppUser(server, 'openid-action-delete-retry');
+    const image = await uploadImage(owner);
+    const report = await publishImageReport(owner, spotId, [image.key]);
+
+    const storage = app.get(StorageService);
+    const failure = jest
+      .spyOn(storage, 'deleteObject')
+      .mockRejectedValueOnce(new Error('bucket unavailable'));
+    try {
+      await request(server)
+        .delete(`/api/v1/reports/${report.report_id}`)
+        .set(appAuthHeaders(owner.access_token))
+        .expect(200);
+    } finally {
+      failure.mockRestore();
+    }
+
+    // Hidden immediately, but the work object and the DB retry pointer remain.
+    expect(await publicItems(spotId)).toHaveLength(0);
+    expect(await mineItems(owner)).toHaveLength(0);
+    const tombstone = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id },
+    });
+    expect(tombstone).toMatchObject({
+      content: '',
+      images: [image.key],
+      moderation_status: 'removed',
+      reject_reason: 'author_deleted',
+    });
+    expect(tombstone.deleted_at).not.toBeNull();
+    expect(existsSync(workingFile(image.key))).toBe(true);
+
+    // The scheduled purge retries both buckets and drops the pointer.
+    const result = await purgeUgcOrphans(prisma, app.get(StorageService));
+    expect(result).not.toBeNull();
+    expect(existsSync(workingFile(image.key))).toBe(false);
+    expect(existsSync(publishedFile(report.report_id, image.key))).toBe(false);
+    const afterPurge = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id },
+    });
+    expect(afterPurge.images).toEqual([]);
+  });
+
+  it('purges work objects for uploads already marked deleted', async () => {
+    const owner = await loginAppUser(server, 'openid-action-purge-upload');
+    const image = await uploadImage(owner);
+    await prisma.ugcUpload.update({
+      where: { object_key: image.key },
+      data: { status: 'deleted', deleted_at: new Date() },
+    });
+    expect(existsSync(workingFile(image.key))).toBe(true);
+
+    const result = await purgeUgcOrphans(prisma, app.get(StorageService));
+    expect(result).not.toBeNull();
+    expect(existsSync(workingFile(image.key))).toBe(false);
+    const upload = await prisma.ugcUpload.findUniqueOrThrow({
+      where: { object_key: image.key },
+    });
+    expect(upload.status).toBe('deleted');
   });
 
   it('requires authentication for every action', async () => {

@@ -11,9 +11,16 @@ const PURGE_LOCK_KEY = 'ugc:purge-orphans';
 export const PENDING_UPLOAD_ORPHAN_MS = 24 * 60 * 60 * 1000;
 /** Spec 6.4: rejected/removed work images are kept 30 days for appeals. */
 export const REJECTED_IMAGE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * Author deletion already attempts the object deletes inline. If a bucket call
+ * failed, `report.images` / the deleted upload row keep the pointer; retry on
+ * every run for this long instead of waiting for the 30-day appeal window.
+ */
+export const DELETED_OBJECT_RETRY_MS = 30 * 24 * 60 * 60 * 1000;
 /** Small batches plus a raised transaction timeout keep the advisory lock safe. */
 const BATCH_SIZE = 100;
 const PURGE_TRANSACTION_TIMEOUT_MS = 120_000;
+const AUTHOR_DELETED_REASON = 'author_deleted';
 
 const TERMINAL_IMAGE_STATUSES: readonly string[] = [
   MODERATION_STATUS.MACHINE_REJECTED,
@@ -28,13 +35,20 @@ export interface PurgeUgcOrphansResult {
 }
 
 /**
- * Deletes two kinds of work-bucket waste:
+ * Deletes work- and published-bucket waste:
  *
  * 1. `ugc_upload` rows still `pending` after 24 hours. If any report already
  *    references the object (for example a crash between the report insert and
  *    the upload update), the row is marked `used` instead and the object stays.
- * 2. Work images of reports rejected/removed more than 30 days ago. An object
- *    shared with any non-terminal report is never deleted; DB keys are kept.
+ * 2. `ugc_upload` rows already marked `deleted` that still have an object
+ *    behind them. This is the retry path for a failed author-deletion delete;
+ *    the scan is bounded to `DELETED_OBJECT_RETRY_MS`.
+ * 3. Images of terminal reports (`removed` / machine or human rejected): the
+ *    author-deleted tombstones are retried on every run, while rejected and
+ *    admin-removed reports wait out the 30-day appeal window. Both the work
+ *    object and the derived published object are removed, and `images` is
+ *    cleared only for keys that were fully cleaned. An object shared with any
+ *    non-terminal report keeps its work object and DB key.
  */
 export async function purgeUgcOrphans(
   prisma: PrismaService,
@@ -82,26 +96,56 @@ export async function purgeUgcOrphans(
         objectsDeleted += 1;
       }
 
+      // Retry objects whose upload row was already marked deleted. An author
+      // deletion marks uploads deleted before calling storage, so a bucket
+      // failure leaves this pointer behind until a later run succeeds.
+      const deletedUploadCutoff = new Date(now.getTime() - DELETED_OBJECT_RETRY_MS);
+      const deletedUploads = await prisma.ugcUpload.findMany({
+        where: {
+          status: 'deleted',
+          deleted_at: { gte: deletedUploadCutoff },
+        },
+        select: { object_key: true },
+        take: BATCH_SIZE,
+      });
+      for (const upload of deletedUploads) {
+        const live = await prisma.report.count({
+          where: {
+            images: { has: upload.object_key },
+            moderation_status: { notIn: [...TERMINAL_IMAGE_STATUSES] },
+          },
+        });
+        if (live > 0) {
+          continue;
+        }
+        try {
+          await storage.deleteObject(upload.object_key);
+          objectsDeleted += 1;
+        } catch {
+          // Retry on the next scheduled run while the row is in the window.
+        }
+      }
+
       const imageCutoff = new Date(now.getTime() - REJECTED_IMAGE_RETENTION_MS);
       const staleReports = await prisma.report.findMany({
         where: {
           moderation_status: { in: [...TERMINAL_IMAGE_STATUSES] },
           images: { isEmpty: false },
           OR: [
+            // Author deletion already tried inline; retry immediately.
+            { reject_reason: AUTHOR_DELETED_REASON },
             { audit_time: { lt: imageCutoff } },
             { audit_time: null, updated_at: { lt: imageCutoff } },
           ],
         },
-        select: { images: true },
+        select: { report_id: true, images: true },
         take: BATCH_SIZE,
       });
-      const seenKeys = new Set<string>();
       for (const report of staleReports) {
+        const retainedKeys: string[] = [];
         for (const key of report.images) {
-          if (seenKeys.has(key)) {
-            continue;
-          }
-          seenKeys.add(key);
+          const basename = key.split('/').pop() ?? '';
+          const publishedKey = basename === '' ? null : `ugc/${report.report_id}/${basename}`;
           const live = await prisma.report.count({
             where: {
               images: { has: key },
@@ -109,14 +153,44 @@ export async function purgeUgcOrphans(
             },
           });
           if (live > 0) {
+            // Another report still serves the work object. Remove only this
+            // report's published copy and keep the key as the retry pointer.
+            if (publishedKey !== null) {
+              try {
+                await storage.deletePublished(publishedKey);
+                objectsDeleted += 1;
+              } catch {
+                // The retained key makes the next run retry.
+              }
+            }
+            retainedKeys.push(key);
             continue;
           }
+
+          let removed = true;
           try {
             await storage.deleteObject(key);
             objectsDeleted += 1;
           } catch {
-            // Retry on the next scheduled run.
+            removed = false;
           }
+          if (publishedKey !== null) {
+            try {
+              await storage.deletePublished(publishedKey);
+              objectsDeleted += 1;
+            } catch {
+              removed = false;
+            }
+          }
+          if (!removed) {
+            retainedKeys.push(key);
+          }
+        }
+        if (retainedKeys.length !== report.images.length) {
+          await prisma.report.update({
+            where: { report_id: report.report_id },
+            data: { images: retainedKeys },
+          });
         }
       }
 
