@@ -40,6 +40,7 @@ const TEST_OPENIDS = [
   'openid-media',
   'openid-media-risky',
   'openid-media-review',
+  'openid-media-text-review',
   'openid-media-timeout',
   'openid-media-duplicate',
   'openid-media-human',
@@ -272,12 +273,10 @@ describe('UGC image moderation (e2e)', () => {
 
   beforeEach(async () => {
     await resetAppLoginRateLimiter(app);
-    await app.get(RateLimitService).reset('upload:');
     await app.get(RateLimitService).reset('report:');
   });
 
   afterAll(async () => {
-    await app.get(RateLimitService).reset('upload:');
     await app.get(RateLimitService).reset('report:');
     await resetAppLoginRateLimiter(app);
     await cleanupAppAuthTestData([...TEST_OPENIDS]);
@@ -327,11 +326,9 @@ describe('UGC image moderation (e2e)', () => {
     expect(await publicItems(spotId)).toHaveLength(0);
     expect(await reportStatus(report.report_id)).toBe(MODERATION_STATUS.MACHINE_PENDING);
 
-    const secondCallback = await sendMediaCallback(
-      server,
-      secondCheck.trace_id,
-      'pass',
-    ).expect(200);
+    const secondCallback = await sendMediaCallback(server, secondCheck.trace_id, 'pass').expect(
+      200,
+    );
     expect(secondCallback.text).toBe('success');
     expect(await reportStatus(report.report_id)).toBe(MODERATION_STATUS.PUBLISHED);
 
@@ -408,22 +405,55 @@ describe('UGC image moderation (e2e)', () => {
     };
     provider.failNextMediaCheck = true;
     try {
-      const failedReport = await createImageReport(user, spotId, [
-        (await uploadImage(user)).key,
-      ]);
+      const failedReport = await createImageReport(user, spotId, [(await uploadImage(user)).key]);
       expect(failedReport.moderation_status).toBe(MODERATION_STATUS.MACHINE_PENDING);
       const failedChecks = await checksFor(failedReport.report_id);
       expect(failedChecks).toHaveLength(1);
       const failedCheck = required(failedChecks[0]);
       expect(failedCheck.status).toBe('error');
       expect(failedCheck.trace_id.startsWith('media-error-')).toBe(true);
-      expect(await reportStatus(failedReport.report_id)).toBe(
-        MODERATION_STATUS.MACHINE_PENDING,
-      );
+      expect(await reportStatus(failedReport.report_id)).toBe(MODERATION_STATUS.MACHINE_PENDING);
     } finally {
       provider.failNextMediaCheck = false;
     }
 
+    expect(await publicItems(spotId)).toHaveLength(0);
+  });
+
+  it('checks images for text review and never publishes without a human', async () => {
+    const spotId = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-media-text-review');
+
+    const reviewImages = [await uploadImage(user), await uploadImage(user)];
+    const reviewReport = await createImageReport(
+      user,
+      spotId,
+      reviewImages.map((image) => image.key),
+      'REVIEW 文本待人工',
+    );
+    expect(reviewReport.moderation_status).toBe(MODERATION_STATUS.MACHINE_PENDING);
+    const reviewChecks = await checksFor(reviewReport.report_id);
+    expect(reviewChecks).toHaveLength(2);
+    expect(reviewChecks.map((check) => check.status)).toEqual(['pending', 'pending']);
+
+    for (const check of reviewChecks) {
+      await sendMediaCallback(server, check.trace_id, 'pass').expect(200);
+    }
+    // All images pass, but the stored text result is `review`, so it stays pending.
+    expect(await reportStatus(reviewReport.report_id)).toBe(MODERATION_STATUS.MACHINE_PENDING);
+    expect(await publicItems(spotId)).toHaveLength(0);
+
+    const riskyReport = await createImageReport(
+      user,
+      spotId,
+      [(await uploadImage(user)).key],
+      'REVIEW 文本待人工二',
+    );
+    const riskyChecks = await checksFor(riskyReport.report_id);
+    expect(riskyChecks).toHaveLength(1);
+    await sendMediaCallback(server, required(riskyChecks[0]).trace_id, 'risky').expect(200);
+    // An image `risky` rejects the whole report even when the text is only `review`.
+    expect(await reportStatus(riskyReport.report_id)).toBe(MODERATION_STATUS.MACHINE_REJECTED);
     expect(await publicItems(spotId)).toHaveLength(0);
   });
 

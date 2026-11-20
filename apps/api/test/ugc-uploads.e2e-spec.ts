@@ -34,7 +34,11 @@ const TEST_OPENIDS = [
   'openid-upload-cap',
   'openid-upload-flag',
   'openid-upload-six',
+  'openid-upload-quota',
+  'openid-upload-quota-fresh',
 ] as const;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function pngBuffer(width = 64, height = 48): Promise<Buffer> {
   return sharp({
@@ -131,7 +135,6 @@ describe('UGC image uploads (e2e)', () => {
 
   beforeEach(async () => {
     await resetAppLoginRateLimiter(app);
-    await app.get(RateLimitService).reset('upload:');
     await app.get(RateLimitService).reset('report:');
   });
 
@@ -140,7 +143,6 @@ describe('UGC image uploads (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.get(RateLimitService).reset('upload:');
     await app.get(RateLimitService).reset('report:');
     await resetAppLoginRateLimiter(app);
     await cleanupAppAuthTestData([...TEST_OPENIDS]);
@@ -292,6 +294,60 @@ describe('UGC image uploads (e2e)', () => {
       .expect(429);
     expect(blocked.body.code).toBe(ERROR_CODES.RATE_LIMITED);
     expect(await prisma.ugcUpload.count({ where: { user_id: user.user_id } })).toBe(30);
+  });
+
+  it('counts the daily quota from ugc_upload rows, including deleted attempts', async () => {
+    const user = await loginAppUser(server, 'openid-upload-quota');
+    const now = new Date();
+    const dayStartMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const today = new Date(dayStartMs + 12 * 60 * 60 * 1000);
+    const yesterday = new Date(dayStartMs - 60 * 60 * 1000);
+
+    // Seed exactly 30 rows for today; deleted and used rows still count.
+    await prisma.ugcUpload.createMany({
+      data: Array.from({ length: 30 }, (_, index) => ({
+        upload_id: ulid(),
+        user_id: user.user_id,
+        object_key: `ugc/${user.user_id}/${ulid()}.webp`,
+        size_bytes: 1,
+        status: index === 0 ? 'deleted' : index === 1 ? 'used' : 'pending',
+        created_at: today,
+      })),
+    });
+
+    const blocked = await request(server)
+      .post('/api/v1/uploads/ugc')
+      .set(appAuthHeaders(user.access_token))
+      .attach('file', await pngBuffer(8, 8), {
+        filename: 'over-quota.png',
+        contentType: 'image/png',
+      })
+      .expect(429);
+    expect(blocked.body.code).toBe(ERROR_CODES.RATE_LIMITED);
+    // A rejected attempt leaves no extra row.
+    expect(await prisma.ugcUpload.count({ where: { user_id: user.user_id } })).toBe(30);
+
+    // Rows from the previous UTC day do not consume the current quota.
+    const fresh = await loginAppUser(server, 'openid-upload-quota-fresh');
+    await prisma.ugcUpload.createMany({
+      data: Array.from({ length: 5 }, () => ({
+        upload_id: ulid(),
+        user_id: fresh.user_id,
+        object_key: `ugc/${fresh.user_id}/${ulid()}.webp`,
+        size_bytes: 1,
+        status: 'pending',
+        created_at: yesterday,
+      })),
+    });
+    await uploadImage(fresh, await pngBuffer(8, 8));
+    expect(
+      await prisma.ugcUpload.count({
+        where: {
+          user_id: fresh.user_id,
+          created_at: { gte: new Date(dayStartMs), lt: new Date(dayStartMs + DAY_MS) },
+        },
+      }),
+    ).toBe(1);
   });
 
   it('returns FEATURE_DISABLED while the ugc flag is off', async () => {

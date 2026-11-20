@@ -22,19 +22,12 @@ import { DictionariesRepository } from '../dictionaries/dictionaries.repository'
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { PREVIEW_URL_TTL_SECONDS } from '../storage/storage.service';
 import { PreviewSignerService } from '../uploads/preview-signer.service';
-import {
-  REPORT_IMAGE_KEY_PATTERN,
-  type CreateReportResponseDto,
-} from './dto/create-report.dto';
+import { REPORT_IMAGE_KEY_PATTERN, type CreateReportResponseDto } from './dto/create-report.dto';
 import type { MyReportStatusFilter } from './dto/my-report-list-query.dto';
 import type { MyReportItemDto } from './dto/my-report-response.dto';
 import type { PublicReportItemDto } from './dto/public-report-response.dto';
 import { decodeReportCursor, encodeReportCursor } from './report-cursor';
-import {
-  canOpenSpot,
-  toMyReportItem,
-  toPublicReportItem,
-} from './report.mapper';
+import { canOpenSpot, toMyReportItem, toPublicReportItem } from './report.mapper';
 import { ReportModerationService } from './report-moderation.service';
 import { ReportsRepository, type SpotVisibility } from './reports.repository';
 
@@ -194,8 +187,7 @@ export class ReportsService {
       );
     }
     const providedTerms = input.terms_version?.trim();
-    const needsAcceptance =
-      user.terms_accepted_at === null || user.terms_version !== termsVersion;
+    const needsAcceptance = user.terms_accepted_at === null || user.terms_version !== termsVersion;
     if (needsAcceptance) {
       if (providedTerms === undefined || providedTerms !== termsVersion) {
         throw validationError('terms_version', 'The current terms version must be accepted');
@@ -226,23 +218,19 @@ export class ReportsService {
       result.suggest === 'pass' && imageKeys.length > 0
         ? MODERATION_STATUS.MACHINE_PENDING
         : moderationStatusFor(result.suggest);
-    await this.repository.updateModeration(
-      reportId,
-      moderationStatus,
-      toMachineResult(result),
-    );
+    await this.repository.updateModeration(reportId, moderationStatus, toMachineResult(result));
 
-    // Images are submitted only after the text check passes; a text `review`
-    // waits for a human who copies the images on approval.
-    if (result.suggest === 'pass' && imageKeys.length > 0) {
+    // Text `pass` and `review` both submit images; only `risky` rejects without
+    // checking them. A review report still cannot publish: recompute requires a
+    // stored text `pass`, so it waits for a human even if every image passes.
+    if (result.suggest !== 'risky' && imageKeys.length > 0) {
       try {
         await this.moderation.submitImages(reportId, imageKeys, appUser.openid);
       } catch {
         this.logger.warn('Image moderation submission failed; report stays pending');
       }
       moderationStatus =
-        (await this.repository.findModerationStatus(reportId)) ??
-        MODERATION_STATUS.MACHINE_PENDING;
+        (await this.repository.findModerationStatus(reportId)) ?? MODERATION_STATUS.MACHINE_PENDING;
     }
 
     return {
@@ -306,8 +294,9 @@ export class ReportsService {
 
     return {
       items: rows.map((row) =>
-        toMyReportItem(row, (key) =>
-          this.previewSigner.sign(key, 'working', PREVIEW_URL_TTL_SECONDS).url,
+        toMyReportItem(
+          row,
+          (key) => this.previewSigner.sign(key, 'working', PREVIEW_URL_TTL_SECONDS).url,
         ),
       ),
       next_cursor: this.nextCursor(rows, hasMore),
@@ -328,10 +317,7 @@ export class ReportsService {
     }
     for (const key of unique) {
       if (!key.startsWith(`ugc/${userId}/`) || !REPORT_IMAGE_KEY_PATTERN.test(key)) {
-        throw validationError(
-          'image_keys',
-          'Image keys must belong to the current user',
-        );
+        throw validationError('image_keys', 'Image keys must belong to the current user');
       }
     }
     const owned = await this.repository.findPendingUploadKeys(userId, unique);
@@ -371,11 +357,7 @@ export class ReportsService {
     }
   }
 
-  private async enforceDailyLimit(
-    userId: string,
-    createdAt: Date,
-    now: Date,
-  ): Promise<void> {
+  private async enforceDailyLimit(userId: string, createdAt: Date, now: Date): Promise<void> {
     const isNewUser = now.getTime() - createdAt.getTime() < NEW_USER_WINDOW_MS;
     const decision = await this.rateLimit.hit(
       `report:user:${userId}:${now.toISOString().slice(0, 10).replace(/-/g, '')}`,
@@ -394,10 +376,7 @@ export class ReportsService {
     }
   }
 
-  private async checkText(
-    content: string,
-    openid: string,
-  ): Promise<ContentSecurityTextResult> {
+  private async checkText(content: string, openid: string): Promise<ContentSecurityTextResult> {
     try {
       return await this.contentSecurity.checkText({ content, openid });
     } catch {
@@ -409,11 +388,7 @@ export class ReportsService {
 
   private async assertUgcEnabled(): Promise<void> {
     if (!(await this.isUgcEnabled())) {
-      throw new AppError(
-        ERROR_CODES.FEATURE_DISABLED,
-        HttpStatus.FORBIDDEN,
-        'UGC is disabled',
-      );
+      throw new AppError(ERROR_CODES.FEATURE_DISABLED, HttpStatus.FORBIDDEN, 'UGC is disabled');
     }
   }
 
@@ -440,7 +415,10 @@ export class ReportsService {
     return decoded;
   }
 
-  private nextCursor(rows: ReadonlyArray<{ created_at: Date; report_id: string }>, hasMore: boolean): string | null {
+  private nextCursor(
+    rows: ReadonlyArray<{ created_at: Date; report_id: string }>,
+    hasMore: boolean,
+  ): string | null {
     if (!hasMore) {
       return null;
     }
