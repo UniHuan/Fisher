@@ -1558,6 +1558,67 @@ paths:
       security: *a43
       summary: Summarize queue, abuse and SLA counts
       tags: *a44
+  /api/v1/admin/reports/{id}:
+    get:
+      description: Used by the abuse queue detail action so it can reuse the report
+        drawer. Images follow the same public/signed rules as the queue.
+      operationId: AdminReportsController_detail
+      parameters:
+        - *a37
+        - *a38
+        - name: id
+          required: true
+          in: path
+          description: Report ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: One admin report item
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminReportItemDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Not found (40402)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: *a43
+      summary: Read one report in queue-item shape
+      tags: *a44
   /api/v1/admin/reports/{id}/history:
     get:
       description: Scoped to report:read so reviewers can inspect prior actions on the

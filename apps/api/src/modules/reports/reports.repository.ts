@@ -116,6 +116,25 @@ export class ReportsRepository {
    */
   createReport(input: CreateReportRowInput): Promise<Report> {
     return this.prisma.$transaction(async (tx) => {
+      // Serializes the insert against a concurrent ban. The ban transaction
+      // updates this row first, so whichever order wins, the other side sees
+      // the committed status: a banned author can never insert a report that a
+      // ban select already missed.
+      const author = await tx.$queryRaw<Array<{ status: string; deleted_at: Date | null }>>`
+        SELECT status, deleted_at FROM app_user WHERE user_id = ${input.userId} FOR UPDATE
+      `;
+      const authorRow = author[0];
+      if (
+        authorRow === undefined ||
+        authorRow.status !== 'active' ||
+        authorRow.deleted_at !== null
+      ) {
+        throw new AppError(
+          ERROR_CODES.REPORT_FORBIDDEN,
+          HttpStatus.FORBIDDEN,
+          'Account cannot publish',
+        );
+      }
       if (input.imageKeys.length > 0) {
         const claimed = await tx.ugcUpload.updateMany({
           where: {
@@ -185,17 +204,69 @@ export class ReportsRepository {
     return row?.moderation_status ?? null;
   }
 
+  /**
+   * Applies the create-path text result. The write only lands while the report
+   * is still `machine_pending` and not deleted, so a concurrent ban, author
+   * deletion or human decision always wins. A public target is written only
+   * when the author is still active; otherwise the report is taken down with
+   * `user_banned` and its pending media checks are canceled. Returns the
+   * current status after the attempt, which can differ from the requested one.
+   */
   updateModeration(
     reportId: string,
     moderationStatus: string,
     machineResult: Prisma.InputJsonValue,
-  ): Promise<Report> {
-    return this.prisma.report.update({
-      where: { report_id: reportId },
-      data: {
-        moderation_status: moderationStatus,
-        machine_result: machineResult,
-      },
+    now: Date,
+  ): Promise<string> {
+    return this.prisma.$transaction(async (tx) => {
+      const report = await tx.report.findUnique({
+        where: { report_id: reportId },
+        select: {
+          moderation_status: true,
+          deleted_at: true,
+          user: { select: { status: true, deleted_at: true } },
+        },
+      });
+      if (report === null) {
+        return moderationStatus;
+      }
+      const authorActive =
+        report.user.status === 'active' && report.user.deleted_at === null;
+      if (moderationStatus === MODERATION_STATUS.PUBLISHED && !authorActive) {
+        await tx.report.updateMany({
+          where: {
+            report_id: reportId,
+            deleted_at: null,
+            moderation_status: MODERATION_STATUS.MACHINE_PENDING,
+          },
+          data: {
+            moderation_status: MODERATION_STATUS.REMOVED,
+            reject_reason: 'user_banned',
+            audit_time: now,
+          },
+        });
+        await tx.reportMediaCheck.updateMany({
+          where: { report_id: reportId, status: 'pending' },
+          data: { status: 'canceled', checked_at: now },
+        });
+      } else if (
+        report.deleted_at === null &&
+        report.moderation_status === MODERATION_STATUS.MACHINE_PENDING
+      ) {
+        await tx.report.updateMany({
+          where: {
+            report_id: reportId,
+            deleted_at: null,
+            moderation_status: MODERATION_STATUS.MACHINE_PENDING,
+          },
+          data: { moderation_status: moderationStatus, machine_result: machineResult },
+        });
+      }
+      const current = await tx.report.findUnique({
+        where: { report_id: reportId },
+        select: { moderation_status: true },
+      });
+      return current?.moderation_status ?? moderationStatus;
     });
   }
 

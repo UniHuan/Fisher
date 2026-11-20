@@ -467,10 +467,44 @@ export class AdminReportsRepository {
   /**
    * Conditional transition from published/machine_pending to human_approved,
    * cancelling pending media checks in the same transaction. A concurrent human
-   * decision or media callback makes the update affect zero rows.
+   * decision or media callback makes the update affect zero rows. Approval is
+   * also a transition into a public status, so the author is re-checked first:
+   * an inactive author takes the report down instead of publishing it.
    */
   approveReport(reportId: string, adminId: string, now: Date): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
+      const report = await tx.report.findUnique({
+        where: { report_id: reportId },
+        select: {
+          deleted_at: true,
+          user: { select: { status: true, deleted_at: true } },
+        },
+      });
+      if (report === null || report.deleted_at !== null) {
+        return false;
+      }
+      if (report.user.status !== 'active' || report.user.deleted_at !== null) {
+        await tx.report.updateMany({
+          where: {
+            report_id: reportId,
+            deleted_at: null,
+            moderation_status: {
+              in: [MODERATION_STATUS.PUBLISHED, MODERATION_STATUS.MACHINE_PENDING],
+            },
+          },
+          data: {
+            moderation_status: MODERATION_STATUS.REMOVED,
+            reject_reason: 'user_banned',
+            auditor_id: adminId,
+            audit_time: now,
+          },
+        });
+        await tx.reportMediaCheck.updateMany({
+          where: { report_id: reportId, status: 'pending' },
+          data: { status: 'canceled', checked_at: now },
+        });
+        return false;
+      }
       const updated = await tx.report.updateMany({
         where: {
           report_id: reportId,
@@ -696,11 +730,16 @@ export class AdminReportsRepository {
         return { kind: 'conflict', status: 'banned' };
       }
 
+      // Include `machine_pending`: its media checks may still pass and publish
+      // the report after the ban, so those reports must be taken down and their
+      // pending checks canceled in this same transaction.
       const visible = await tx.report.findMany({
         where: {
           user_id: userId,
           deleted_at: null,
-          moderation_status: { in: [...VISIBLE_STATUSES] },
+          moderation_status: {
+            in: [...VISIBLE_STATUSES, MODERATION_STATUS.MACHINE_PENDING],
+          },
         },
         select: { report_id: true, images: true },
       });

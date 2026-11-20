@@ -2,7 +2,7 @@ import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
-import { ERROR_CODES, MODERATION_STATUS } from '@szfisher/shared';
+import { ADMIN_ROLE, ERROR_CODES, MODERATION_STATUS } from '@szfisher/shared';
 import sharp from 'sharp';
 import request from 'supertest';
 import { ulid } from 'ulid';
@@ -15,6 +15,7 @@ import { StorageService } from '../src/modules/storage/storage.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { cleanupAdminSpotTestData, seedSpot } from './admin-spots.helpers';
 import { createTestApp } from './create-test-app';
+import { cleanupAuthTestData, clientHeaders, loginAs } from './support/auth-helpers';
 import {
   appAuthHeaders,
   appClientHeaders,
@@ -48,6 +49,7 @@ const TEST_OPENIDS = [
   'openid-media-tamper',
   'openid-media-purge',
   'openid-media-purge2',
+  'openid-media-banned',
 ] as const;
 
 /** Fails the test fixture loudly instead of hiding a missing row behind `undefined`. */
@@ -281,6 +283,7 @@ describe('UGC image moderation (e2e)', () => {
     await resetAppLoginRateLimiter(app);
     await cleanupAppAuthTestData([...TEST_OPENIDS]);
     await cleanupAdminSpotTestData();
+    await cleanupAuthTestData();
     await setUgcFeature(false);
     await app.close();
     rmSync(storageRoot, { recursive: true, force: true });
@@ -531,6 +534,44 @@ describe('UGC image moderation (e2e)', () => {
     expect(await reportStatus(report.report_id)).toBe(MODERATION_STATUS.HUMAN_APPROVED);
     const rows = await checksFor(report.report_id);
     expect(rows.map((row) => row.status)).toEqual(['canceled', 'canceled']);
+  });
+
+  it('never publishes a pending report whose author was banned before the callback', async () => {
+    const spotId = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-media-banned');
+    const image = await uploadImage(user);
+    const report = await createImageReport(user, spotId, [image.key]);
+    const checks = await checksFor(report.report_id);
+    expect(checks).toHaveLength(1);
+    const traceId = required(checks[0]).trace_id;
+
+    const operator = await loginAs(app, ADMIN_ROLE.OPERATOR);
+    const adminRequest: Record<string, string> = {
+      ...clientHeaders(),
+      Cookie: operator.cookie,
+      'X-CSRF-Token': operator.csrf,
+    };
+    await request(server)
+      .post(`/api/v1/admin/users/${user.user_id}/ban`)
+      .set(adminRequest)
+      .send({ reason: '测试封禁' })
+      .expect(200);
+
+    const bannedRow = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id },
+    });
+    expect(bannedRow.moderation_status).toBe(MODERATION_STATUS.REMOVED);
+    expect(bannedRow.reject_reason).toBe('user_banned');
+    expect(
+      (await checksFor(report.report_id)).every((check) => check.status === 'canceled'),
+    ).toBe(true);
+
+    // The all-pass callback arriving after the ban must not publish anything.
+    await sendMediaCallback(server, traceId, 'pass').expect(200);
+
+    expect(await reportStatus(report.report_id)).toBe(MODERATION_STATUS.REMOVED);
+    expect(await publicItems(spotId)).toHaveLength(0);
+    await request(server).get(publicImageUrl(report.report_id, image.key)).expect(404);
   });
 
   it('does not republish after a late risky callback on a removed report', async () => {

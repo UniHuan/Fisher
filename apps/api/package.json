@@ -20,6 +20,8 @@
     "analytics:purge:prod": "node dist/jobs/purge-analytics.job.js",
     "rate-limits:purge": "tsx src/jobs/purge-rate-limits.job.ts",
     "rate-limits:purge:prod": "node dist/jobs/purge-rate-limits.job.js",
+    "session:purge": "tsx src/jobs/purge-user-sessions.job.ts",
+    "session:purge:prod": "node dist/jobs/purge-user-sessions.job.js",
     "media-check:timeout": "tsx src/jobs/media-check-timeout.job.ts",
     "media-check:timeout:prod": "node dist/jobs/media-check-timeout.job.js",
     "ugc:purge": "tsx src/jobs/purge-ugc-orphans.job.ts",

@@ -28,9 +28,17 @@ export async function createApp(
       logger: new JsonLogger(),
     },
   );
-  // Production terminates TLS in an nginx on the same host, so only the loopback
-  // hop is trusted to set X-Forwarded-For; direct clients cannot spoof their IP.
-  app.set('trust proxy', 'loopback');
+  // Client -> WAF -> SLB -> nginx -> API. The private hops are our own cloud
+  // entry, so Express must skip them and pick the rightmost non-private client
+  // address from X-Forwarded-For. Direct clients reach nginx only through the
+  // SLB; the ECS security group must keep 8080 closed to the internet. The
+  // ranges below must match the deployed cloud topology (see docs/ops/deployment.md).
+  app.set('trust proxy', [
+    'loopback',
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+  ]);
   const adminOrigins = app.get(ConfigService).getOrThrow<string[]>('ADMIN_ORIGINS');
 
   // Request IDs must run before body parsing so parser errors still carry one.

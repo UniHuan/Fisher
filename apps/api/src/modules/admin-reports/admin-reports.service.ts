@@ -164,6 +164,21 @@ export class AdminReportsService {
   }
 
   /**
+   * One report in the same shape as a queue row. The abuse queue only carries a
+   * content summary, so the drawer fetches this to reuse the report detail view
+   * (images, author, machine result and history).
+   */
+  async reportDetail(reportId: string): Promise<AdminReportItemDto> {
+    const report = await this.requireReport(reportId);
+    const now = new Date();
+    const [rejectedCounts, abuseCounts] = await Promise.all([
+      this.repository.authorRejectedCounts([report.user_id]),
+      this.repository.pendingAbuseCounts([report.report_id]),
+    ]);
+    return this.toReportItem(report, now, rejectedCounts, abuseCounts);
+  }
+
+  /**
    * Report scoped history for the detail drawer. Reviewers may read it because
    * it is bounded to this report and exposes only action, statuses, reason,
    * actor and time; content bodies, image URLs and reporter identities stay out.

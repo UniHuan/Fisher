@@ -60,11 +60,17 @@ export async function recomputeReportModeration(
     select: {
       report_id: true,
       moderation_status: true,
+      deleted_at: true,
       machine_result: true,
       images: true,
+      user: { select: { status: true, deleted_at: true } },
     },
   });
-  if (report === null || report.moderation_status !== MODERATION_STATUS.MACHINE_PENDING) {
+  if (
+    report === null ||
+    report.deleted_at !== null ||
+    report.moderation_status !== MODERATION_STATUS.MACHINE_PENDING
+  ) {
     return;
   }
 
@@ -88,7 +94,30 @@ export async function recomputeReportModeration(
     return;
   }
 
+  const now = new Date();
   if (target === MODERATION_STATUS.PUBLISHED) {
+    // Every transition into a public status re-checks the author. A ban that
+    // committed after the report insert must never be bypassed by a media
+    // callback; take the content down instead of publishing it.
+    if (report.user.status !== 'active' || report.user.deleted_at !== null) {
+      await prisma.report.updateMany({
+        where: {
+          report_id: reportId,
+          deleted_at: null,
+          moderation_status: MODERATION_STATUS.MACHINE_PENDING,
+        },
+        data: {
+          moderation_status: MODERATION_STATUS.REMOVED,
+          reject_reason: 'user_banned',
+          audit_time: now,
+        },
+      });
+      await prisma.reportMediaCheck.updateMany({
+        where: { report_id: reportId, status: 'pending' },
+        data: { status: 'canceled', checked_at: now },
+      });
+      return;
+    }
     try {
       for (const key of report.images) {
         const basename = key.split('/').pop() ?? '';
@@ -107,6 +136,7 @@ export async function recomputeReportModeration(
   const updated = await prisma.report.updateMany({
     where: {
       report_id: reportId,
+      deleted_at: null,
       moderation_status: MODERATION_STATUS.MACHINE_PENDING,
     },
     data: { moderation_status: target },

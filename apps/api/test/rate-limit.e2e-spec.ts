@@ -73,4 +73,23 @@ describe('Rate limits (e2e)', () => {
       `admin-login:ip:${createHash('sha256').update('203.0.113.9').digest('hex')}`,
     );
   });
+
+  it('skips the private SLB/WAF hop and keys on the rightmost client IP', async () => {
+    await service.reset('admin-login:');
+    // client -> SLB/WAF (private) -> nginx -> API (loopback). The API must not
+    // treat the private hop as the client, or every client shares one bucket.
+    const response = await request(server)
+      .post('/api/v1/admin/auth/login')
+      .set(adminHeaders())
+      .set('X-Forwarded-For', '203.0.113.9, 10.0.0.5')
+      .send({ username: 'none', password: 'none' });
+    expect(response.status).toBe(401);
+    const rows = await prisma.rateLimitCounter.findMany({
+      where: { counter_key: { startsWith: 'admin-login:ip:' } },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.counter_key).toBe(
+      `admin-login:ip:${createHash('sha256').update('203.0.113.9').digest('hex')}`,
+    );
+  });
 });

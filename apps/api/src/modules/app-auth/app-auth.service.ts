@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MODERATION_STATUS, ERROR_CODES } from '@szfisher/shared';
 import { Prisma, type AppUser } from '@prisma/client';
@@ -78,6 +78,8 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 @Injectable()
 export class AppAuthService {
+  private readonly logger = new Logger(AppAuthService.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
@@ -149,6 +151,11 @@ export class AppAuthService {
     }
     if (session.revoked_at !== null) {
       // A rotated-away or logged-out token came back: assume theft.
+      this.logger.warn({
+        event: 'refresh_token_reuse',
+        reason: 'revoked_token_replayed',
+        user_id: user.user_id,
+      });
       await this.revokeAllSessions(user.user_id, now);
       throw this.unauthenticated('Invalid refresh token');
     }
@@ -180,6 +187,11 @@ export class AppAuthService {
       return true;
     });
     if (!rotated) {
+      this.logger.warn({
+        event: 'refresh_token_reuse',
+        reason: 'rotated_token_replayed',
+        user_id: user.user_id,
+      });
       await this.revokeAllSessions(user.user_id, now);
       throw this.unauthenticated('Invalid refresh token');
     }

@@ -58,6 +58,8 @@ const TEST_OPENIDS = [
   'openid-admin-abuse-three',
   'openid-admin-restrict',
   'openid-admin-ban',
+  'openid-admin-ban-create',
+  'openid-admin-race-delete',
   'openid-admin-audit',
   'openid-admin-audit-target',
   'openid-admin-race-reject',
@@ -955,6 +957,23 @@ describe('Admin moderation (e2e)', () => {
     expect(otherSpot.total).toBe(0);
     expect(otherSpot.items).toHaveLength(0);
 
+    // The abuse queue detail action fetches the queue-shaped item and reuses
+    // the report drawer, including its published image URLs.
+    const detailResponse = await request(server)
+      .get(`/api/v1/admin/reports/${reportId}`)
+      .set(adminRequest(reviewer))
+      .expect(200);
+    const detailItem = bodyData<AdminReportItem>(detailResponse);
+    expect(detailItem.report_id).toBe(reportId);
+    expect(detailItem.images).toEqual([
+      `${PUBLIC_UGC_PREFIX}/${reportId}/${key.split('/').pop() ?? ''}`,
+    ]);
+    expect(detailItem.author.user_id).toBe(owner.user_id);
+    await request(server)
+      .get(`/api/v1/admin/reports/${ulid()}`)
+      .set(adminRequest(reviewer))
+      .expect(404);
+
     await request(server)
       .post(`/api/v1/admin/abuse-reports/${oldAbuse.abuse_id}/handle`)
       .set(adminRequest(reviewer))
@@ -1245,13 +1264,16 @@ describe('Admin moderation (e2e)', () => {
       select: { report_id: true, reject_reason: true },
     });
     expect(new Set(bannedReports.map((row) => row.report_id))).toEqual(
-      new Set([publishedComment.report_id, imageReport.reportId]),
+      new Set([publishedComment.report_id, imageReport.reportId, pending.report_id]),
     );
     expect(bannedReports.every((row) => row.reject_reason === 'user_banned')).toBe(true);
+    // Machine-pending reports are taken down too: their media checks could
+    // still pass after the ban and publish the content.
     const pendingRow = await prisma.report.findUniqueOrThrow({
       where: { report_id: pending.report_id },
     });
-    expect(pendingRow.moderation_status).toBe(MODERATION_STATUS.MACHINE_PENDING);
+    expect(pendingRow.moderation_status).toBe(MODERATION_STATUS.REMOVED);
+    expect(pendingRow.reject_reason).toBe('user_banned');
     expect(existsSync(publishedFile(imageReport.reportId, imageReport.key))).toBe(false);
 
     await request(server)
@@ -1289,7 +1311,7 @@ describe('Admin moderation (e2e)', () => {
       where: { user_id: owner.user_id, moderation_status: MODERATION_STATUS.REMOVED },
       select: { report_id: true },
     });
-    expect(stillRemoved).toHaveLength(2);
+    expect(stillRemoved).toHaveLength(3);
     expect(existsSync(publishedFile(imageReport.reportId, imageReport.key))).toBe(false);
 
     const banAudit = await prisma.auditLog.findFirst({
@@ -1310,6 +1332,130 @@ describe('Admin moderation (e2e)', () => {
         },
       }),
     ).toBe(1);
+  });
+
+  it('does not publish a create that overlaps a ban', async () => {
+    const operator = await loginAs(app, ADMIN_ROLE.OPERATOR);
+    const owner = await loginUser('openid-admin-ban-create');
+    const spot = await seedOpenSpot();
+    const provider = app.get(CONTENT_SECURITY_PROVIDER) as FakeContentSecurityProvider;
+
+    let markCheckStarted: () => void = () => undefined;
+    let releaseCheck: () => void = () => undefined;
+    const checkStarted = new Promise<void>((resolve) => {
+      markCheckStarted = resolve;
+    });
+    const checkGate = new Promise<void>((resolve) => {
+      releaseCheck = resolve;
+    });
+    const originalCheck = provider.checkText.bind(provider);
+    const checkSpy = jest.spyOn(provider, 'checkText').mockImplementation(async (input) => {
+      markCheckStarted();
+      await checkGate;
+      return originalCheck(input);
+    });
+
+    try {
+      // The report row exists (machine_pending) and the create request is paused
+      // in the text check when the ban transaction commits.
+      const createPromise = request(server)
+        .post('/api/v1/reports')
+        .set(appAuthHeaders(owner.access_token))
+        .send({
+          spot_id: spot.spot_id,
+          content_type: 'comment',
+          content: `并发封禁 ${ulid().slice(-6)}`,
+          terms_version: TERMS_VERSION,
+        })
+        .then((response) => response);
+      await checkStarted;
+
+      await request(server)
+        .post(`/api/v1/admin/users/${owner.user_id}/ban`)
+        .set(adminRequest(operator))
+        .send({ reason: '并发封禁' })
+        .expect(200);
+
+      releaseCheck();
+      const response = await createPromise;
+      expect(response.status).toBe(201);
+      expect(bodyData<CreatedReport>(response).moderation_status).toBe(
+        MODERATION_STATUS.REMOVED,
+      );
+
+      const row = await prisma.report.findFirstOrThrow({
+        where: { user_id: owner.user_id },
+        orderBy: { created_at: 'desc' },
+      });
+      expect(row.moderation_status).toBe(MODERATION_STATUS.REMOVED);
+      expect(row.reject_reason).toBe('user_banned');
+
+      const publicList = await request(server)
+        .get(`/api/v1/spots/${spot.spot_id}/reports`)
+        .set(HEADERS)
+        .expect(200);
+      expect(publicList.body.data.items).toHaveLength(0);
+    } finally {
+      releaseCheck();
+      checkSpy.mockRestore();
+    }
+  });
+
+  it('serializes author delete and admin approve without orphan images', async () => {
+    const reviewer = await loginAs(app, ADMIN_ROLE.REVIEWER);
+    const owner = await loginUser('openid-admin-race-delete');
+    const spot = await seedOpenSpot();
+    const image = await uploadImage(owner);
+    const report = await createReport(owner, spot.spot_id, { image_keys: [image.key] });
+    expect(report.moderation_status).toBe(MODERATION_STATUS.MACHINE_PENDING);
+
+    let markCopied: () => void = () => undefined;
+    let releaseCopy: () => void = () => undefined;
+    const copyDone = new Promise<void>((resolve) => {
+      markCopied = resolve;
+    });
+    const copyGate = new Promise<void>((resolve) => {
+      releaseCopy = resolve;
+    });
+    const originalCopy = storage.copyToPublished.bind(storage);
+    const copySpy = jest
+      .spyOn(storage, 'copyToPublished')
+      .mockImplementation(async (source, dest) => {
+        await originalCopy(source, dest);
+        markCopied();
+        await copyGate;
+      });
+
+    try {
+      const approvePromise = request(server)
+        .post(`/api/v1/admin/reports/${report.report_id}/approve`)
+        .set(adminRequest(reviewer))
+        .then((response) => response);
+      await copyDone;
+
+      // The author deletes while the admin approval has copied the image but
+      // has not yet committed the status change.
+      await request(server)
+        .delete(`/api/v1/reports/${report.report_id}`)
+        .set(appAuthHeaders(owner.access_token))
+        .expect(200);
+
+      releaseCopy();
+      const approveResponse = await approvePromise;
+      expect(approveResponse.status).toBe(404);
+    } finally {
+      releaseCopy();
+      copySpy.mockRestore();
+    }
+
+    const row = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id },
+    });
+    expect(row.moderation_status).toBe(MODERATION_STATUS.REMOVED);
+    expect(row.reject_reason).toBe('author_deleted');
+    expect(row.deleted_at).not.toBeNull();
+    expect(existsSync(publishedFile(report.report_id, image.key))).toBe(false);
+    expect(existsSync(workingFile(image.key))).toBe(false);
   });
 
   it('writes audit logs for every action without content, image or token fields', async () => {

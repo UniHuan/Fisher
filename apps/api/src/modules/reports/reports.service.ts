@@ -73,6 +73,7 @@ const CREATE_MESSAGES: Record<string, string> = {
   [MODERATION_STATUS.PUBLISHED]: '已发布',
   [MODERATION_STATUS.MACHINE_REJECTED]: '内容未通过审核',
   [MODERATION_STATUS.MACHINE_PENDING]: '内容审核中',
+  [MODERATION_STATUS.REMOVED]: '内容不可发布',
 };
 
 export interface CreateReportInput {
@@ -253,7 +254,14 @@ export class ReportsService {
       result.suggest === 'pass' && imageKeys.length > 0
         ? MODERATION_STATUS.MACHINE_PENDING
         : moderationStatusFor(result.suggest);
-    await this.repository.updateModeration(reportId, moderationStatus, toMachineResult(result));
+    // The write is conditional: a concurrent ban or human decision wins, and
+    // the returned status is the row's real current status.
+    moderationStatus = await this.repository.updateModeration(
+      reportId,
+      moderationStatus,
+      toMachineResult(result),
+      now,
+    );
 
     // Text `pass` and `review` both submit images; only `risky` rejects without
     // checking them. A review report still cannot publish: recompute requires a

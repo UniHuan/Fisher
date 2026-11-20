@@ -38,6 +38,7 @@ import {
   AdminAbusePageDto,
   AdminReportActionDto,
   AdminReportHistoryDto,
+  AdminReportItemDto,
   AdminReportPageDto,
   AdminReportSummaryDto,
   AdminUserBanResponseDto,
@@ -132,6 +133,19 @@ export class AdminReportsController {
   @ApiEnvelopeResponse(AdminReportSummaryDto, { description: 'Moderation summary counts' })
   summary(): Promise<AdminReportSummaryDto> {
     return this.reports.summary();
+  }
+
+  @Get('reports/:id')
+  @ApiOperation({
+    summary: 'Read one report in queue-item shape',
+    description:
+      'Used by the abuse queue detail action so it can reuse the report drawer. Images follow the same public/signed rules as the queue.',
+  })
+  @ApiParam(REPORT_ID_PARAM)
+  @ApiEnvelopeResponse(AdminReportItemDto, { description: 'One admin report item' })
+  @ApiCommonErrorResponses([...READ_ERROR_CODES, ERROR_CODES.REPORT_NOT_FOUND])
+  detail(@Param('id') reportId: string): Promise<AdminReportItemDto> {
+    return this.reports.reportDetail(reportId);
   }
 
   @Get('reports/:id/history')
