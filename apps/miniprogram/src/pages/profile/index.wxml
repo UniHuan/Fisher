@@ -20,6 +20,7 @@
     <view wx:elif="{{!sessionReady}}" class="card login-card">
       <text class="login-title">微信登录</text>
       <text class="login-text">登录后可以发布评论、鱼获和情报，并管理自己的内容。</text>
+      <text class="login-text">登录仅获取微信身份标识，不读取昵称、头像和手机号。</text>
       <button
         class="primary-button login-button"
         bindtap="login"

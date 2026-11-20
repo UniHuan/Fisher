@@ -156,12 +156,6 @@ input {
   line-height: 1.5;
 }
 
-.filter-chip-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-
 .filter-chip {
   padding: 8rpx 22rpx;
   border-radius: 999rpx;

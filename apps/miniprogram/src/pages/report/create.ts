@@ -3,6 +3,7 @@ import {
   createReport,
   getClientConfig,
   getDictionaries,
+  loginFailureText,
   restrictionDateText,
   uploadUgcImage,
   type CreateReportInput,
@@ -63,6 +64,10 @@ interface CreateData {
   images: DraftImage[];
   maxImages: number;
   termsAccepted: boolean;
+  termsUrl: string;
+  privacyUrl: string;
+  communityUrl: string;
+  legalNote: string;
   submitting: boolean;
   loggingIn: boolean;
   submitError: string;
@@ -88,6 +93,10 @@ interface ImageTapEvent {
   currentTarget: { dataset: { index: string } };
 }
 
+interface LegalTapEvent {
+  currentTarget: { dataset: { key: string } };
+}
+
 interface CreateMethods {
   init(): Promise<void>;
   retryConfig(): void;
@@ -98,6 +107,8 @@ interface CreateMethods {
   onFishChange(event: PickerEvent): void;
   onWeightInput(event: InputEvent): void;
   onTermsChange(event: CheckboxEvent): void;
+  openLegal(event: LegalTapEvent): void;
+  copyLegalUrl(url: string): void;
   chooseImages(): void;
   removeImage(event: ImageTapEvent): void;
   previewDraftImage(event: ImageTapEvent): void;
@@ -154,6 +165,10 @@ Page<CreateData, CreateMethods>({
     images: [],
     maxImages: MAX_REPORT_IMAGES,
     termsAccepted: false,
+    termsUrl: '',
+    privacyUrl: '',
+    communityUrl: '',
+    legalNote: '',
     submitting: false,
     loggingIn: false,
     submitError: '',
@@ -190,6 +205,9 @@ Page<CreateData, CreateMethods>({
       label: item.label,
     }));
     const ugcEnabled = config?.features.ugc === true;
+    const termsUrl = config?.legal.terms_url ?? '';
+    const privacyUrl = config?.legal.privacy_url ?? '';
+    const communityUrl = config?.legal.community_url ?? '';
 
     this.setData({
       loadingConfig: false,
@@ -199,6 +217,13 @@ Page<CreateData, CreateMethods>({
       fishLabels: fishOptions.map((item) => item.label),
       sessionReady: getSession() !== null,
       configError: config === null ? '配置加载失败，请重试' : '',
+      termsUrl,
+      privacyUrl,
+      communityUrl,
+      legalNote:
+        termsUrl === '' && privacyUrl === '' && communityUrl === ''
+          ? '法务链接暂未开放'
+          : '',
     });
 
     if (ugcEnabled && getSession() !== null) {
@@ -221,10 +246,10 @@ Page<CreateData, CreateMethods>({
       track('ugc_login_success');
       this.setData({ sessionReady: true, loggingIn: false });
       await this.loadMe();
-    } catch {
+    } catch (error) {
       track('ugc_login_fail', { result: 'fail' });
       this.setData({ loggingIn: false });
-      wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      wx.showToast({ title: loginFailureText(error), icon: 'none' });
     }
   },
 
@@ -289,6 +314,43 @@ Page<CreateData, CreateMethods>({
 
   onTermsChange(event: CheckboxEvent): void {
     this.setData({ termsAccepted: event.detail.value.includes('terms') });
+  },
+
+  openLegal(event: LegalTapEvent): void {
+    const key = event.currentTarget.dataset.key;
+    const urls: Record<string, string> = {
+      terms: this.data.termsUrl,
+      privacy: this.data.privacyUrl,
+      community: this.data.communityUrl,
+    };
+    const url = urls[key] ?? '';
+    if (url === '') {
+      wx.showToast({ title: '法务链接暂未开放', icon: 'none' });
+      return;
+    }
+    let webViewAvailable: boolean;
+    try {
+      webViewAvailable = wx.canIUse('web-view');
+    } catch {
+      webViewAvailable = true;
+    }
+    if (!webViewAvailable) {
+      this.copyLegalUrl(url);
+      return;
+    }
+    wx.navigateTo({
+      url: `/pages/legal/legal?url=${encodeURIComponent(url)}`,
+      fail: () => this.copyLegalUrl(url),
+    });
+  },
+
+  copyLegalUrl(url: string): void {
+    wx.setClipboardData({
+      data: url,
+      success: () => {
+        wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' });
+      },
+    });
   },
 
   chooseImages(): void {

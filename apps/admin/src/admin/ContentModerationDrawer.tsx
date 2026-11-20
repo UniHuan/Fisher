@@ -877,6 +877,9 @@ export function ContentModerationDrawer({
       return;
     }
     let active = true;
+    // Never show report A's audit/abuse tables under report B while the new
+    // history request is still in flight.
+    setHistory(null);
     setHistoryLoading(true);
     setHistoryError(null);
     api
@@ -990,6 +993,20 @@ export function ContentModerationDrawer({
         '已通过',
       ),
     });
+  };
+
+  /** Abuse rows carry only a summary; fetch the queue-shaped item for the drawer. */
+  const openAbuseDetail = async (item: AdminAbuseItem): Promise<void> => {
+    try {
+      const report = await api.getReport(item.report_id);
+      setDetail(report);
+    } catch (cause) {
+      if (isAuthError(cause)) {
+        onExpired();
+        return;
+      }
+      message.error(errorText(cause));
+    }
   };
 
   const handleAdopt = (item: AdminReportItem): void => {
@@ -1151,6 +1168,19 @@ export function ContentModerationDrawer({
 
   const abuseColumns: TableProps<AdminAbuseItem>['columns'] = [
     {
+      title: '图片',
+      key: 'images',
+      width: 82,
+      render: (_value, item) => {
+        const src = resolveMediaUrl(item.report.images[0]);
+        return src === undefined ? (
+          <div className="cover-placeholder">无图</div>
+        ) : (
+          <Image src={src} width={60} height={44} className="moderation-thumb" />
+        );
+      },
+    },
+    {
       title: '内容',
       key: 'content',
       render: (_value, item) => (
@@ -1190,17 +1220,28 @@ export function ContentModerationDrawer({
     {
       title: '操作',
       key: 'actions',
-      width: 130,
+      width: 170,
       render: (_value, item) => (
-        <Button
-          size="small"
-          type="primary"
-          onClick={() => {
-            setAbuseAction(item);
-          }}
-        >
-          举报处理
-        </Button>
+        <Space size={0} wrap className="moderation-actions">
+          <Button
+            size="small"
+            type="link"
+            onClick={() => {
+              void openAbuseDetail(item);
+            }}
+          >
+            详情
+          </Button>
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => {
+              setAbuseAction(item);
+            }}
+          >
+            举报处理
+          </Button>
+        </Space>
       ),
     },
   ];

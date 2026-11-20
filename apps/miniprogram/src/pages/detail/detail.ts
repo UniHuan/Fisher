@@ -10,6 +10,7 @@ import {
   getSpot,
   likeReport,
   listSpotReports,
+  loginFailureText,
   mediaUrl,
   openStatusLabel,
   relativeTimeText,
@@ -406,10 +407,10 @@ Page<DetailData, DetailMethods>({
       this.setData({ loginSheetOpen: false, loggingIn: false });
       this.refreshMe();
       this.openCreatePage();
-    } catch {
+    } catch (error) {
       track('ugc_login_fail', { result: 'fail' });
       this.setData({ loggingIn: false });
-      wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      wx.showToast({ title: loginFailureText(error), icon: 'none' });
     }
   },
 
@@ -619,9 +620,9 @@ Page<DetailData, DetailMethods>({
       // reflect the new session before the action continues.
       await this.loadReports(true);
       return true;
-    } catch {
+    } catch (error) {
       track('ugc_login_fail', { result: 'fail' });
-      wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      wx.showToast({ title: loginFailureText(error), icon: 'none' });
       return false;
     }
   },

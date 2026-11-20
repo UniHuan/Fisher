@@ -347,7 +347,7 @@
 .ugc-content {
   display: block;
   margin-top: 10rpx;
-  color: #2c3a35;
+  color: #4c5b55;
   font-size: 27rpx;
   line-height: 1.7;
   word-break: break-word;

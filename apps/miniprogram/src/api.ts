@@ -115,6 +115,19 @@ export class ApiError extends Error {
   }
 }
 
+/** ERROR_CODES.FORBIDDEN: the account is banned or deleted. */
+const ACCOUNT_FORBIDDEN_CODE = 40301;
+
+/**
+ * Ban and deletion reject login with 40301. Show the fixed restriction copy
+ * without the server reason; network and WeChat failures keep the retry copy.
+ */
+export function loginFailureText(error: unknown): string {
+  return error instanceof ApiError && error.code === ACCOUNT_FORBIDDEN_CODE
+    ? '账号已被限制发布'
+    : '登录失败，请重试';
+}
+
 function queryString(params: Record<string, unknown>): string {
   const parts: string[] = [];
   for (const key of Object.keys(params)) {

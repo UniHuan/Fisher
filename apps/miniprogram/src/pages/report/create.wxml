@@ -11,6 +11,7 @@
   <view wx:elif="{{!sessionReady}}" class="card login-card">
     <text class="login-title">登录后发布</text>
     <text class="login-text">使用微信登录后可以发布评论、鱼获和情报。</text>
+    <text class="login-text">登录仅获取微信身份标识，不读取昵称、头像和手机号。</text>
     <button
       class="primary-button login-button"
       bindtap="login"
@@ -104,6 +105,14 @@
           <text class="terms-text">我已阅读并同意社区规范</text>
         </label>
       </checkbox-group>
+      <view class="create-legal">
+        <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
+        <text class="legal-dot">·</text>
+        <text class="legal-link" data-key="privacy" bindtap="openLegal">隐私政策</text>
+        <text class="legal-dot">·</text>
+        <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
+      </view>
+      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
 
       <view wx:if="{{!meCanPublish}}" class="form-error">
         {{restrictionText || '当前账号暂不能发布内容'}}

@@ -153,6 +153,32 @@
   transform: scale(0.85);
 }
 
+.create-legal {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 10rpx;
+  padding-left: 44rpx;
+}
+
+.legal-link {
+  color: #5e6b66;
+  font-size: 23rpx;
+}
+
+.legal-dot {
+  color: #cfdcd4;
+  font-size: 22rpx;
+}
+
+.legal-note {
+  display: block;
+  margin-top: 10rpx;
+  padding-left: 44rpx;
+  color: #8a9691;
+  font-size: 21rpx;
+}
+
 .create-actions {
   display: flex;
   gap: 16rpx;

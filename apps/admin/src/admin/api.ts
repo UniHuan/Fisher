@@ -403,6 +403,9 @@ export const api = {
   reportSummary(): Promise<AdminReportSummary> {
     return request<AdminReportSummary>('/admin/reports/summary');
   },
+  getReport(id: string): Promise<AdminReportItem> {
+    return request<AdminReportItem>(`/admin/reports/${id}`);
+  },
   reportHistory(id: string): Promise<AdminReportHistory> {
     return request<AdminReportHistory>(`/admin/reports/${id}/history`);
   },

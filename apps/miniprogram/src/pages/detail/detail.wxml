@@ -227,6 +227,7 @@
   <view class="ugc-sheet" catchtap="noop">
     <text class="ugc-sheet-title">登录后发布</text>
     <text class="ugc-sheet-text">登录后可以发布评论、鱼获和情报，与其他钓友交流。</text>
+    <text class="ugc-sheet-text">登录仅获取微信身份标识，不读取昵称、头像和手机号。</text>
     <button
       class="primary-button ugc-sheet-button"
       bindtap="loginAndWrite"

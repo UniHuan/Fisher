@@ -4,6 +4,7 @@ import {
   deleteReport as apiDeleteReport,
   getClientConfig,
   listMyReports,
+  loginFailureText,
   mediaUrl,
   moderationStatusLabel,
   moderationStatusTone,
@@ -208,10 +209,10 @@ Page<ProfileData, ProfileMethods>({
       track('ugc_login_success');
       this.setData({ sessionReady: true, loggingIn: false });
       await this.loadAfterLogin();
-    } catch {
+    } catch (error) {
       track('ugc_login_fail', { result: 'fail' });
       this.setData({ loggingIn: false });
-      wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      wx.showToast({ title: loginFailureText(error), icon: 'none' });
     }
   },
 
