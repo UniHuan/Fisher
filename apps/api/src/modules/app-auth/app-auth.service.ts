@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { RateLimitRule } from '../rate-limit/rate-limit.types';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { APP_ACCESS_TTL_SECONDS, APP_REFRESH_TTL_MS, AppTokenService } from './app-token.service';
+import { maskClientIp } from './client-ip';
 import {
   WECHAT_AUTH_PROVIDER,
   WECHAT_MINI_PROVIDER,
@@ -58,6 +59,13 @@ export interface AppMeResult {
 interface ResolvedUser {
   user: AppUser;
   identityId: string;
+}
+
+interface NoticeRow {
+  report_id: string;
+  moderation_status: string;
+  reject_reason: string | null;
+  notice_time: Date;
 }
 
 function sha256Hex(value: string): string {
@@ -112,7 +120,7 @@ export class AppAuthService {
         session_id: ulid(),
         user_id: user.user_id,
         refresh_token_hash: this.tokens.hashRefresh(refreshToken),
-        ip: ip.length > 0 ? ip.slice(0, 45) : null,
+        ip: maskClientIp(ip),
         user_agent: this.readUserAgent(request),
         expires_at: new Date(now.getTime() + APP_REFRESH_TTL_MS),
       },
@@ -164,7 +172,7 @@ export class AppAuthService {
           user_id: user.user_id,
           refresh_token_hash: this.tokens.hashRefresh(nextRefreshToken),
           rotated_from: session.session_id,
-          ip: this.requestIp(request),
+          ip: maskClientIp(request.ip),
           user_agent: this.readUserAgent(request),
           expires_at: new Date(now.getTime() + APP_REFRESH_TTL_MS),
         },
@@ -207,32 +215,21 @@ export class AppAuthService {
     }
     const now = new Date();
     const cutoff = new Date(now.getTime() - NOTICE_WINDOW_MS);
-    const rows = await this.prisma.report.findMany({
-      where: {
-        user_id: user.user_id,
-        moderation_status: { in: NOTICE_STATUSES },
-        AND: [
-          // `audit_time ?? created_at` recency, expressed as an OR.
-          {
-            OR: [
-              { audit_time: { gte: cutoff } },
-              { audit_time: null, created_at: { gte: cutoff } },
-            ],
-          },
-          // Author self-deletes are tombstones, not moderation notices.
-          { OR: [{ reject_reason: null }, { reject_reason: { not: AUTHOR_DELETED_REASON } }] },
-        ],
-      },
-      orderBy: [{ audit_time: { sort: 'desc', nulls: 'last' } }, { created_at: 'desc' }],
-      take: NOTICE_LIMIT,
-      select: {
-        report_id: true,
-        moderation_status: true,
-        reject_reason: true,
-        audit_time: true,
-        created_at: true,
-      },
-    });
+    // "Latest 3" must rank by audit_time ?? created_at; machine rejections have
+    // audit_time = NULL, so ordering by audit_time alone would bury them.
+    const rows = await this.prisma.$queryRaw<NoticeRow[]>`
+      SELECT report_id,
+             moderation_status,
+             reject_reason,
+             COALESCE(audit_time, created_at) AS notice_time
+      FROM report
+      WHERE user_id = ${user.user_id}
+        AND moderation_status IN (${Prisma.join(NOTICE_STATUSES)})
+        AND COALESCE(audit_time, created_at) >= ${cutoff}
+        AND (reject_reason IS NULL OR reject_reason <> ${AUTHOR_DELETED_REASON})
+      ORDER BY COALESCE(audit_time, created_at) DESC
+      LIMIT ${NOTICE_LIMIT}
+    `;
 
     return {
       user: { nickname: user.nickname, avatar_url: user.avatar_url },
@@ -245,7 +242,7 @@ export class AppAuthService {
         report_id: row.report_id,
         moderation_status: row.moderation_status,
         reject_reason: row.reject_reason,
-        audit_time: row.audit_time ?? row.created_at,
+        audit_time: row.notice_time,
       })),
     };
   }
@@ -362,11 +359,6 @@ export class AppAuthService {
       expires_in: APP_ACCESS_TTL_SECONDS,
       user: { nickname: user.nickname, avatar_url: user.avatar_url },
     };
-  }
-
-  private requestIp(request: RequestWithContext): string | null {
-    const ip = request.ip ?? '';
-    return ip.length > 0 ? ip.slice(0, 45) : null;
   }
 
   private readUserAgent(request: RequestWithContext): string | null {

@@ -33,6 +33,8 @@ const TEST_OPENIDS = [
   'openid-me',
   'openid-token',
   'openid-flood',
+  'openid-ip',
+  'openid-ip-v6',
 ];
 
 describe('App auth (e2e)', () => {
@@ -76,6 +78,40 @@ describe('App auth (e2e)', () => {
     });
     expect(user.terms_accepted_at).toBeNull();
     expect(user.last_login_at).not.toBeNull();
+  });
+
+  it('stores only a masked client IP on the session', async () => {
+    await request(server)
+      .post('/api/v1/auth/wechat/login')
+      .set(appClientHeaders())
+      .set('X-Forwarded-For', '203.0.113.9')
+      .send({ code: 'openid-ip' })
+      .expect(200);
+    const v4Identity = await prisma.userIdentity.findFirstOrThrow({
+      where: { provider: 'wechat_mini', provider_uid: 'openid-ip' },
+    });
+    const v4Session = await prisma.userSession.findFirstOrThrow({
+      where: { user_id: v4Identity.user_id },
+      orderBy: { created_at: 'desc' },
+    });
+    expect(v4Session.ip).toBe('203.0.113.0');
+    expect(v4Session.ip).not.toBe('203.0.113.9');
+
+    await request(server)
+      .post('/api/v1/auth/wechat/login')
+      .set(appClientHeaders())
+      .set('X-Forwarded-For', '2001:db8:abcd:12::1')
+      .send({ code: 'openid-ip-v6' })
+      .expect(200);
+    const v6Identity = await prisma.userIdentity.findFirstOrThrow({
+      where: { provider: 'wechat_mini', provider_uid: 'openid-ip-v6' },
+    });
+    const v6Session = await prisma.userSession.findFirstOrThrow({
+      where: { user_id: v6Identity.user_id },
+      orderBy: { created_at: 'desc' },
+    });
+    expect(v6Session.ip).toBe('2001:db8:abcd::');
+    expect(v6Session.ip).not.toBe('2001:db8:abcd:12::1');
   });
 
   it('rotates refresh tokens and revokes every session on reuse', async () => {
@@ -205,13 +241,22 @@ describe('App auth (e2e)', () => {
         audit_time: new Date(now - 120_000),
       },
     });
-    const third = await prisma.report.create({
+    await prisma.report.create({
       data: {
         report_id: ulid(),
         ...base,
         moderation_status: 'removed',
         reject_reason: '违规下架',
         audit_time: new Date(now - 180_000),
+      },
+    });
+    // Machine rejections have no audit_time; recency must fall back to created_at.
+    const machineOnly = await prisma.report.create({
+      data: {
+        report_id: ulid(),
+        ...base,
+        moderation_status: 'machine_rejected',
+        reject_reason: '机器拒绝无审核时间',
       },
     });
     await prisma.report.create({
@@ -255,13 +300,14 @@ describe('App auth (e2e)', () => {
     const notices = me.body.data.notices as Array<Record<string, unknown>>;
     expect(notices).toHaveLength(3);
     expect(notices.map((notice) => notice.report_id)).toEqual([
+      machineOnly.report_id,
       newest.report_id,
       second.report_id,
-      third.report_id,
     ]);
     expect(notices[0]).toMatchObject({
-      moderation_status: 'human_rejected',
-      reject_reason: '广告引流',
+      moderation_status: 'machine_rejected',
+      reject_reason: '机器拒绝无审核时间',
+      audit_time: machineOnly.created_at.toISOString(),
     });
     expect(typeof notices[0]?.audit_time).toBe('string');
     expect(JSON.stringify(notices)).not.toContain('author_deleted');
