@@ -4,15 +4,26 @@ import { AppAuthService } from '../../modules/app-auth/app-auth.service';
 import { AppError } from '../errors/app-error';
 import type { RequestWithContext } from '../types/request-context';
 
-/** Reads an `Authorization: Bearer <token>` header, or null when absent. */
+/**
+ * Reads an `Authorization: Bearer <token>` header, or null when absent.
+ * Deliberately avoids a backtracking regex: the header is user-controlled and
+ * `^Bearer\s+(.+)$` backtracks polynomially on long whitespace runs.
+ */
 export function readBearerToken(request: RequestWithContext): string | null {
   const header = request.headers.authorization;
   if (typeof header !== 'string') {
     return null;
   }
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  const token = match?.[1]?.trim();
-  return token !== undefined && token.length > 0 ? token : null;
+  const value = header.trim();
+  if (value.length <= 6 || value.slice(0, 6).toLowerCase() !== 'bearer') {
+    return null;
+  }
+  const separator = value.charAt(6);
+  if (separator !== ' ' && separator !== '\t') {
+    return null;
+  }
+  const token = value.slice(7).trim();
+  return token.length > 0 ? token : null;
 }
 
 @Injectable()
