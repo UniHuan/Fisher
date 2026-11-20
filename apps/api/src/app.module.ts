@@ -1,6 +1,7 @@
 import { Module, type DynamicModule, type Provider, type Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
+import { AdminReportsModule } from './modules/admin-reports/admin-reports.module';
 import { AdminSpotsModule } from './modules/admin-spots/admin-spots.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AppAuthModule } from './modules/app-auth/app-auth.module';
@@ -48,6 +49,7 @@ export class AppModule {
         }),
         AuditLogModule,
         DictionariesModule,
+        AdminReportsModule,
         AdminSpotsModule,
         ClientConfigModule,
         PublicSpotsModule,
