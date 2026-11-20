@@ -21,113 +21,136 @@
   </view>
 
   <block wx:else>
-    <view class="card create-card">
-      <view class="spot-line">
-        <text class="spot-label">钓点</text>
-        <text class="spot-name">{{spotName || '当前钓点'}}</text>
+    <view class="create-intro">
+      <text class="create-kicker">钓友情报</text>
+      <text class="create-title">分享这次的情况</text>
+      <view class="spot-chip">
+        <text class="spot-chip-label">钓点</text>
+        <text class="spot-chip-name">{{spotName || '当前钓点'}}</text>
       </view>
+    </view>
 
-      <view class="type-tabs">
+    <view class="create-section">
+      <text class="section-label">类型</text>
+      <view class="type-grid">
         <view
           wx:for="{{contentTypes}}"
           wx:key="key"
-          class="type-tab {{contentType === item.key ? 'is-active' : ''}}"
+          class="type-card {{contentType === item.key ? 'is-active' : ''}}"
           data-type="{{item.key}}"
           bindtap="selectType"
-        >{{item.label}}</view>
-      </view>
-
-      <view class="form-field">
-        <textarea
-          class="form-textarea"
-          value="{{content}}"
-          placeholder="说说这次的情况..."
-          maxlength="500"
-          bindinput="onContentInput"
-        />
-        <text class="form-counter">{{contentCount}}/{{maxContentLength}}</text>
-      </view>
-
-      <view class="form-field">
-        <text class="form-label">图片（选填，最多 {{maxImages}} 张）</text>
-        <view class="image-grid">
-          <view wx:for="{{images}}" wx:key="path" class="image-cell">
-            <image
-              class="image-thumb"
-              src="{{item.path}}"
-              mode="aspectFill"
-              data-index="{{index}}"
-              bindtap="previewDraftImage"
-            />
-            <view wx:if="{{submitting && item.progress < 100}}" class="image-progress">
-              <text class="image-progress-text">{{item.progress}}%</text>
-            </view>
-            <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
-          </view>
-          <view wx:if="{{images.length < maxImages}}" class="image-add" bindtap="chooseImages">
-            <text class="image-add-icon">＋</text>
-          </view>
+        >
+          <view class="type-mark">{{item.mark}}</view>
+          <text class="type-name">{{item.label}}</text>
+          <text class="type-desc">{{item.desc}}</text>
         </view>
-        <text wx:if="{{submitting && images.length > 0}}" class="form-hint upload-hint">
-          正在逐张上传图片，全部成功后才会发布
-        </text>
       </view>
+    </view>
 
-      <block wx:if="{{contentType === 'catch'}}">
-        <view class="form-field">
-          <text class="form-label">鱼种</text>
+    <view class="create-section">
+      <view class="section-head">
+        <text class="section-label">正文</text>
+        <text class="section-meta">{{contentCount}}/{{maxContentLength}}</text>
+      </view>
+      <textarea
+        class="content-textarea"
+        value="{{content}}"
+        placeholder="说说这次的情况..."
+        maxlength="500"
+        bindinput="onContentInput"
+      />
+      <text class="section-hint">写清楚时间、鱼情和注意事项，1 到 500 字。</text>
+    </view>
+
+    <view class="create-section">
+      <view class="section-head">
+        <text class="section-label">图片</text>
+        <text class="section-meta">{{images.length}}/{{maxImages}}</text>
+      </view>
+      <view class="image-grid">
+        <view wx:for="{{images}}" wx:key="path" class="image-cell">
+          <image
+            class="image-thumb"
+            src="{{item.path}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            bindtap="previewDraftImage"
+          />
+          <view wx:if="{{submitting && item.progress < 100}}" class="image-progress">
+            <text class="image-progress-text">{{item.progress}}%</text>
+          </view>
+          <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
+        </view>
+        <view wx:if="{{images.length < maxImages}}" class="image-add" bindtap="chooseImages">
+          <text class="image-add-icon">＋</text>
+        </view>
+      </view>
+      <text class="section-hint">选填，最多 6 张，发布前会逐张上传并审核。</text>
+      <text wx:if="{{submitting && images.length > 0}}" class="section-hint upload-hint">
+        正在逐张上传图片，全部成功后才会发布
+      </text>
+    </view>
+
+    <view wx:if="{{contentType === 'catch'}}" class="create-section">
+      <text class="section-label">鱼获信息</text>
+      <view class="field-grid">
+        <view class="field-block">
+          <text class="field-label">鱼种</text>
           <picker
             mode="selector"
             range="{{fishLabels}}"
             value="{{fishIndex}}"
             bindchange="onFishChange"
           >
-            <view class="form-input picker-value {{fishKey ? '' : 'picker-placeholder'}}">{{fishLabel || '请选择鱼种'}}</view>
+            <view class="field-control {{fishKey ? '' : 'field-placeholder'}}">{{fishLabel || '请选择鱼种'}}</view>
           </picker>
-          <text wx:if="{{!fishKey}}" class="form-hint catch-hint">发布鱼获需要选择鱼种</text>
         </view>
-
-        <view class="form-field">
-          <text class="form-label">重量（公斤，选填）</text>
+        <view class="field-block">
+          <text class="field-label">重量（公斤，选填）</text>
           <input
-            class="form-input"
+            class="field-control"
             type="digit"
             value="{{weight}}"
             placeholder="例如 2.5"
             bindinput="onWeightInput"
           />
         </view>
-      </block>
-
-      <checkbox-group class="terms-row" bindchange="onTermsChange">
-        <label class="terms-label">
-          <checkbox value="terms" checked="{{termsAccepted}}" color="#0e6b5e" />
-          <text class="terms-text">我已阅读并同意社区规范</text>
-        </label>
-      </checkbox-group>
-      <view class="create-legal">
-        <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
-        <text class="legal-dot">·</text>
-        <text class="legal-link" data-key="privacy" bindtap="openLegal">隐私政策</text>
-        <text class="legal-dot">·</text>
-        <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
       </view>
-      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
-
-      <view wx:if="{{!meCanPublish}}" class="form-error">
-        {{restrictionText || '当前账号暂不能发布内容'}}
-      </view>
-      <view wx:if="{{submitError}}" class="form-error">{{submitError}}</view>
+      <text wx:if="{{!fishKey}}" class="section-hint catch-hint">发布鱼获需要选择鱼种</text>
     </view>
 
+    <view class="terms-card">
+      <checkbox-group bindchange="onTermsChange">
+        <label class="terms-label">
+          <checkbox value="terms" checked="{{termsAccepted}}" color="#0e6b5e" />
+          <text class="terms-text">我已阅读并同意</text>
+          <text class="terms-link" data-key="community" catchtap="openLegal">社区规范</text>
+        </label>
+      </checkbox-group>
+      <view class="terms-links">
+        <text class="terms-aux" data-key="terms" bindtap="openLegal">用户协议</text>
+        <text class="terms-dot">·</text>
+        <text class="terms-aux" data-key="privacy" bindtap="openLegal">隐私政策</text>
+      </view>
+      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
+    </view>
+
+    <view wx:if="{{!meCanPublish}}" class="form-error">
+      {{restrictionText || '当前账号暂不能发布内容'}}
+    </view>
+    <view wx:if="{{submitError}}" class="form-error">{{submitError}}</view>
+
     <view class="create-actions">
-      <button class="secondary-button" bindtap="cancel" disabled="{{submitting}}">取消</button>
-      <button
-        class="primary-button publish-button"
-        bindtap="submit"
-        loading="{{submitting}}"
-        disabled="{{submitting || !meCanPublish}}"
-      >发布</button>
+      <text class="publish-note">发布后先审核，通过后会出现在钓点详情页</text>
+      <view class="action-row">
+        <button class="cancel-button" bindtap="cancel" disabled="{{submitting}}">取消</button>
+        <button
+          class="publish-button"
+          bindtap="submit"
+          loading="{{submitting}}"
+          disabled="{{submitting || !meCanPublish}}"
+        >发布</button>
+      </view>
     </view>
   </block>
 </view>

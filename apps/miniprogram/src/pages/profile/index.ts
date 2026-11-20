@@ -1,5 +1,6 @@
 import { track } from '../../analytics';
 import {
+  CLIENT_VERSION,
   contentTypeLabel,
   deleteReport as apiDeleteReport,
   getClientConfig,
@@ -47,6 +48,7 @@ interface ProfileData {
   loggingIn: boolean;
   nickname: string;
   avatarText: string;
+  appVersion: string;
   filters: StatusFilterOption[];
   statusFilter: MyReportStatusFilter;
   emptyText: string;
@@ -138,6 +140,7 @@ Page<ProfileData, ProfileMethods>({
     loggingIn: false,
     nickname: '',
     avatarText: '',
+    appVersion: CLIENT_VERSION,
     filters: STATUS_FILTERS,
     statusFilter: 'all',
     emptyText: EMPTY_TEXT.all,

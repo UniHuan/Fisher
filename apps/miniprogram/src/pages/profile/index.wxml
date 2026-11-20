@@ -113,16 +113,32 @@
     </block>
 
     <view class="settings-card">
-      <view class="legal-links">
-        <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
-        <text class="legal-dot">·</text>
-        <text class="legal-link" data-key="privacy" bindtap="openLegal">隐私政策</text>
-        <text class="legal-dot">·</text>
-        <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
+      <view class="settings-row" data-key="terms" bindtap="openLegal">
+        <view class="settings-row-main">
+          <text class="settings-row-title">用户协议</text>
+          <text class="settings-row-desc">服务内容与使用规则</text>
+        </view>
+        <text class="settings-chevron">›</text>
       </view>
-      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
-      <view wx:if="{{sessionReady}}" class="settings-divider"></view>
-      <button wx:if="{{sessionReady}}" class="settings-logout" bindtap="logout">退出登录</button>
+      <view class="settings-divider"></view>
+      <view class="settings-row" data-key="privacy" bindtap="openLegal">
+        <view class="settings-row-main">
+          <text class="settings-row-title">隐私政策</text>
+          <text class="settings-row-desc">个人信息与数据使用</text>
+        </view>
+        <text class="settings-chevron">›</text>
+      </view>
+      <view class="settings-divider"></view>
+      <view class="settings-row" data-key="community" bindtap="openLegal">
+        <view class="settings-row-main">
+          <text class="settings-row-title">社区规范</text>
+          <text class="settings-row-desc">发布与互动规则</text>
+        </view>
+        <text class="settings-chevron">›</text>
+      </view>
     </view>
+    <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
+    <button wx:if="{{sessionReady}}" class="logout-button" bindtap="logout">退出登录</button>
+    <text class="app-version">深圳钓鱼助手 v{{appVersion}}</text>
   </block>
 </view>

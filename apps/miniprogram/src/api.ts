@@ -23,7 +23,7 @@ function resolveApiOrigin(): string {
 
 export const API_ORIGIN = resolveApiOrigin();
 export const API_BASE = `${API_ORIGIN}/api/v1`;
-export const CLIENT_VERSION = '1.0.0';
+export const CLIENT_VERSION = '1.1.0';
 
 export type PublicSpotListItem = components['schemas']['PublicSpotListItemDto'];
 export type PublicSpotPage = components['schemas']['PublicSpotPageDto'];
