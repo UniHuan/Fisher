@@ -32,6 +32,7 @@ import {
 import { AuditLogDrawer } from './AuditLogDrawer';
 import { ContentModerationDrawer } from './ContentModerationDrawer';
 import { DictionaryDrawer } from './DictionaryDrawer';
+import { FeedbackDrawer } from './FeedbackDrawer';
 import { ImportDrawer } from './ImportDrawer';
 import { PoiDrawer } from './PoiDrawer';
 import { SpotEditor } from './SpotEditor';
@@ -96,6 +97,10 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
   const [moderationOpen, setModerationOpen] = useState(false);
   const [moderationSummary, setModerationSummary] = useState<AdminReportSummary | null>(null);
   const [moderationReloadKey, setModerationReloadKey] = useState(0);
+  const [permissions, setPermissions] = useState<string[] | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackOpenCount, setFeedbackOpenCount] = useState(0);
+  const [feedbackReloadKey, setFeedbackReloadKey] = useState(0);
 
   const writable = session.admin.role !== 'reviewer';
 
@@ -117,6 +122,47 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
       active = false;
     };
   }, [moderationReloadKey, onExpired]);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .me()
+      .then((result) => {
+        if (active) {
+          setPermissions(result.permissions);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active && isAuthError(error)) {
+          onExpired();
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [onExpired]);
+
+  useEffect(() => {
+    if (permissions === null || !permissions.includes('feedback:read')) {
+      return;
+    }
+    let active = true;
+    api
+      .listFeedback({ status: 'open', limit: 1 })
+      .then((page) => {
+        if (active) {
+          setFeedbackOpenCount(page.total);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active && isAuthError(error)) {
+          onExpired();
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [permissions, feedbackReloadKey, onExpired]);
 
   useEffect(() => {
     api
@@ -366,6 +412,13 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
               内容审核
             </Button>
           </Badge>
+          {permissions?.includes('feedback:read') === true && (
+            <Badge count={feedbackOpenCount} size="small" className="feedback-badge">
+              <Button size="small" onClick={() => setFeedbackOpen(true)}>
+                体验反馈
+              </Button>
+            </Badge>
+          )}
           {session.admin.role === 'super_admin' && (
             <Button size="small" onClick={() => setDictionaryOpen(true)}>
               字典
@@ -545,6 +598,15 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
           setModerationReloadKey((value) => value + 1);
         }}
         onChanged={() => setModerationReloadKey((value) => value + 1)}
+        onExpired={onExpired}
+      />
+      <FeedbackDrawer
+        open={feedbackOpen}
+        session={session}
+        onClose={() => {
+          setFeedbackOpen(false);
+        }}
+        onChanged={() => setFeedbackReloadKey((value) => value + 1)}
         onExpired={onExpired}
       />
     </Layout>
