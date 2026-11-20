@@ -1,8 +1,9 @@
-import { Module, type DynamicModule, type Type } from '@nestjs/common';
+import { Module, type DynamicModule, type Provider, type Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { parseEnv } from './config/env.schema';
 import { AdminSpotsModule } from './modules/admin-spots/admin-spots.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AppAuthModule } from './modules/app-auth/app-auth.module';
 import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { AuditLogModule } from './modules/audit/audit-log.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
@@ -15,11 +16,20 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { WechatCallbackModule } from './modules/wechat-callback/wechat-callback.module';
 import { PrismaModule } from './prisma/prisma.module';
 
+export interface AppModuleOptions {
+  /** Test-only provider overrides; production createApp passes nothing. */
+  wechatAuthProvider?: Provider;
+  contentSecurityProvider?: Provider;
+}
+
 @Module({})
 export class AppModule {
   // Built per application instance so tests can set process.env before Zod validation runs.
-  // extraControllers is test-only wiring; production createApp passes nothing.
-  static forRoot(extraControllers: Type<unknown>[] = []): DynamicModule {
+  // extraControllers and options are test-only wiring; production createApp passes nothing.
+  static forRoot(
+    extraControllers: Type<unknown>[] = [],
+    options: AppModuleOptions = {},
+  ): DynamicModule {
     return {
       module: AppModule,
       imports: [
@@ -31,6 +41,7 @@ export class AppModule {
         PrismaModule,
         AnalyticsModule,
         AdminAuthModule,
+        AppAuthModule.register({ wechatAuthProvider: options.wechatAuthProvider }),
         AuditLogModule,
         DictionariesModule,
         AdminSpotsModule,

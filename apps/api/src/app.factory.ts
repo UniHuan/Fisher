@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { AppModule } from './app.module';
+import { AppModule, type AppModuleOptions } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AnalyticsInterceptor } from './modules/analytics/analytics.interceptor';
@@ -17,11 +17,17 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 const BODY_LIMIT = '2mb';
 
-export async function createApp(extraControllers: Type<unknown>[] = []): Promise<INestApplication> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(extraControllers), {
-    bodyParser: false,
-    logger: new JsonLogger(),
-  });
+export async function createApp(
+  extraControllers: Type<unknown>[] = [],
+  options: AppModuleOptions = {},
+): Promise<INestApplication> {
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule.forRoot(extraControllers, options),
+    {
+      bodyParser: false,
+      logger: new JsonLogger(),
+    },
+  );
   // Production terminates TLS in an nginx on the same host, so only the loopback
   // hop is trusted to set X-Forwarded-For; direct clients cannot spoof their IP.
   app.set('trust proxy', 'loopback');
