@@ -184,8 +184,8 @@ Nest 的启动、错误和审计日志同样使用 JSON。查询字符串不会�
 - 5xx 比例按 5 分钟窗口告警，超过 1% 告警。
 - P95 延迟按路径聚合，核心接口超过 1 秒告警。
 - `PoiSyncRun.status = failed` 告警，并展示 `error_message` 与 `quota_used`。
-- 定时任务告警：`media-check:timeout`、`ugc:purge`、`rate-limits:purge`、`session:purge` 连续失败或
-  长时间未执行；会话清理输出 `event=user_sessions_purge` 与 `deleted`，不输出令牌或 openid。
+- 定时任务告警：`media-check:timeout`、`ugc:purge`、`feedback:purge`、`rate-limits:purge`、`session:purge`
+  连续失败或长时间未执行；会话清理输出 `event=user_sessions_purge` 与 `deleted`，不输出令牌或 openid。
 - `/ready` 连续失败、数据库连接数、ECS CPU/内存、证书剩余天数、备份任务结果。
 - Nginx access log 中的 `request_id` 与 API 日志关联，用于单请求排查。
 
@@ -343,3 +343,70 @@ GET /api/v1/uploads/public/ugc/:reportId/:file
 只有 `features.ugc=true`、内容处于 `published` 或 `human_approved`、钓点已发布且非禁钓时返回 200，其余情况返回 404。CDN 就绪后再切换，不改数据库中的图片 key。
 
 管理端 `infra/nginx/admin.conf` 的 `img-src` 已包含 `https://fish-api.unihuan.com` 和 `https://fish-api-staging.unihuan.com`，审核抽屉预览 UGC 图片不需要额外 CSP 改动。
+
+## 14. V1.1 体验反馈上线、定时任务与保留
+
+### 14.1 功能开关
+
+`features.feedback` 存在 `config` 表，种子值为 `false`，V1.0 与生产默认关闭。staging 部署并完成本地检查后打开：
+
+```sql
+INSERT INTO config (config_key, config_value, description)
+VALUES ('features.feedback', 'true', 'V1.1 体验反馈开关')
+ON CONFLICT (config_key) DO UPDATE SET config_value = 'true';
+```
+
+回滚立即关闭：
+
+```sql
+UPDATE config SET config_value = 'false' WHERE config_key = 'features.feedback';
+```
+
+关闭后小程序隐藏「我的」页的「意见反馈」「钓点实拍」、详情页 `···` 菜单的「意见反馈」和发布失败提示下方的「反馈这个问题」；反馈页显示暂未开放。`POST /api/v1/feedback` 与 `POST /api/v1/feedback/images` 返回 `FEATURE_DISABLED`（40302）。后台 `GET/PATCH /api/v1/admin/feedback` 不受开关影响，便于处理关闭前已提交的反馈。生产环境在体验期保持关闭，只在 staging 打开。
+
+### 14.2 权限
+
+后台新增 `feedback:read` 和 `feedback:handle`，`super_admin`、`operator`、`reviewer` 三种角色都具备：
+
+- `feedback:read`：后台「体验反馈」入口、列表和详情读取。
+- `feedback:handle`：`PATCH /api/v1/admin/feedback/:id` 更新状态和备注。
+
+服务端 `RolesGuard` 是唯一权威；客户端按钮和入口只读取 `GET /api/v1/admin/me` 返回的权限名，不复制角色映射。
+
+### 14.3 定时任务
+
+`feedback:purge` 使用 `feedback:purge` advisory lock，多个 API 实例同时运行也只有一个实例执行：
+
+```bash
+# 清理 24 小时未使用的反馈截图和 90 天前的反馈，建议每小时或每日一次
+docker compose --env-file /etc/szfisher/staging.env \
+  -f infra/docker/docker-compose.prod.yml exec -T api \
+  node apps/api/dist/jobs/purge-feedback.job.js
+```
+
+生产环境把 `--env-file` 换成 `/etc/szfisher/production.env`。本地开发可用 `pnpm --filter @szfisher/api feedback:purge`，API 镜像构建后对应脚本为 `feedback:purge:prod`。
+
+任务规则：
+
+- `feedback_image.status=pending` 且创建超过 24 小时：删除对象和行；若已有反馈引用该对象，则标记为 `used` 并保留。
+- `trial_feedback` 创建超过 90 天：在同一事务中删除反馈并把图片标记为 `deleted`，随后删除对象。
+- 对象删除失败时保留行作为重试指针，下一轮继续。
+- 单次每类最多处理 100 行，事务超时 120 秒，避免长时间持有 advisory lock。
+
+输出单行 JSON `event=feedback_purge`，字段 `images_deleted`、`feedback_deleted`、`objects_deleted`；未抢到锁时输出 `skipped=true`。不输出反馈正文、联系方式、图片 key、Token 或 openid。任务连续失败或长时间未执行时告警。
+
+### 14.4 私有图片与签名预览
+
+- 反馈截图 key 固定为 `feedback/{userId}/{ulid}.webp`，只写入私有工作桶 `OSS_WORK_BUCKET`，不写发布桶。
+- 不提供公开反馈图片读取路由。`GET /api/v1/uploads/public/spots/:spotId/:file` 和 `GET /api/v1/uploads/public/ugc/:reportId/:file` 只服务钓点和公开 UGC，无法读取 `feedback/` key。
+- 后台详情通过 `PreviewSignerService` 生成 15 分钟签名 URL，经 `GET /api/v1/uploads/preview` 校验 HMAC 和过期时间后由 API 读取对象；浏览器不接触 OSS 凭证或桶名。
+- 签名 URL 只出现在后台详情响应和页面中，不写入日志，不进入小程序。过期或签名被篡改返回 404。
+
+### 14.5 后台处理与 90 天保留
+
+- 后台「体验反馈」按状态（待处理、处理中、已解决、已关闭）和类型（问题、建议、内容、钓点实拍、其他）筛选；详情展示正文、联系方式、页面、钓点、版本、设备和签名截图。
+- 处理流程见 `docs/qa/v1.1-trial-feedback-template.md`：每日分流一次，P0 当天处理，P1 三天内处理，P2 每周汇总。
+- 状态按 `open -> reviewing -> resolved/closed` 流转，备注最多 500 字；`PATCH` 自动记录 `handler_id` 和 `handled_at`。
+- 联系方式只用于回访，不进入公开数据；日志、审计和导出不得包含 openid、联系方式和反馈正文。
+- 反馈和图片保留 90 天，由 `feedback:purge` 自动删除。需要留存的结论应在删除前汇总到体验反馈模板或验收记录，不导出原文和联系方式。
+- `photo` 类型反馈转钓点图片前必须完成授权和内容审核，来源、作者、授权方式、许可证、审核人和上线日期写入来源登记；没有合格图片的钓点继续显示「实景图待补充」品牌占位。

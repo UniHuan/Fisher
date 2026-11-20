@@ -182,6 +182,25 @@ SMOKE_ADMIN_ORIGIN=https://fish-admin-staging.unihuan.com \
 - [ ] 审计日志包含审核动作，不含正文、图片 URL、Token、openid
 - [ ] API 和 Nginx 日志不出现 AppSecret、消息推送密钥、session_key、openid 和正文
 
+### 8.2 V1.1 体验反馈功能验收
+
+完整步骤和结果记录在 [V1.1 体验反馈验收记录](../qa/v1.1-trial-feedback-acceptance.md)。staging 部署后逐项执行：
+
+- [ ] 部署后把 `features.feedback` 设为 `true`，`GET /api/v1/config` 返回 `features.feedback=true`；生产保持 `false`
+- [ ] 我的页面显示「意见反馈」和「钓点实拍」；详情页 `···` 菜单显示「意见反馈」；发布失败提示下方显示「反馈这个问题」
+- [ ] 文字反馈提交成功，提示「已收到，我们会尽快查看」并返回上一页；后台出现待处理记录，页面、钓点、版本和设备信息正确
+- [ ] 截图上传成功并重编码为 WebP，最长边 1600 px；超过 5 MB、伪装格式或每日 10 张被拒
+- [ ] 后台详情 15 分钟签名预览可打开；过期或篡改签名返回 404；无签名请求无法读取
+- [ ] 后台按类型和状态筛选；更新状态和备注后记录处理人和处理时间
+- [ ] `photo` 类型显示授权提示，未勾选不能提交；勾选后可提交钓点实拍
+- [ ] 运营按授权审核把实拍转为钓点图片，来源、作者、授权方式、许可证、审核人和上线日期已登记
+- [ ] 无图钓点在列表和详情显示「实景图待补充」品牌占位，不显示假图
+- [ ] `features.feedback=false` 时三个入口隐藏，提交和上传返回 `FEATURE_DISABLED`，后台仍可读取历史反馈
+- [ ] 反馈图片没有公开 URL，公开钓点和 UGC 图片路由无法读取 `feedback/` key
+- [ ] `feedback:purge` 已配置并成功执行；24 小时未使用图片和 90 天前反馈被清理
+- [ ] `feedback:read` 和 `feedback:handle` 对三种后台角色生效，未授权角色看不到入口
+- [ ] API 和 Nginx 日志不出现反馈正文、联系方式、图片 key、Token 或 openid
+
 ## 9. 安全验收
 
 - [ ] 全站 HTTPS，HTTP 301 到 HTTPS
@@ -207,8 +226,9 @@ SMOKE_ADMIN_ORIGIN=https://fish-admin-staging.unihuan.com \
 - [ ] 每日逻辑备份完成并校验
 - [ ] staging 恢复演练成功
 - [ ] 日志保留和查询可用
-- [ ] V1.1：`media-check:timeout`、`ugc:purge`、`rate-limits:purge` 定时任务已配置并成功执行
+- [ ] V1.1：`media-check:timeout`、`ugc:purge`、`feedback:purge`、`rate-limits:purge` 定时任务已配置并成功执行
 - [ ] V1.1：图片审核超时数、人工队列积压和举报超 24 小时数有告警或日报
+- [ ] V1.1：体验反馈待处理积压和 `feedback:purge` 连续失败有告警或日报
 
 ## 11. 数据验收
 
