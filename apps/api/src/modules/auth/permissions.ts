@@ -19,6 +19,10 @@ export const PERMISSIONS: Record<AdminRole, readonly string[]> = {
     'audit:read',
     'audit:read:self',
     'audit:export',
+    'report:read',
+    'report:moderate',
+    'user:restrict',
+    'user:ban',
     'dictionary:write',
     'config:write',
     'admin:manage',
@@ -31,8 +35,12 @@ export const PERMISSIONS: Record<AdminRole, readonly string[]> = {
     'poi:read',
     'poi:write',
     'audit:read:self',
+    'report:read',
+    'report:moderate',
+    'user:restrict',
+    'user:ban',
   ],
-  [ADMIN_ROLE.REVIEWER]: ['spot:read', 'poi:read'],
+  [ADMIN_ROLE.REVIEWER]: ['spot:read', 'poi:read', 'report:read', 'report:moderate'],
 };
 
 export function permissionsForRole(role: AdminRole): readonly string[] {

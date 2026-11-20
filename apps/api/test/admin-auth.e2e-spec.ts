@@ -381,6 +381,14 @@ describe('Admin auth (e2e)', () => {
   });
 
   it('returns the current admin, role permissions and a usable csrf token', async () => {
+    expect(PERMISSIONS.reviewer).toEqual(
+      expect.arrayContaining(['report:read', 'report:moderate']),
+    );
+    expect(PERMISSIONS.reviewer).not.toContain('user:ban');
+    expect(PERMISSIONS.operator).toEqual(
+      expect.arrayContaining(['report:moderate', 'user:restrict', 'user:ban']),
+    );
+
     await request(server).get('/api/v1/admin/me').set(clientHeaders()).expect(401);
 
     const session = await loginAs(app, 'operator');

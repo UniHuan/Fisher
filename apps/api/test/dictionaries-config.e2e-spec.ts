@@ -179,18 +179,33 @@ describe('dictionaries and client config (e2e)', () => {
 
     expect(data).toEqual({
       map: { default_latitude: 22.5431, default_longitude: 114.0579, default_zoom: 12 },
-      features: { map_tab: true, search: true, banned_spots: true },
+      features: { map_tab: true, search: true, banned_spots: true, ugc: false },
       data_freshness: { core_days: 30, normal_days: 90 },
+      legal: {
+        terms_version: '2026-11-20',
+        terms_url: 'https://fish.unihuan.com/legal/terms',
+        privacy_url: 'https://fish.unihuan.com/legal/privacy',
+        community_url: 'https://fish.unihuan.com/legal/community',
+      },
     });
-    expect(Object.keys(data).sort()).toEqual(['data_freshness', 'features', 'map']);
+    expect(Object.keys(data).sort()).toEqual(['data_freshness', 'features', 'legal', 'map']);
     expect(Object.keys(data.map).sort()).toEqual([
       'default_latitude',
       'default_longitude',
       'default_zoom',
     ]);
-    expect(Object.keys(data.features).sort()).toEqual(['banned_spots', 'map_tab', 'search']);
+    expect(Object.keys(data.features).sort()).toEqual(['banned_spots', 'map_tab', 'search', 'ugc']);
     expect(Object.keys(data.data_freshness).sort()).toEqual(['core_days', 'normal_days']);
     expect(JSON.stringify(res.body)).not.toMatch(/secret|key|password|internal/i);
+  });
+
+  it('exposes the UGC flag and legal configuration', async () => {
+    const response = await request(server).get('/api/v1/config').set(PUBLIC_HEADERS).expect(200);
+    expect(response.body.data.features.ugc).toBe(false);
+    expect(response.body.data.legal.terms_version).toBe('2026-11-20');
+    expect(response.body.data.legal.community_url).toBe(
+      'https://fish.unihuan.com/legal/community',
+    );
   });
 
   it('returns a stable config etag, cache-control and 304 on If-None-Match', async () => {
@@ -497,12 +512,19 @@ describe('dictionaries and client config (e2e)', () => {
       request_id: 'req_contract_config',
       data: {
         map: { default_latitude: 22.5431, default_longitude: 114.0579, default_zoom: 12 },
-        features: { map_tab: true, search: true, banned_spots: true },
+        features: { map_tab: true, search: true, banned_spots: true, ugc: false },
         data_freshness: { core_days: 30, normal_days: 90 },
+        legal: {
+          terms_version: '2026-11-20',
+          terms_url: 'https://fish.unihuan.com/legal/terms',
+          privacy_url: 'https://fish.unihuan.com/legal/privacy',
+          community_url: 'https://fish.unihuan.com/legal/community',
+        },
       },
     };
 
     expect(dictionaries.data.districts).toEqual([]);
     expect(config.data.map.default_zoom).toBe(12);
+    expect(config.data.legal.terms_version).toBe('2026-11-20');
   });
 });

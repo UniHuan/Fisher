@@ -1163,6 +1163,8 @@ export interface components {
             search: boolean;
             /** @example true */
             banned_spots: boolean;
+            /** @example false */
+            ugc: boolean;
         };
         DataFreshnessDto: {
             /** @example 30 */
@@ -1170,10 +1172,21 @@ export interface components {
             /** @example 90 */
             normal_days: number;
         };
+        LegalConfigDto: {
+            /** @example 2026-11-20 */
+            terms_version: string;
+            /** @example https://fish.unihuan.com/legal/terms */
+            terms_url: string;
+            /** @example https://fish.unihuan.com/legal/privacy */
+            privacy_url: string;
+            /** @example https://fish.unihuan.com/legal/community */
+            community_url: string;
+        };
         ClientConfigDto: {
             map: components["schemas"]["MapConfigDto"];
             features: components["schemas"]["FeatureFlagsDto"];
             data_freshness: components["schemas"]["DataFreshnessDto"];
+            legal: components["schemas"]["LegalConfigDto"];
         };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */

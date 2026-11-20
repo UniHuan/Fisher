@@ -3407,10 +3407,14 @@ components:
         banned_spots:
           type: boolean
           example: true
+        ugc:
+          type: boolean
+          example: false
       required:
         - map_tab
         - search
         - banned_spots
+        - ugc
     DataFreshnessDto:
       type: object
       properties:
@@ -3423,6 +3427,26 @@ components:
       required:
         - core_days
         - normal_days
+    LegalConfigDto:
+      type: object
+      properties:
+        terms_version:
+          type: string
+          example: 2026-11-20
+        terms_url:
+          type: string
+          example: https://fish.unihuan.com/legal/terms
+        privacy_url:
+          type: string
+          example: https://fish.unihuan.com/legal/privacy
+        community_url:
+          type: string
+          example: https://fish.unihuan.com/legal/community
+      required:
+        - terms_version
+        - terms_url
+        - privacy_url
+        - community_url
     ClientConfigDto:
       type: object
       properties:
@@ -3432,10 +3456,13 @@ components:
           $ref: "#/components/schemas/FeatureFlagsDto"
         data_freshness:
           $ref: "#/components/schemas/DataFreshnessDto"
+        legal:
+          $ref: "#/components/schemas/LegalConfigDto"
       required:
         - map
         - features
         - data_freshness
+        - legal
     PublicSpotListItemDto:
       type: object
       properties:

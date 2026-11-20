@@ -20,6 +20,9 @@ export class FeatureFlagsDto {
 
   @ApiProperty({ example: true })
   banned_spots!: boolean;
+
+  @ApiProperty({ example: false })
+  ugc!: boolean;
 }
 
 export class DataFreshnessDto {
@@ -28,6 +31,20 @@ export class DataFreshnessDto {
 
   @ApiProperty({ example: 90 })
   normal_days!: number;
+}
+
+export class LegalConfigDto {
+  @ApiProperty({ example: '2026-11-20' })
+  terms_version!: string;
+
+  @ApiProperty({ example: 'https://fish.unihuan.com/legal/terms' })
+  terms_url!: string;
+
+  @ApiProperty({ example: 'https://fish.unihuan.com/legal/privacy' })
+  privacy_url!: string;
+
+  @ApiProperty({ example: 'https://fish.unihuan.com/legal/community' })
+  community_url!: string;
 }
 
 export class ClientConfigDto {
@@ -39,4 +56,7 @@ export class ClientConfigDto {
 
   @ApiProperty({ type: () => DataFreshnessDto })
   data_freshness!: DataFreshnessDto;
+
+  @ApiProperty({ type: () => LegalConfigDto })
+  legal!: LegalConfigDto;
 }
