@@ -107,8 +107,12 @@ export class AdminFeedbackService {
     input: UpdateFeedbackDto,
     admin: AdminContext,
   ): Promise<AdminFeedbackUpdateResponseDto> {
-    const note = input.note === undefined ? undefined : input.note.trim() || null;
-    if (input.status === undefined && note === undefined) {
+    // `@IsOptional()` treats null as absent, so null is normalized here instead
+    // of reaching `.trim()` or Prisma's non-nullable status column.
+    const nextStatus = input.status ?? undefined;
+    const providedNote = input.note ?? undefined;
+    const nextNote = providedNote === undefined ? undefined : providedNote.trim() || null;
+    if (nextStatus === undefined && nextNote === undefined) {
       throw validationError('body', 'At least one of status or note is required');
     }
 
@@ -116,7 +120,7 @@ export class AdminFeedbackService {
       feedbackId,
       admin.adminId,
       new Date(),
-      { status: input.status, note },
+      { status: nextStatus, note: nextNote },
     );
     if (!updated) {
       throw notFound();

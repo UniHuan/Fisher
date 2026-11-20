@@ -368,6 +368,18 @@ describe('Trial feedback API (e2e)', () => {
       category: FEEDBACK_CATEGORY.OTHER,
       content: '好'.repeat(500),
     }).expect(201);
+
+    const nullDevice = await createFeedback(user, {
+      category: FEEDBACK_CATEGORY.OTHER,
+      content: '设备信息为空时应视为没有上下文',
+      device_info: null,
+    }).expect(201);
+    const nullDeviceRow = await prisma.trialFeedback.findUniqueOrThrow({
+      where: {
+        feedback_id: (nullDevice.body.data as CreateFeedbackBody).feedback_id,
+      },
+    });
+    expect(nullDeviceRow.device_info).toBeNull();
   });
 
   it('uploads a private WebP, attaches it, and rejects reused or deleted keys', async () => {
@@ -628,6 +640,36 @@ describe('Trial feedback API (e2e)', () => {
       .send({ note: '好'.repeat(501) })
       .expect(400);
     expect(longNote.body.code).toBe(ERROR_CODES.VALIDATION);
+
+    // `@IsOptional()` treats null as absent: a lone null is a clean 400 and a
+    // null status next to a note must not reach Prisma's non-nullable column.
+    const nullNote = await request(server)
+      .patch(`/api/v1/admin/feedback/${feedbackId}`)
+      .set(adminRequest(reviewer))
+      .send({ note: null })
+      .expect(400);
+    expect(nullNote.body.code).toBe(ERROR_CODES.VALIDATION);
+
+    const nullStatus = await request(server)
+      .patch(`/api/v1/admin/feedback/${feedbackId}`)
+      .set(adminRequest(reviewer))
+      .send({ status: null })
+      .expect(400);
+    expect(nullStatus.body.code).toBe(ERROR_CODES.VALIDATION);
+
+    const nullStatusWithNote = await request(server)
+      .patch(`/api/v1/admin/feedback/${feedbackId}`)
+      .set(adminRequest(reviewer))
+      .send({ status: null, note: '仅更新备注' })
+      .expect(200);
+    expect((nullStatusWithNote.body.data as { status: string }).status).toBe(
+      FEEDBACK_STATUS.REVIEWING,
+    );
+    const afterNullStatus = await prisma.trialFeedback.findUniqueOrThrow({
+      where: { feedback_id: feedbackId },
+    });
+    expect(afterNullStatus.status).toBe(FEEDBACK_STATUS.REVIEWING);
+    expect(afterNullStatus.note).toBe('仅更新备注');
 
     const unknown = await request(server)
       .get(`/api/v1/admin/feedback/${ulid()}`)

@@ -34,8 +34,11 @@ function optionalText(value: string | undefined): string | null {
 }
 
 /** Stores only the whitelisted context fields; empty values are dropped. */
-function toDeviceInfo(input: FeedbackDeviceInfoDto | undefined): Prisma.InputJsonObject | null {
-  if (input === undefined) {
+function toDeviceInfo(
+  input: FeedbackDeviceInfoDto | null | undefined,
+): Prisma.InputJsonObject | null {
+  // `@IsOptional()` treats null as absent, so the service must too.
+  if (input === undefined || input === null) {
     return null;
   }
   const result: Record<string, string> = {};
