@@ -490,7 +490,7 @@ Page<DetailData, DetailMethods>({
           height: 38,
           label: {
             content: spot.spot_name,
-            color: '#17211e',
+            color: '#1B2420',
             bgColor: '#ffffff',
             borderRadius: 6,
             padding: 4,
@@ -668,7 +668,7 @@ Page<DetailData, DetailMethods>({
       title: '删除这条内容',
       content: '删除后不可恢复，确定删除吗？',
       confirmText: '删除',
-      confirmColor: '#b2412a',
+      confirmColor: '#A93226',
       cancelText: '取消',
       success: (result) => {
         if (result.confirm) {

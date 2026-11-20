@@ -401,7 +401,7 @@ Page<ProfileData, ProfileMethods>({
       title: '删除这条内容',
       content: '删除后不可恢复，确定删除吗？',
       confirmText: '删除',
-      confirmColor: '#b2412a',
+      confirmColor: '#A93226',
       cancelText: '取消',
       success: (result) => {
         if (result.confirm) {

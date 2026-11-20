@@ -122,7 +122,7 @@
     <view class="terms-card">
       <checkbox-group bindchange="onTermsChange">
         <label class="terms-label">
-          <checkbox value="terms" checked="{{termsAccepted}}" color="#0e6b5e" />
+          <checkbox value="terms" checked="{{termsAccepted}}" color="#1E6B57" />
           <text class="terms-text">我已阅读并同意</text>
           <text class="terms-link" data-key="community" catchtap="openLegal">社区规范</text>
         </label>
