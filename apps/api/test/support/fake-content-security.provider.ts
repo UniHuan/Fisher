@@ -7,11 +7,15 @@ import type {
 
 /**
  * Deterministic test double: content containing REVIEW needs human review,
- * content containing RISKY is rejected, everything else passes.
+ * content containing RISKY is rejected, THROW simulates a provider outage,
+ * and everything else passes.
  */
 @Injectable()
 export class FakeContentSecurityProvider implements ContentSecurityProvider {
   async checkText(input: ContentSecurityTextInput): Promise<ContentSecurityTextResult> {
+    if (input.content.includes('THROW')) {
+      throw new Error('fake moderation outage');
+    }
     if (input.content.includes('REVIEW')) {
       return { suggest: 'review', label: 20001, traceId: 'fake-review-trace' };
     }

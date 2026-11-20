@@ -12,6 +12,8 @@ export interface ContentSecurityTextResult {
   suggest: ContentSecuritySuggest;
   label?: number;
   traceId?: string;
+  /** Safe failure reason (for example `errcode-40001`), never content or openid. */
+  errorCode?: string;
 }
 
 /**

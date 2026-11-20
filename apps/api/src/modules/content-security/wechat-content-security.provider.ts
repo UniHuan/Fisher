@@ -5,7 +5,10 @@ import type {
   ContentSecurityTextInput,
   ContentSecurityTextResult,
 } from './content-security.types';
-import { WechatAccessTokenService } from './wechat-access-token.service';
+import {
+  WechatAccessTokenError,
+  WechatAccessTokenService,
+} from './wechat-access-token.service';
 
 const MSG_SEC_CHECK_URL = 'https://api.weixin.qq.com/wxa/msg_sec_check';
 const MSG_SEC_CHECK_TIMEOUT_MS = 8000;
@@ -61,25 +64,36 @@ export class WechatContentSecurityProvider implements ContentSecurityProvider {
       return this.mapPayload(payload);
     } catch (error) {
       // Log only the safe reason; no content, openid, token or response body.
-      const reason = error instanceof WechatModerationError ? error.reason : 'unexpected';
+      const reason =
+        error instanceof WechatModerationError || error instanceof WechatAccessTokenError
+          ? error.reason
+          : 'unexpected';
       this.logger.warn(`msgSecCheck failed (${reason}); routing content to human review`);
-      return { suggest: 'review' };
+      return { suggest: 'review', errorCode: reason };
     }
   }
 
   private async call(input: ContentSecurityTextInput): Promise<MsgSecCheckPayload> {
     const token = await this.tokens.getAccessToken();
-    const response = await fetch(`${MSG_SEC_CHECK_URL}?access_token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: input.content,
-        openid: input.openid,
-        scene: 2,
-        version: 2,
-      }),
-      signal: AbortSignal.timeout(MSG_SEC_CHECK_TIMEOUT_MS),
-    });
+    let response: Response;
+    try {
+      response = await fetch(
+        `${MSG_SEC_CHECK_URL}?access_token=${encodeURIComponent(token)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: input.content,
+            openid: input.openid,
+            scene: 2,
+            version: 2,
+          }),
+          signal: AbortSignal.timeout(MSG_SEC_CHECK_TIMEOUT_MS),
+        },
+      );
+    } catch {
+      throw new WechatModerationError('request-failed');
+    }
     if (!response.ok) {
       throw new WechatModerationError(`http-${response.status}`);
     }

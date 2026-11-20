@@ -205,6 +205,7 @@ export class ReportsService {
       content,
       fishKey: shape.fishKey,
       catchWeightKg: shape.catchWeightKg,
+      createdAt: now,
       terms: needsAcceptance ? { version: termsVersion, acceptedAt: now } : null,
     });
 
@@ -341,7 +342,7 @@ export class ReportsService {
     } catch {
       // A moderation outage must never publish; it goes to the human queue.
       this.logger.warn('Text moderation failed; routing content to human review');
-      return { suggest: 'review' };
+      return { suggest: 'review', errorCode: 'provider-error' };
     }
   }
 
@@ -388,10 +389,12 @@ export class ReportsService {
 }
 
 function toMachineResult(result: ContentSecurityTextResult): Prisma.InputJsonObject {
-  // Only the conclusion, label and trace id are persisted: no content or openid.
+  // Only the conclusion, label, trace id and safe error code are persisted:
+  // no content or openid.
   return {
     suggest: result.suggest,
     ...(result.label === undefined ? {} : { label: result.label }),
     ...(result.traceId === undefined ? {} : { trace_id: result.traceId }),
+    ...(result.errorCode === undefined ? {} : { error_code: result.errorCode }),
   };
 }

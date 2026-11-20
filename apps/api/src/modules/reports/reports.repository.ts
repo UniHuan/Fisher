@@ -28,6 +28,8 @@ export interface CreateReportRowInput {
   content: string;
   fishKey: string | null;
   catchWeightKg: number | null;
+  /** Millisecond-precision write time; keeps the pagination cursor exact. */
+  createdAt: Date;
   terms: { version: string; acceptedAt: Date } | null;
 }
 
@@ -100,6 +102,9 @@ export class ReportsRepository {
           content: input.content,
           fish_key: input.fishKey,
           catch_weight_kg: input.catchWeightKg,
+          // Explicit ms-precision value instead of the microsecond-precision
+          // database default, so the cursors can use exact timestamp equality.
+          created_at: input.createdAt,
         },
       });
     });
@@ -214,9 +219,9 @@ export class ReportsRepository {
 
 /**
  * Keyset pagination: strictly older than the cursor, ULID as the tie-breaker.
- * Postgres stores microseconds while a JS Date cursor only holds milliseconds,
- * so the tie-breaker covers the whole millisecond bucket instead of requiring
- * exact equality (which would skip rows in the same millisecond).
+ * Every report row is written with an explicit millisecond-precision
+ * `created_at` (ReportsService captures the Date once), so exact timestamp
+ * equality is valid and rows sharing a millisecond page by descending ULID.
  */
 function withCursor(
   base: Prisma.ReportWhereInput,
@@ -229,13 +234,7 @@ function withCursor(
     ...base,
     OR: [
       { created_at: { lt: cursor.createdAt } },
-      {
-        created_at: {
-          gte: cursor.createdAt,
-          lt: new Date(cursor.createdAt.getTime() + 1),
-        },
-        report_id: { lt: cursor.reportId },
-      },
+      { created_at: cursor.createdAt, report_id: { lt: cursor.reportId } },
     ],
   };
 }

@@ -18,6 +18,14 @@ interface TokenPayload {
   errcode?: unknown;
 }
 
+/** Carries only a safe, loggable reason; never the appid, secret or token. */
+export class WechatAccessTokenError extends Error {
+  constructor(public readonly reason: string) {
+    super(reason);
+    this.name = 'WechatAccessTokenError';
+  }
+}
+
 /** Caches the mini-program access_token in memory, shared by all moderation calls. */
 @Injectable()
 export class WechatAccessTokenService {
@@ -47,21 +55,35 @@ export class WechatAccessTokenService {
     const appid = this.config.get<string>('WECHAT_MINI_APPID')?.trim() ?? '';
     const secret = this.config.get<string>('WECHAT_MINI_SECRET')?.trim() ?? '';
     if (appid === '' || secret === '') {
-      throw new Error('WeChat mini-program credentials are not configured');
+      throw new WechatAccessTokenError('token-not-configured');
     }
 
     const url = `${TOKEN_URL}?grant_type=client_credential&appid=${encodeURIComponent(
       appid,
     )}&secret=${encodeURIComponent(secret)}`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS) });
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS) });
+    } catch {
+      throw new WechatAccessTokenError('token-request-failed');
+    }
     if (!response.ok) {
-      throw new Error(`WeChat token request failed with HTTP ${response.status}`);
+      throw new WechatAccessTokenError(`token-http-${response.status}`);
     }
 
-    const payload = (await response.json()) as TokenPayload;
+    let payload: TokenPayload;
+    try {
+      payload = (await response.json()) as TokenPayload;
+    } catch {
+      throw new WechatAccessTokenError('token-invalid-json');
+    }
     if (typeof payload.access_token !== 'string' || payload.access_token.length === 0) {
       // Only the numeric errcode is safe to surface; never log the request URL.
-      throw new Error(`WeChat token error ${String(payload.errcode ?? 'unknown')}`);
+      throw new WechatAccessTokenError(
+        typeof payload.errcode === 'number'
+          ? `token-errcode-${payload.errcode}`
+          : 'token-missing',
+      );
     }
 
     const expiresIn =

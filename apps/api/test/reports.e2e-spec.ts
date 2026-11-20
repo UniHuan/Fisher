@@ -38,6 +38,8 @@ const TEST_OPENIDS = [
   'openid-limit-normal',
   'openid-limit-new',
   'openid-shape',
+  'openid-error',
+  'openid-page-order',
 ] as const;
 
 describe('Reports (e2e)', () => {
@@ -215,6 +217,32 @@ describe('Reports (e2e)', () => {
       .expect(200);
     expect(list.body.data.items).toHaveLength(0);
     expect(list.body.data.total).toBe(0);
+  });
+
+  it('keeps a report pending and records the moderation error code when the provider fails', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-error');
+    const created = await createReport(user, spot.spot_id, {
+      content: 'THROW 审核服务异常',
+    });
+    expect(created.moderation_status).toBe('machine_pending');
+    expect(created.message).toBe('内容审核中');
+
+    const row = await prisma.report.findUniqueOrThrow({
+      where: { report_id: created.report_id as string },
+    });
+    expect(row.machine_result).toMatchObject({
+      suggest: 'review',
+      error_code: 'provider-error',
+    });
+    // Only the conclusion and safe error code are stored, never the content.
+    expect(JSON.stringify(row.machine_result)).not.toContain('THROW');
+
+    const list = await request(server)
+      .get(`/api/v1/spots/${spot.spot_id}/reports`)
+      .set(HEADERS)
+      .expect(200);
+    expect(list.body.data.items).toHaveLength(0);
   });
 
   it('rejects missing terms, restricted users and invalid catch fields', async () => {
@@ -505,13 +533,16 @@ describe('Reports (e2e)', () => {
       });
       reportIds.push(created.report_id as string);
     }
-    // All three rows share one microsecond timestamp: the JS Date cursor only
-    // has millisecond precision, so keyset paging must cover the whole bucket.
-    await prisma.$executeRaw`
-      UPDATE report
-      SET created_at = ${'2026-11-20T00:00:00.123456Z'}::timestamptz(6)
+    // The service writes created_at explicitly from a JS Date, so every row is
+    // millisecond-exact and the cursor can use exact timestamp equality.
+    const exactness = await prisma.$queryRaw<Array<{ report_id: string; ms_exact: boolean }>>`
+      SELECT report_id,
+             date_trunc('milliseconds', created_at) = created_at AS ms_exact
+      FROM report
       WHERE report_id IN (${Prisma.join(reportIds)})
     `;
+    expect(exactness).toHaveLength(3);
+    expect(exactness.every((row) => row.ms_exact)).toBe(true);
 
     const firstPage = await request(server)
       .get(`/api/v1/spots/${spot.spot_id}/reports`)
@@ -560,6 +591,53 @@ describe('Reports (e2e)', () => {
       .set(HEADERS)
       .expect(400);
     expect(oversizedLimit.body.code).toBe(ERROR_CODES.VALIDATION);
+  });
+
+  it('pages same-millisecond rows in descending report_id order', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-page-order');
+    const ids: [string, string, string] = [ulid(), ulid(), ulid()];
+    ids.sort();
+    const [low, mid, high] = ids;
+    const shared = new Date('2026-11-20T00:00:00.123Z');
+    // Insert in ascending ULID order, which is the reverse of the DESC page order.
+    await prisma.report.createMany({
+      data: [low, mid, high].map((reportId) => ({
+        report_id: reportId,
+        spot_id: spot.spot_id,
+        user_id: user.user_id,
+        content_type: 'comment',
+        content: '同一毫秒',
+        moderation_status: 'published',
+        created_at: shared,
+      })),
+    });
+
+    const firstPage = await request(server)
+      .get(`/api/v1/spots/${spot.spot_id}/reports`)
+      .query({ limit: 2 })
+      .set(HEADERS)
+      .expect(200);
+    expect(firstPage.body.data.total).toBe(3);
+    expect(
+      (firstPage.body.data.items as Array<{ report_id: string }>).map(
+        (item) => item.report_id,
+      ),
+    ).toEqual([high, mid]);
+    const cursor = firstPage.body.data.next_cursor as string;
+    expect(cursor).toEqual(expect.any(String));
+
+    const secondPage = await request(server)
+      .get(`/api/v1/spots/${spot.spot_id}/reports`)
+      .query({ limit: 2, cursor })
+      .set(HEADERS)
+      .expect(200);
+    expect(
+      (secondPage.body.data.items as Array<{ report_id: string }>).map(
+        (item) => item.report_id,
+      ),
+    ).toEqual([low]);
+    expect(secondPage.body.data.next_cursor).toBeNull();
   });
 
   it('filters the public list by content type', async () => {
