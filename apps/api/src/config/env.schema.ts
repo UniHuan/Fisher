@@ -25,6 +25,15 @@ function isLocalHttpOrigin(value: string): boolean {
 
 const adminOriginsSchema = z.string().min(1).transform(splitCsv);
 
+// Docker compose passes unset optional env vars as "" rather than omitting them.
+// Treat empty and whitespace-only values as absent so V1.0 still boots without UGC.
+function optionalNonEmpty<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    schema.optional(),
+  );
+}
+
 const OSS_REQUIRED_FIELDS = [
   'OSS_REGION',
   'OSS_ACCESS_KEY_ID',
@@ -55,6 +64,13 @@ const baseEnvSchema = z.object({
   TENCENT_MAP_SERVER_KEY: z.string().optional(),
   // V1.1 WeChat message push URL verification; optional so V1.0 boots without UGC.
   WECHAT_MSG_TOKEN: z.string().optional(),
+  // V1.1 mini program login, content security and legal copy; optional so V1.0 boots.
+  APP_JWT_ACCESS_SECRET: optionalNonEmpty(z.string().min(32)),
+  WECHAT_MINI_APPID: optionalNonEmpty(z.string().min(1)),
+  WECHAT_MINI_SECRET: optionalNonEmpty(z.string().min(1)),
+  WECHAT_MSG_AES_KEY: optionalNonEmpty(z.string().min(1)),
+  UGC_TERMS_VERSION: optionalNonEmpty(z.string().min(1)),
+  LEGAL_BASE_URL: optionalNonEmpty(z.string().url()),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
 });
 

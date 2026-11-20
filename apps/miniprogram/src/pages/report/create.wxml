@@ -1,0 +1,133 @@
+<view class="page create-page">
+  <view wx:if="{{loadingConfig}}" class="empty">正在加载发布配置…</view>
+
+  <view wx:elif="{{configError}}" class="card empty">
+    <text>{{configError}}</text>
+    <button class="primary-button retry-button" bindtap="retryConfig">重新加载</button>
+  </view>
+
+  <view wx:elif="{{!ugcEnabled}}" class="card empty">社区功能暂未开放</view>
+
+  <view wx:elif="{{!sessionReady}}" class="card login-card">
+    <text class="login-title">登录后发布</text>
+    <text class="login-text">使用微信登录后可以发布评论、鱼获和情报。</text>
+    <text class="login-text">登录仅获取微信身份标识，不读取昵称、头像和手机号。</text>
+    <button
+      class="primary-button login-button"
+      bindtap="login"
+      loading="{{loggingIn}}"
+      disabled="{{loggingIn}}"
+    >{{loggingIn ? '正在登录' : '微信登录'}}</button>
+  </view>
+
+  <block wx:else>
+    <view class="card create-card">
+      <view class="spot-line">
+        <text class="spot-label">钓点</text>
+        <text class="spot-name">{{spotName || '当前钓点'}}</text>
+      </view>
+
+      <view class="type-tabs">
+        <view
+          wx:for="{{contentTypes}}"
+          wx:key="key"
+          class="type-tab {{contentType === item.key ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="selectType"
+        >{{item.label}}</view>
+      </view>
+
+      <view class="form-field">
+        <textarea
+          class="form-textarea"
+          value="{{content}}"
+          placeholder="说说这次的情况..."
+          maxlength="500"
+          bindinput="onContentInput"
+        />
+        <text class="form-counter">{{contentCount}}/{{maxContentLength}}</text>
+      </view>
+
+      <view class="form-field">
+        <text class="form-label">图片（选填，最多 {{maxImages}} 张）</text>
+        <view class="image-grid">
+          <view wx:for="{{images}}" wx:key="path" class="image-cell">
+            <image
+              class="image-thumb"
+              src="{{item.path}}"
+              mode="aspectFill"
+              data-index="{{index}}"
+              bindtap="previewDraftImage"
+            />
+            <view wx:if="{{submitting && item.progress < 100}}" class="image-progress">
+              <text class="image-progress-text">{{item.progress}}%</text>
+            </view>
+            <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
+          </view>
+          <view wx:if="{{images.length < maxImages}}" class="image-add" bindtap="chooseImages">
+            <text class="image-add-icon">＋</text>
+          </view>
+        </view>
+        <text wx:if="{{submitting && images.length > 0}}" class="form-hint upload-hint">
+          正在逐张上传图片，全部成功后才会发布
+        </text>
+      </view>
+
+      <block wx:if="{{contentType === 'catch'}}">
+        <view class="form-field">
+          <text class="form-label">鱼种</text>
+          <picker
+            mode="selector"
+            range="{{fishLabels}}"
+            value="{{fishIndex}}"
+            bindchange="onFishChange"
+          >
+            <view class="form-input picker-value {{fishKey ? '' : 'picker-placeholder'}}">{{fishLabel || '请选择鱼种'}}</view>
+          </picker>
+          <text wx:if="{{!fishKey}}" class="form-hint catch-hint">发布鱼获需要选择鱼种</text>
+        </view>
+
+        <view class="form-field">
+          <text class="form-label">重量（公斤，选填）</text>
+          <input
+            class="form-input"
+            type="digit"
+            value="{{weight}}"
+            placeholder="例如 2.5"
+            bindinput="onWeightInput"
+          />
+        </view>
+      </block>
+
+      <checkbox-group class="terms-row" bindchange="onTermsChange">
+        <label class="terms-label">
+          <checkbox value="terms" checked="{{termsAccepted}}" color="#0e6b5e" />
+          <text class="terms-text">我已阅读并同意社区规范</text>
+        </label>
+      </checkbox-group>
+      <view class="create-legal">
+        <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
+        <text class="legal-dot">·</text>
+        <text class="legal-link" data-key="privacy" bindtap="openLegal">隐私政策</text>
+        <text class="legal-dot">·</text>
+        <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
+      </view>
+      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
+
+      <view wx:if="{{!meCanPublish}}" class="form-error">
+        {{restrictionText || '当前账号暂不能发布内容'}}
+      </view>
+      <view wx:if="{{submitError}}" class="form-error">{{submitError}}</view>
+    </view>
+
+    <view class="create-actions">
+      <button class="secondary-button" bindtap="cancel" disabled="{{submitting}}">取消</button>
+      <button
+        class="primary-button publish-button"
+        bindtap="submit"
+        loading="{{submitting}}"
+        disabled="{{submitting || !meCanPublish}}"
+      >发布</button>
+    </view>
+  </block>
+</view>

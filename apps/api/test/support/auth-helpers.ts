@@ -5,7 +5,7 @@ import { argon2id, hash } from 'argon2';
 import { generateSync } from 'otplib';
 import request from 'supertest';
 import { ulid } from 'ulid';
-import { LoginRateLimiter } from '../../src/modules/auth/login-rate-limiter.service';
+import { RateLimitService } from '../../src/modules/rate-limit/rate-limit.service';
 
 export const ADMIN_ORIGIN = 'https://admin.szfisher.test';
 export const ADMIN_STAGING_ORIGIN = 'https://admin-staging.szfisher.test';
@@ -58,11 +58,12 @@ export function getAuthTestPrisma(): PrismaClient {
 }
 
 /**
- * The per-IP login limiter is process-wide. Tests that issue several raw login
- * requests reset it first so the limiter never masks account-lockout assertions.
+ * The per-IP login limiter shares Postgres state across app instances. Tests that
+ * issue several raw login requests clear its counters first so the limiter never
+ * masks account-lockout assertions.
  */
-export function resetLoginRateLimiter(app: INestApplication): void {
-  app.get(LoginRateLimiter).reset();
+export async function resetLoginRateLimiter(app: INestApplication): Promise<void> {
+  await app.get(RateLimitService).reset('admin-login:');
 }
 
 export function clientHeaders(): Record<string, string> {
@@ -129,9 +130,9 @@ export async function loginWithPassword(
   admin: TestAdmin,
   origin: string | null = ADMIN_ORIGIN,
 ): Promise<request.Response> {
-  // Isolate login sequences from the process-wide limiter; the limiter suite bypasses
+  // Isolate login sequences from the shared limiter; the limiter suite bypasses
   // this helper on purpose so it observes real counting.
-  resetLoginRateLimiter(app);
+  await resetLoginRateLimiter(app);
   return request(app.getHttpServer())
     .post('/api/v1/admin/auth/login')
     .set(adminHeaders(origin))

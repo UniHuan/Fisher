@@ -32,6 +32,19 @@ export type CreateSpotBody = components['schemas']['CreateSpotDto'];
 export type UpdateSpotBody = components['schemas']['UpdateSpotDto'];
 export type TotpSetup = components['schemas']['TotpSetupDto'];
 export type TotpEnable = components['schemas']['TotpEnableDto'];
+export type AdminReportAuthor = components['schemas']['AdminReportAuthorDto'];
+export type AdminReportItem = components['schemas']['AdminReportItemDto'];
+export type AdminReportPage = components['schemas']['AdminReportPageDto'];
+export type AdminReportSummary = components['schemas']['AdminReportSummaryDto'];
+export type AdminReportAction = components['schemas']['AdminReportActionDto'];
+export type AdminReportAuditItem = components['schemas']['AdminReportAuditItemDto'];
+export type AdminReportHistoryAbuse = components['schemas']['AdminReportHistoryAbuseDto'];
+export type AdminReportHistory = components['schemas']['AdminReportHistoryDto'];
+export type AdminAbuseItem = components['schemas']['AdminAbuseItemDto'];
+export type AdminAbusePage = components['schemas']['AdminAbusePageDto'];
+export type AdminAbuseHandleResult = components['schemas']['AdminAbuseHandleResponseDto'];
+export type AdminUserRestrictResult = components['schemas']['AdminUserRestrictResponseDto'];
+export type AdminUserBanResult = components['schemas']['AdminUserBanResponseDto'];
 export type LoginResponse =
   | components['schemas']['AdminSessionDto']
   | components['schemas']['LoginMfaRequiredDto']
@@ -66,6 +79,28 @@ export interface AuditLogQuery {
   to?: string;
   page?: number;
   page_size?: number;
+}
+
+export type AdminReportQueue = 'spot_check' | 'pending' | 'rejected' | 'removed';
+export type AdminAbuseStatus = 'pending' | 'removed' | 'dismissed';
+export type AdminAbuseHandleAction = 'remove' | 'dismiss';
+
+export interface AdminReportListQuery {
+  queue?: AdminReportQueue;
+  content_type?: string;
+  spot_id?: string;
+  spot_name?: string;
+  sla_overdue?: boolean;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface AdminAbuseListQuery {
+  status?: AdminAbuseStatus;
+  spot_name?: string;
+  sla_overdue?: boolean;
+  cursor?: string;
+  limit?: number;
 }
 
 function querySuffix(query: object): string {
@@ -361,5 +396,77 @@ export const api = {
   },
   listAuditLogs(query: AuditLogQuery): Promise<AuditLogPage> {
     return request<AuditLogPage>(`/admin/audit-logs${querySuffix(query)}`);
+  },
+  listAdminReports(query: AdminReportListQuery): Promise<AdminReportPage> {
+    return request<AdminReportPage>(`/admin/reports${querySuffix(query)}`);
+  },
+  reportSummary(): Promise<AdminReportSummary> {
+    return request<AdminReportSummary>('/admin/reports/summary');
+  },
+  getReport(id: string): Promise<AdminReportItem> {
+    return request<AdminReportItem>(`/admin/reports/${id}`);
+  },
+  reportHistory(id: string): Promise<AdminReportHistory> {
+    return request<AdminReportHistory>(`/admin/reports/${id}/history`);
+  },
+  approveReport(id: string, csrf: string): Promise<AdminReportAction> {
+    return request<AdminReportAction>(`/admin/reports/${id}/approve`, {
+      method: 'POST',
+      csrf,
+    });
+  },
+  rejectReport(id: string, reason: string, csrf: string): Promise<AdminReportAction> {
+    return request<AdminReportAction>(`/admin/reports/${id}/reject`, {
+      method: 'POST',
+      body: { reason },
+      csrf,
+    });
+  },
+  removeReport(id: string, reason: string, csrf: string): Promise<AdminReportAction> {
+    return request<AdminReportAction>(`/admin/reports/${id}/remove`, {
+      method: 'POST',
+      body: { reason },
+      csrf,
+    });
+  },
+  adoptReport(id: string, csrf: string): Promise<AdminReportAction> {
+    return request<AdminReportAction>(`/admin/reports/${id}/adopt`, {
+      method: 'POST',
+      csrf,
+    });
+  },
+  listAbuseReports(query: AdminAbuseListQuery): Promise<AdminAbusePage> {
+    return request<AdminAbusePage>(`/admin/abuse-reports${querySuffix(query)}`);
+  },
+  handleAbuse(
+    id: string,
+    action: AdminAbuseHandleAction,
+    reason: string | undefined,
+    csrf: string,
+  ): Promise<AdminAbuseHandleResult> {
+    return request<AdminAbuseHandleResult>(`/admin/abuse-reports/${id}/handle`, {
+      method: 'POST',
+      body: reason === undefined ? { action } : { action, reason },
+      csrf,
+    });
+  },
+  restrictUser(
+    id: string,
+    days: number,
+    reason: string,
+    csrf: string,
+  ): Promise<AdminUserRestrictResult> {
+    return request<AdminUserRestrictResult>(`/admin/users/${id}/restrict`, {
+      method: 'POST',
+      body: { days, reason },
+      csrf,
+    });
+  },
+  banUser(id: string, reason: string, csrf: string): Promise<AdminUserBanResult> {
+    return request<AdminUserBanResult>(`/admin/users/${id}/ban`, {
+      method: 'POST',
+      body: { reason },
+      csrf,
+    });
   },
 };

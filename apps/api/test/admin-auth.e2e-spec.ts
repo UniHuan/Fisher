@@ -255,7 +255,7 @@ describe('Admin auth (e2e)', () => {
 
   it('locks an account for 15 minutes after five wrong passwords', async () => {
     const admin = await createAdmin(app, 'operator');
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const res = await request(server)
@@ -276,7 +276,7 @@ describe('Admin auth (e2e)', () => {
     expect(lockedUntil).toBeLessThanOrEqual(Date.now() + 15 * 60 * 1000 + 5000);
 
     // Five logins already consumed the IP window; clear it so 401 lockout behavior is visible.
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
     const lockedAttempt = await request(server)
       .post('/api/v1/admin/auth/login')
       .set(adminHeaders())
@@ -313,7 +313,7 @@ describe('Admin auth (e2e)', () => {
 
   it('rejects login without an allowed Origin', async () => {
     const admin = await createAdmin(app, 'operator');
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
 
     await request(server)
       .post('/api/v1/admin/auth/login')
@@ -381,6 +381,14 @@ describe('Admin auth (e2e)', () => {
   });
 
   it('returns the current admin, role permissions and a usable csrf token', async () => {
+    expect(PERMISSIONS.reviewer).toEqual(
+      expect.arrayContaining(['report:read', 'report:moderate']),
+    );
+    expect(PERMISSIONS.reviewer).not.toContain('user:ban');
+    expect(PERMISSIONS.operator).toEqual(
+      expect.arrayContaining(['report:moderate', 'user:restrict', 'user:ban']),
+    );
+
     await request(server).get('/api/v1/admin/me').set(clientHeaders()).expect(401);
 
     const session = await loginAs(app, 'operator');
@@ -506,7 +514,7 @@ describe('Admin auth (e2e)', () => {
 
   it('counts parallel wrong passwords atomically and locks at five', async () => {
     const admin = await createAdmin(app, 'operator');
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
     const responses = await Promise.all(
       Array.from({ length: 5 }, (_value, index) =>
         request(server)
@@ -641,7 +649,7 @@ describe('Admin auth (e2e)', () => {
   });
 
   it('rate limits login per IP and returns retry headers', async () => {
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
     const attempt = (): request.Test =>
       request(server)
         .post('/api/v1/admin/auth/login')
@@ -664,7 +672,7 @@ describe('Admin auth (e2e)', () => {
     expect(blocked.headers['x-ratelimit-remaining']).toBe('0');
     expect(blocked.headers['x-ratelimit-reset']).toMatch(/^\d+$/);
 
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
   });
 
   it('marks auth and admin responses as no-store by default', async () => {
@@ -696,7 +704,7 @@ describe('Admin auth (e2e)', () => {
   });
 
   it('records auth.login, auth.login_failed and auth.logout audit rows', async () => {
-    resetLoginRateLimiter(app);
+    await resetLoginRateLimiter(app);
     const failedAdmin = await createAdmin(app, ADMIN_ROLE.OPERATOR);
     await request(server)
       .post('/api/v1/admin/auth/login')

@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export const DEFAULT_LEGAL_BASE_URL = 'https://fish.unihuan.com/legal';
 
 export interface ClientConfig {
   map: {
@@ -11,10 +14,17 @@ export interface ClientConfig {
     map_tab: boolean;
     search: boolean;
     banned_spots: boolean;
+    ugc: boolean;
   };
   data_freshness: {
     core_days: number;
     normal_days: number;
+  };
+  legal: {
+    terms_version: string;
+    terms_url: string;
+    privacy_url: string;
+    community_url: string;
   };
 }
 
@@ -28,10 +38,17 @@ export const DEFAULT_CLIENT_CONFIG: ClientConfig = {
     map_tab: true,
     search: true,
     banned_spots: true,
+    ugc: false,
   },
   data_freshness: {
     core_days: 30,
     normal_days: 90,
+  },
+  legal: {
+    terms_version: '',
+    terms_url: `${DEFAULT_LEGAL_BASE_URL}/terms`,
+    privacy_url: `${DEFAULT_LEGAL_BASE_URL}/privacy`,
+    community_url: `${DEFAULT_LEGAL_BASE_URL}/community`,
   },
 };
 
@@ -43,6 +60,7 @@ export const CLIENT_CONFIG_WHITELIST = [
   'features.map_tab',
   'features.search',
   'features.banned_spots',
+  'features.ugc',
   'data_freshness.core_days',
   'data_freshness.normal_days',
 ] as const;
@@ -97,7 +115,10 @@ function readDays(values: ConfigValues, key: string, alias: string): number | un
 
 @Injectable()
 export class ClientConfigService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async getClientConfig(): Promise<ClientConfig> {
     const rows = await this.prisma.config.findMany({
@@ -130,6 +151,7 @@ export class ClientConfigService {
         banned_spots:
           readBoolean(values, 'features.banned_spots') ??
           DEFAULT_CLIENT_CONFIG.features.banned_spots,
+        ugc: readBoolean(values, 'features.ugc') ?? DEFAULT_CLIENT_CONFIG.features.ugc,
       },
       data_freshness: {
         core_days:
@@ -139,6 +161,21 @@ export class ClientConfigService {
           readDays(values, 'data_freshness.normal_days', 'regular_spot_verify_days') ??
           DEFAULT_CLIENT_CONFIG.data_freshness.normal_days,
       },
+      legal: this.getLegalConfig(),
+    };
+  }
+
+  private getLegalConfig(): ClientConfig['legal'] {
+    // Compose passes unset optional env vars as "", and ConfigService falls back to
+    // process.env when the validated env omits the key. Normalize before defaulting.
+    const configuredBase = this.config.get<string>('LEGAL_BASE_URL')?.trim();
+    const baseUrl = (configuredBase || DEFAULT_LEGAL_BASE_URL).replace(/\/+$/, '');
+    const configuredVersion = this.config.get<string>('UGC_TERMS_VERSION')?.trim();
+    return {
+      terms_version: configuredVersion || DEFAULT_CLIENT_CONFIG.legal.terms_version,
+      terms_url: `${baseUrl}/terms`,
+      privacy_url: `${baseUrl}/privacy`,
+      community_url: `${baseUrl}/community`,
     };
   }
 }

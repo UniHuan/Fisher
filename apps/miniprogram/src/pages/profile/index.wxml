@@ -1,0 +1,128 @@
+<view class="page profile-page">
+  <view wx:if="{{!initialized}}" class="empty">正在加载…</view>
+
+  <block wx:else>
+    <view class="profile-head card">
+      <view class="avatar">{{avatarText || '钓'}}</view>
+      <view class="profile-meta">
+        <text class="profile-name">{{sessionReady ? nickname : '未登录'}}</text>
+        <text class="profile-sub">{{sessionReady ? '我的内容' : '登录后可以发布和查看自己的内容'}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{configError}}" class="card empty">
+      <text>{{configError}}</text>
+      <button class="primary-button retry-button" bindtap="retryConfig">重试</button>
+    </view>
+
+    <view wx:elif="{{!ugcEnabled}}" class="card empty">社区功能暂未开放</view>
+
+    <view wx:elif="{{!sessionReady}}" class="card login-card">
+      <text class="login-title">微信登录</text>
+      <text class="login-text">登录后可以发布评论、鱼获和情报，并管理自己的内容。</text>
+      <text class="login-text">登录仅获取微信身份标识，不读取昵称、头像和手机号。</text>
+      <button
+        class="primary-button login-button"
+        bindtap="login"
+        loading="{{loggingIn}}"
+        disabled="{{loggingIn}}"
+      >{{loggingIn ? '正在登录' : '微信登录'}}</button>
+    </view>
+
+    <block wx:else>
+      <view class="content-head">
+        <text class="section-title">我的内容</text>
+        <text wx:if="{{total > 0}}" class="content-total">{{total}} 条</text>
+      </view>
+
+      <scroll-view scroll-x class="filter-scroll" enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{filters}}"
+          wx:key="key"
+          class="filter-chip {{statusFilter === item.key ? 'filter-chip-active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="selectFilter"
+        >{{item.label}}</view>
+      </scroll-view>
+
+      <view wx:if="{{loading}}" class="empty">正在加载内容…</view>
+
+      <view wx:elif="{{error && reports.length === 0}}" class="card empty">
+        <text>{{error}}</text>
+        <button class="primary-button retry-button" bindtap="retry">重试</button>
+      </view>
+
+      <view wx:elif="{{reports.length === 0}}" class="card empty">{{emptyText}}</view>
+
+      <block wx:else>
+        <view
+          wx:for="{{reports}}"
+          wx:key="report_id"
+          class="card report-card"
+          data-id="{{item.report_id}}"
+          bindtap="openContent"
+        >
+          <view class="report-head">
+            <view class="report-head-left">
+              <text class="tag tag-soft">{{item.typeLabel}}</text>
+              <text class="report-spot">{{item.spotName}}</text>
+            </view>
+            <text class="report-time">{{item.timeText}}</text>
+          </view>
+          <text class="report-content">{{item.content}}</text>
+          <view
+            wx:if="{{item.images.length}}"
+            class="ugc-image-grid {{item.images.length === 1 ? 'cols-1' : (item.images.length >= 4 ? 'cols-3' : '')}}"
+          >
+            <image
+              wx:for="{{item.images}}"
+              wx:for-item="imageUrl"
+              wx:for-index="imageIndex"
+              wx:key="*this"
+              class="ugc-image-thumb"
+              src="{{imageUrl}}"
+              mode="aspectFill"
+              lazy-load
+              data-id="{{item.report_id}}"
+              data-index="{{imageIndex}}"
+              catchtap="previewImage"
+            />
+          </view>
+          <view class="report-foot">
+            <text class="tag {{item.statusTone}}">{{item.statusLabel}}</text>
+            <text class="report-delete" data-id="{{item.report_id}}" catchtap="confirmDelete">删除</text>
+          </view>
+          <text wx:if="{{item.rejectText}}" class="report-reject">{{item.rejectText}}</text>
+        </view>
+
+        <view wx:if="{{error}}" class="more-error">
+          <text class="muted">{{error}}</text>
+          <text class="retry-link" bindtap="retry">重试</text>
+        </view>
+        <button
+          wx:if="{{hasMore}}"
+          class="secondary-button more-button"
+          bindtap="loadMoreReports"
+        >{{loadingMore ? '正在加载' : '加载更多'}}</button>
+        <view wx:elif="{{reports.length > 0}}" class="list-end">已经到底了</view>
+      </block>
+    </block>
+
+    <view class="legal-block">
+      <view class="legal-links">
+        <text class="legal-link" data-key="terms" bindtap="openLegal">用户协议</text>
+        <text class="legal-dot">·</text>
+        <text class="legal-link" data-key="privacy" bindtap="openLegal">隐私政策</text>
+        <text class="legal-dot">·</text>
+        <text class="legal-link" data-key="community" bindtap="openLegal">社区规范</text>
+      </view>
+      <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
+    </view>
+
+    <button
+      wx:if="{{sessionReady}}"
+      class="secondary-button logout-button"
+      bindtap="logout"
+    >退出登录</button>
+  </block>
+</view>

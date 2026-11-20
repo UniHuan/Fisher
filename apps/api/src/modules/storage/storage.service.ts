@@ -1,7 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ERROR_CODES } from '@szfisher/shared';
 import { AppError } from '../../common/errors/app-error';
-import { LocalStorageAdapter } from './local-storage.adapter';
 import {
   STORAGE_ADAPTER,
   type StorageAdapter,
@@ -18,8 +17,8 @@ export class StorageService {
     return this.adapter.putObject(key, body, contentType);
   }
 
-  getPreviewUrl(key: string): Promise<string> {
-    return this.adapter.getSignedUrl(key, PREVIEW_URL_TTL_SECONDS);
+  getPreviewUrl(key: string, ttlSeconds: number = PREVIEW_URL_TTL_SECONDS): Promise<string> {
+    return this.adapter.getSignedUrl(key, ttlSeconds);
   }
 
   getPublicUrl(key: string): string {
@@ -44,14 +43,43 @@ export class StorageService {
     }
   }
 
-  readObject(key: string, area: StorageArea): Promise<Buffer> {
-    return this.adapter.getObject(key, area);
+  async deleteObject(key: string): Promise<void> {
+    try {
+      await this.adapter.deleteObject(key);
+    } catch {
+      throw new AppError(
+        ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'Image removal failed',
+      );
+    }
   }
 
-  verifyLocalPreview(key: string, expires: number, signature: string): boolean {
-    return (
-      this.adapter instanceof LocalStorageAdapter &&
-      this.adapter.verifySignedUrl(key, expires, signature)
-    );
+  async copyToPublished(sourceKey: string, destKey: string): Promise<void> {
+    try {
+      await this.adapter.copyObject(sourceKey, destKey);
+    } catch {
+      throw new AppError(
+        ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'Image publishing failed',
+      );
+    }
+  }
+
+  async deletePublished(key: string): Promise<void> {
+    try {
+      await this.adapter.deletePublishedObject(key);
+    } catch {
+      throw new AppError(
+        ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'Image removal failed',
+      );
+    }
+  }
+
+  readObject(key: string, area: StorageArea): Promise<Buffer> {
+    return this.adapter.getObject(key, area);
   }
 }

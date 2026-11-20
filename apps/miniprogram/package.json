@@ -11,5 +11,10 @@
   },
   "dependencies": {
     "@szfisher/api-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "jest": "30.5.2",
+    "ts-jest": "29.4.15"
   }
 }

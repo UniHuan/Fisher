@@ -30,7 +30,8 @@ import {
 import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
 import { UploadImageDto } from './dto/upload-image.dto';
 import { UploadImageResponseDto } from './dto/upload-image-response.dto';
-import { UploadsService, type UploadedImageFile } from './uploads.service';
+import type { UploadedImageFile } from './image-processor.service';
+import { UploadsService } from './uploads.service';
 
 const CSRF_HEADER = {
   name: 'X-CSRF-Token',

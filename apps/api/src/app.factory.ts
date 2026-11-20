@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { AppModule } from './app.module';
+import { AppModule, type AppModuleOptions } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AnalyticsInterceptor } from './modules/analytics/analytics.interceptor';
@@ -17,11 +17,28 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 const BODY_LIMIT = '2mb';
 
-export async function createApp(extraControllers: Type<unknown>[] = []): Promise<INestApplication> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(extraControllers), {
-    bodyParser: false,
-    logger: new JsonLogger(),
-  });
+export async function createApp(
+  extraControllers: Type<unknown>[] = [],
+  options: AppModuleOptions = {},
+): Promise<INestApplication> {
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule.forRoot(extraControllers, options),
+    {
+      bodyParser: false,
+      logger: new JsonLogger(),
+    },
+  );
+  // Client -> WAF -> SLB -> nginx -> API. The private hops are our own cloud
+  // entry, so Express must skip them and pick the rightmost non-private client
+  // address from X-Forwarded-For. Direct clients reach nginx only through the
+  // SLB; the ECS security group must keep 8080 closed to the internet. The
+  // ranges below must match the deployed cloud topology (see docs/ops/deployment.md).
+  app.set('trust proxy', [
+    'loopback',
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+  ]);
   const adminOrigins = app.get(ConfigService).getOrThrow<string[]>('ADMIN_ORIGINS');
 
   // Request IDs must run before body parsing so parser errors still carry one.

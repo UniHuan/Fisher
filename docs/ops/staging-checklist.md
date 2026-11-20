@@ -20,6 +20,11 @@ staging 必须与 production 使用同一套镜像、同一套迁移和同一套
 - [ ] 腾讯地图 staging JS Key 和 Server Key 已申请，域名与 IP 白名单已配置
 - [ ] staging 管理员账号和 TOTP 已准备
 - [ ] 微信小程序合法域名和体验成员已准备，至少可做开发版联调
+- [ ] V1.1：微信消息推送 URL、Token、EncodingAESKey 已在控制台按安全模式和 JSON 格式配置
+- [ ] V1.1：`request`、`uploadFile`、`downloadFile` 合法域名包含 `https://fish-api-staging.unihuan.com`
+- [ ] V1.1：业务域名包含 `https://fish.unihuan.com`
+- [ ] V1.1：法务页面 `https://fish.unihuan.com/legal/terms|privacy|community` 已上线并定稿
+- [ ] V1.1：微信确认小程序类目覆盖公开 UGC
 
 ## 3. 资源与隔离
 
@@ -79,12 +84,36 @@ docker push "$REGISTRY/szfisher-admin:staging-$TAG"
 - `LOG_LEVEL=info`
 - `ANALYTICS_RETENTION_DAYS=180`
 
+V1.1 UGC 必填，写入 `/etc/szfisher/staging.env`，权限 600：
+
+- `APP_JWT_ACCESS_SECRET`：至少 32 字符，与后台 `JWT_ACCESS_SECRET` 不同
+- `WECHAT_MINI_APPID`：`wx0d2443850022120f`
+- `WECHAT_MINI_SECRET`：小程序 AppSecret，只放环境文件
+- `WECHAT_MSG_TOKEN`：与微信消息推送 Token 一致
+- `WECHAT_MSG_AES_KEY`：43 字符 EncodingAESKey，与微信消息推送安全模式一致
+- `UGC_TERMS_VERSION`：与法务页面版本一致
+- `LEGAL_BASE_URL`：`https://fish.unihuan.com/legal`
+
 检查：
 
 - [ ] staging 密钥全部独立生成，没有复制 production
 - [ ] `ADMIN_ORIGINS` 只包含 staging admin 域名
 - [ ] OSS 桶名和域名是 staging 资源
 - [ ] 环境变量没有打印到 CI 日志
+- [ ] V1.1 七个变量全部存在且非空，`APP_JWT_ACCESS_SECRET` 与 `JWT_ACCESS_SECRET` 不同
+- [ ] 核验命令只输出变量名和 set/EMPTY，不输出值
+- [ ] 微信消息推送 Token、EncodingAESKey 与控制台一致
+- [ ] `UGC_TERMS_VERSION` 与已上线法务页面版本一致
+
+只读核验变量存在性，不打印值：
+
+```bash
+for key in APP_JWT_ACCESS_SECRET WECHAT_MINI_APPID WECHAT_MINI_SECRET \
+  WECHAT_MSG_TOKEN WECHAT_MSG_AES_KEY UGC_TERMS_VERSION LEGAL_BASE_URL; do
+  grep -qE "^(export )?${key}=.+" /etc/szfisher/staging.env \
+    && echo "${key} set" || echo "${key} MISSING_OR_EMPTY"
+done
+```
 
 ## 6. 数据库与迁移
 
@@ -133,6 +162,26 @@ SMOKE_ADMIN_ORIGIN=https://fish-admin-staging.unihuan.com \
 - [ ] 公开列表、搜索、筛选、详情和分页
 - [ ] 小程序开发版联调，定位拒绝和导航
 
+### 8.1 V1.1 UGC 功能验收
+
+完整步骤和结果记录在 [V1.1 UGC 验收记录](../qa/v1.1-ugc-acceptance.md)。staging 部署后逐项执行：
+
+- [ ] 体验版静默登录，`/auth/me` 返回昵称和发布权限
+- [ ] 匿名列表只显示已通过内容，不返回 openid、user_id、session_key
+- [ ] 文本 pass 立即公开，review 进入人工队列，risky 自动驳回
+- [ ] 图片上传成功，重编码为 WebP，超过 6 图、10 MB 或伪装文件被拒
+- [ ] 两张图全部回调 pass 后才公开，任一 risky 整条驳回
+- [ ] 回调超过 10 分钟未到，`media-check:timeout` 标记 timeout 并留在人工队列
+- [ ] 后台通过、驳回、下架、采纳可用，驳回和下架必须填原因
+- [ ] 举报队列可下架或忽略；限制发布 1 至 30 天；封禁撤销会话并隐藏内容
+- [ ] 作者在“我的内容”删除，公开列表和图片立即消失，保留 tombstone
+- [ ] 禁钓点发布返回 `SPOT_NOT_OPEN_FOR_UGC`，情报区隐藏
+- [ ] `features.ugc=false` 时公开列表为空，写接口返回 `FEATURE_DISABLED`，公开图片 404
+- [ ] 法务链接可打开，版本号与 `UGC_TERMS_VERSION` 一致
+- [ ] 两个 API 实例共享限流，advisory lock 保证定时任务只执行一次
+- [ ] 审计日志包含审核动作，不含正文、图片 URL、Token、openid
+- [ ] API 和 Nginx 日志不出现 AppSecret、消息推送密钥、session_key、openid 和正文
+
 ## 9. 安全验收
 
 - [ ] 全站 HTTPS，HTTP 301 到 HTTPS
@@ -158,6 +207,8 @@ SMOKE_ADMIN_ORIGIN=https://fish-admin-staging.unihuan.com \
 - [ ] 每日逻辑备份完成并校验
 - [ ] staging 恢复演练成功
 - [ ] 日志保留和查询可用
+- [ ] V1.1：`media-check:timeout`、`ugc:purge`、`rate-limits:purge` 定时任务已配置并成功执行
+- [ ] V1.1：图片审核超时数、人工队列积压和举报超 24 小时数有告警或日报
 
 ## 11. 数据验收
 
@@ -187,3 +238,4 @@ DATABASE_URL='postgresql://.../szfisher_staging?schema=public' \
 | 运维   | TLS、WAF、SLB、RDS、OSS、监控 |      |
 | 安全   | 依赖、镜像、WAF、密钥、权限   |      |
 | 业务   | 数据质量、内容审核、上线范围  |      |
+| 内容安全 | V1.1 UGC 验收记录、微信类目与法务页面 |      |

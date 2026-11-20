@@ -1,10 +1,14 @@
 import {
+  ABUSE_REASON,
   ADMIN_ROLE,
   CLIENT_TYPE,
   ERROR_CODES,
+  MODERATION_STATUS,
   OPEN_STATUS,
   POI_TYPE,
+  REPORT_CONTENT_TYPE,
   SPOT_STATUS,
+  UGC_UPLOAD_STATUS,
   fail,
   isShenzhenCoordinate,
   isUlid,
@@ -47,8 +51,16 @@ describe('shared contract', () => {
     expect(ERROR_CODES[name]).toBe(value);
   });
 
-  it('exposes exactly the thirteen PRD business codes', () => {
-    expect(Object.keys(ERROR_CODES)).toHaveLength(13);
+  it('exposes the UGC error codes', () => {
+    expect(ERROR_CODES.FEATURE_DISABLED).toBe(40302);
+    expect(ERROR_CODES.SPOT_NOT_OPEN_FOR_UGC).toBe(40303);
+    expect(ERROR_CODES.REPORT_FORBIDDEN).toBe(40304);
+    expect(ERROR_CODES.USER_RESTRICTED).toBe(40305);
+    expect(ERROR_CODES.REPORT_NOT_FOUND).toBe(40402);
+  });
+
+  it('exposes exactly the eighteen business codes', () => {
+    expect(Object.keys(ERROR_CODES)).toHaveLength(18);
   });
 
   it('keeps enum values stable', () => {
@@ -84,6 +96,15 @@ describe('shared contract', () => {
       'super_admin',
       'miniprogram',
     ]);
+  });
+
+  it('exposes the UGC enums', () => {
+    expect(REPORT_CONTENT_TYPE).toEqual({ COMMENT: 'comment', CATCH: 'catch', INTEL: 'intel' });
+    expect(MODERATION_STATUS.HUMAN_APPROVED).toBe('human_approved');
+    expect(ABUSE_REASON).toEqual({
+      AD: 'ad', ABUSE: 'abuse', FALSE_INFO: 'false_info', PRIVACY: 'privacy', OTHER: 'other',
+    });
+    expect(UGC_UPLOAD_STATUS).toEqual({ PENDING: 'pending', USED: 'used', DELETED: 'deleted' });
   });
 
   it('wraps success and failure', () => {

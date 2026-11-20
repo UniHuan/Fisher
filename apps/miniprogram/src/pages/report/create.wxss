@@ -1,0 +1,194 @@
+.create-page {
+  padding-bottom: 60rpx;
+}
+
+.create-card {
+  padding: 26rpx 24rpx;
+}
+
+.spot-line {
+  display: flex;
+  gap: 16rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #e7ede8;
+  font-size: 27rpx;
+}
+
+.spot-label {
+  flex: 0 0 auto;
+  color: #7a8782;
+}
+
+.spot-name {
+  flex: 1;
+  min-width: 0;
+  color: #13211c;
+  font-weight: 600;
+}
+
+.type-tabs {
+  display: flex;
+  gap: 12rpx;
+  margin: 22rpx 0 24rpx;
+}
+
+.type-tab {
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  background: #eef2ee;
+  color: #5e6b66;
+  font-size: 25rpx;
+}
+
+.type-tab.is-active {
+  background: #0e6b5e;
+  color: #ffffff;
+}
+
+.picker-value {
+  min-height: 60rpx;
+  line-height: 1.5;
+}
+
+.picker-placeholder {
+  color: #8a9691;
+}
+
+.catch-hint {
+  display: block;
+  margin-top: 8rpx;
+}
+
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.image-cell {
+  position: relative;
+  width: 152rpx;
+  height: 152rpx;
+}
+
+.image-thumb {
+  width: 152rpx;
+  height: 152rpx;
+  border-radius: 12rpx;
+  background: #e7ede8;
+}
+
+.image-remove {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #0b2b26;
+  color: #ffffff;
+  font-size: 26rpx;
+  line-height: 36rpx;
+  text-align: center;
+}
+
+.image-progress {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12rpx;
+  background: rgba(11, 43, 38, 0.55);
+}
+
+.image-progress-text {
+  color: #ffffff;
+  font-size: 22rpx;
+}
+
+.image-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 152rpx;
+  height: 152rpx;
+  border: 1rpx dashed #cfdcd4;
+  border-radius: 12rpx;
+  background: #f2f5f0;
+}
+
+.image-add-icon {
+  color: #7a8782;
+  font-size: 48rpx;
+  line-height: 1;
+}
+
+.upload-hint {
+  display: block;
+  margin-top: 10rpx;
+}
+
+.terms-row {
+  margin-top: 8rpx;
+}
+
+.terms-label {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  color: #4c5b55;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.terms-text {
+  flex: 1;
+}
+
+.terms-label checkbox {
+  transform: scale(0.85);
+}
+
+.create-legal {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 10rpx;
+  padding-left: 44rpx;
+}
+
+.legal-link {
+  color: #5e6b66;
+  font-size: 23rpx;
+}
+
+.legal-dot {
+  color: #cfdcd4;
+  font-size: 22rpx;
+}
+
+.legal-note {
+  display: block;
+  margin-top: 10rpx;
+  padding-left: 44rpx;
+  color: #8a9691;
+  font-size: 21rpx;
+}
+
+.create-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.create-actions .secondary-button {
+  flex: 0 0 220rpx;
+}
+
+.publish-button {
+  flex: 1;
+}

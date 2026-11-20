@@ -1,15 +1,15 @@
-import { IsString } from 'class-validator';
+import { Matches } from 'class-validator';
 
 export class WechatVerifyQueryDto {
-  @IsString()
+  @Matches(/^[a-f0-9]{40}$/)
   signature!: string;
 
-  @IsString()
+  @Matches(/^\d{1,12}$/)
   timestamp!: string;
 
-  @IsString()
+  @Matches(/^[A-Za-z0-9]{1,64}$/)
   nonce!: string;
 
-  @IsString()
+  @Matches(/^[A-Za-z0-9]{1,512}$/)
   echostr!: string;
 }

@@ -1,0 +1,11 @@
+<web-view wx:if="{{url && !failed}}" src="{{url}}" binderror="onWebViewError"></web-view>
+
+<view wx:else class="page">
+  <view class="card legal-fallback">
+    <text class="legal-fallback-title">无法在当前版本打开网页</text>
+    <text class="legal-fallback-text">复制链接后可在浏览器中查看。</text>
+    <text wx:if="{{url}}" class="legal-fallback-url">{{url}}</text>
+    <button wx:if="{{url}}" class="primary-button legal-copy" bindtap="copyLink">复制链接</button>
+    <button wx:if="{{url}}" class="secondary-button legal-retry" bindtap="retry">重试</button>
+  </view>
+</view>

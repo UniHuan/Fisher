@@ -164,6 +164,188 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/wechat/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AppAuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AppAuthController_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AppAuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AppAuthController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a text-only comment, catch or intel report
+         * @description Always returns 201; moderation_status tells the client whether the content was published, rejected or queued for review.
+         */
+        post: operations["ReportsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Like a published report
+         * @description Idempotent: a repeated like returns the current count without inserting a second row. At most 60 like actions per user per minute.
+         */
+        post: operations["ReportsController_like"];
+        /**
+         * Remove a like from a published report
+         * @description Idempotent: removing a like that does not exist still returns the current count. Shares the 60 like actions per user per minute limit.
+         */
+        delete: operations["ReportsController_unlike"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/abuse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report published content for abuse
+         * @description Authors cannot report their own content. A duplicate report from the same user succeeds without a second row. At most 20 reports per user per day.
+         */
+        post: operations["ReportsController_abuse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete own report
+         * @description Only the author may delete. Content and images are cleared immediately; a tombstone with the report id, author and timestamps remains for admin audit.
+         */
+        delete: operations["ReportsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current user reports including pending and rejected */
+        get: operations["ReportsController_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spots/{spotId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List published reports for a spot with type filters and cursor pagination */
+        get: operations["ReportsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -225,6 +407,270 @@ export interface paths {
         /** Update a dictionary label, order, visibility or parent */
         put: operations["AdminDictionariesController_update"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the moderation queue
+         * @description Queues are ordered oldest first. Images use public paths for visible content and signed work-bucket URLs otherwise.
+         */
+        get: operations["AdminReportsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Summarize queue, abuse and SLA counts
+         * @description Counts power the admin navigation badge and the overdue backlog tag.
+         */
+        get: operations["AdminReportsController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one report in queue-item shape
+         * @description Used by the abuse queue detail action so it can reuse the report drawer. Images follow the same public/signed rules as the queue.
+         */
+        get: operations["AdminReportsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one report audit trail and its abuse reports
+         * @description Scoped to report:read so reviewers can inspect prior actions on the content they moderate. Returns actions, status transitions, reasons, actors and times; never content bodies, image URLs or reporter identities.
+         */
+        get: operations["AdminReportsController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a published or machine-pending report
+         * @description Copies pending images to the published bucket and cancels pending media checks. Terminal states answer 409.
+         */
+        post: operations["AdminReportsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject content with a required reason
+         * @description Accepts published or machine-pending content, deletes published images and keeps work keys for the purge job.
+         */
+        post: operations["AdminReportsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove published content with a required reason
+         * @description Accepts published or human-approved content, deletes published images and keeps work keys for the purge job.
+         */
+        post: operations["AdminReportsController_remove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{id}/adopt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adopt a publicly visible intel report
+         * @description Sets adopted_at/adopted_by for intel only; other types answer 409.
+         */
+        post: operations["AdminReportsController_adopt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/abuse-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List abuse reports
+         * @description Defaults to pending reports, ordered oldest first for the 24-hour SLA.
+         */
+        get: operations["AdminReportsController_listAbuses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/abuse-reports/{id}/handle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Handle an abuse report
+         * @description remove takes the content down and marks every pending abuse of that content removed; dismiss keeps the content unchanged.
+         */
+        post: operations["AdminReportsController_handleAbuse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/restrict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restrict publishing for 1 to 30 days
+         * @description Does not revoke sessions or hide existing content; browsing and likes still work.
+         */
+        post: operations["AdminReportsController_restrictUser"];
+        /**
+         * Lift a publishing restriction
+         * @description Clears restricted_until so the user can publish immediately.
+         */
+        delete: operations["AdminReportsController_unrestrictUser"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/ban": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ban a user and take down their visible content
+         * @description Sets banned, clears any restriction, revokes sessions, increments token_version and removes visible reports with reason user_banned.
+         */
+        post: operations["AdminReportsController_banUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/unban": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unban a user without restoring removed content
+         * @description Sets active and increments token_version again so old tokens stay invalid.
+         */
+        post: operations["AdminReportsController_unbanUser"];
         delete?: never;
         options?: never;
         head?: never;
@@ -541,6 +987,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads/ugc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload and compress a report image
+         * @description Accepts JPG, PNG and WebP up to 10 MB, re-encodes to WebP and returns the private work-bucket key. At most 30 images per user per day.
+         */
+        post: operations["UploadsUgcController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/imports/{id}": {
         parameters: {
             query?: never;
@@ -621,7 +1087,7 @@ export interface components {
              * @example 40001
              * @enum {number}
              */
-            code: 40001 | 40101 | 40102 | 40301 | 40401 | 40901 | 40902 | 41301 | 42201 | 42901 | 50001 | 50301;
+            code: 40001 | 40101 | 40102 | 40301 | 40302 | 40303 | 40304 | 40305 | 40401 | 40402 | 40901 | 40902 | 41301 | 42201 | 42901 | 50001 | 50301;
             /** @example Bad request */
             message: string;
             /**
@@ -731,6 +1197,229 @@ export interface components {
             /** @example csrf-token-value */
             csrf_token: string;
         };
+        AppUserDto: {
+            /** @example 钓友 A7K2 */
+            nickname: string | null;
+            /** @example null */
+            avatar_url: string | null;
+        };
+        AppSessionDto: {
+            /** @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... */
+            access_token: string;
+            /** @example v1.01HX0000000000000000000000.random.signature */
+            refresh_token: string;
+            /** @example Bearer */
+            token_type: string;
+            /** @example 7200 */
+            expires_in: number;
+            user: components["schemas"]["AppUserDto"];
+        };
+        WechatLoginDto: {
+            /** @example 081Abc000xyz */
+            code: string;
+        };
+        RefreshTokenDto: {
+            /** @example v1.01HX0000000000000000000000.random.signature */
+            refresh_token: string;
+        };
+        AppNoticeDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /** @enum {string} */
+            moderation_status: "machine_rejected" | "human_rejected" | "removed";
+            /** @example 广告引流 */
+            reject_reason: string | null;
+            /** Format: date-time */
+            audit_time: string;
+        };
+        AppMeDto: {
+            user: components["schemas"]["AppUserDto"];
+            /** @example true */
+            can_publish: boolean;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            restricted_until: string | null;
+            notices: components["schemas"]["AppNoticeDto"][];
+        };
+        CreateReportResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /**
+             * @description 201 is returned regardless of the machine review outcome
+             * @example published
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            /** @example 已发布 */
+            message: string;
+        };
+        CreateReportDto: {
+            /** @example 01HX0000000000000000000000 */
+            spot_id: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /**
+             * @description Plain text, 1 to 500 Unicode code points after trimming. Emoji count as one.
+             * @example 今天罗非爆护，巴掌大，钓了十几条。
+             */
+            content: string;
+            /**
+             * @description Work-bucket keys returned by POST /uploads/ugc; at most 6 after deduplication, each owned by the current user
+             * @example [
+             *       "ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            image_keys?: string[];
+            /**
+             * @description Required for catch content
+             * @example luofei
+             */
+            fish_key?: string;
+            /**
+             * @description Catch weight in kilograms; catch content only
+             * @example 2.5
+             */
+            catch_weight_kg?: number;
+            /**
+             * @description Required the first time the user accepts the community terms
+             * @example 2026-11-20
+             */
+            terms_version?: string;
+        };
+        ReportLikeResponseDto: {
+            /** @example true */
+            liked: boolean;
+            /** @example 18 */
+            like_count: number;
+        };
+        AbuseReportResponseDto: {
+            /**
+             * @description Always true; a duplicate report from the same user is success
+             * @example true
+             */
+            reported: boolean;
+        };
+        AbuseReportDto: {
+            /**
+             * @description Abuse category; free text is deliberately not collected
+             * @example ad
+             * @enum {string}
+             */
+            reason: "ad" | "abuse" | "false_info" | "privacy" | "other";
+        };
+        DeleteReportResponseDto: {
+            /** @example true */
+            deleted: boolean;
+        };
+        MyReportSpotDto: {
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /** @example 深圳湾公园东门钓点 */
+            spot_name: string;
+            /** @example open */
+            open_status: string | null;
+            /**
+             * @description False when the spot is banned, offline or deleted
+             * @example true
+             */
+            can_open: boolean;
+        };
+        MyReportItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /** @example 今天鱼口不错 */
+            content: string;
+            /**
+             * @description Public paths for visible images; 15-minute signed work-bucket previews for pending, rejected and removed images
+             * @example [
+             *       "/api/v1/uploads/preview?key=...&area=working&expires=...&signature=..."
+             *     ]
+             */
+            images: string[];
+            /**
+             * @example machine_pending
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            /** @example 广告引流 */
+            reject_reason: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            audit_time: string | null;
+            spot: components["schemas"]["MyReportSpotDto"];
+        };
+        MyReportPageDto: {
+            items: components["schemas"]["MyReportItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 3 */
+            total: number;
+        };
+        PublicReportAuthorDto: {
+            /** @example 钓友 A7K2 */
+            nickname: string | null;
+            /** @example null */
+            avatar_url: string | null;
+        };
+        PublicReportItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /** @example 今天鱼口不错 */
+            content: string;
+            /**
+             * @description Relative public image paths served by the cacheable UGC image route
+             * @example [
+             *       "/api/v1/uploads/public/ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            images: string[];
+            /** @example luofei */
+            fish_key: string | null;
+            /**
+             * @description Decimal serialized as a string
+             * @example 2.50
+             */
+            catch_weight_kg: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @example 18 */
+            like_count: number;
+            /** @example false */
+            liked_by_me: boolean;
+            /** @example false */
+            is_mine: boolean;
+            /** @example false */
+            is_adopted: boolean;
+            author: components["schemas"]["PublicReportAuthorDto"];
+        };
+        PublicReportPageDto: {
+            items: components["schemas"]["PublicReportItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 12 */
+            total: number;
+        };
         AuditLogItemDto: {
             /** @example 01HX0000000000000000000000 */
             log_id: string;
@@ -822,6 +1511,332 @@ export interface components {
             sort_order?: number;
             enabled?: boolean;
             parent_key?: string | null;
+        };
+        AdminReportAuthorDto: {
+            /** @example 01HX0000000000000000000001 */
+            user_id: string;
+            /** @example 钓友 A7K2 */
+            nickname: string | null;
+            /** @example active */
+            status: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            restricted_until: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * @description All-time count of machine or human rejected content by this author
+             * @example 2
+             */
+            rejected_count: number;
+        };
+        AdminReportItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /** @example 深圳湾公园 */
+            spot_name: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /** @example 今天鱼口不错，停车位充足。 */
+            content: string;
+            /**
+             * @description Public paths for visible content; signed work-bucket preview URLs for pending or removed content
+             * @example [
+             *       "/api/v1/uploads/public/ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            images: string[];
+            /** @example luofei */
+            fish_key: string | null;
+            /** @example 2.50 */
+            catch_weight_kg: string | null;
+            /**
+             * @example published
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            /** @description Machine review conclusion, label and trace id only */
+            machine_result: {
+                [key: string]: unknown;
+            } | null;
+            /** @example null */
+            reject_reason: string | null;
+            /** @example 18 */
+            like_count: number;
+            /**
+             * @description Pending abuse reports against this content
+             * @example 1
+             */
+            abuse_count: number;
+            /** @example false */
+            is_adopted: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            audit_time: string | null;
+            /** @example null */
+            auditor_id: string | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            adopted_at: string | null;
+            /** @example null */
+            adopted_by: string | null;
+            /**
+             * @description Hours since creation, used for the 24-hour human review SLA
+             * @example 25.4
+             */
+            age_hours: number;
+            /**
+             * @description True when age_hours exceeds 24
+             * @example true
+             */
+            sla_overdue: boolean;
+            author: components["schemas"]["AdminReportAuthorDto"];
+        };
+        AdminReportPageDto: {
+            items: components["schemas"]["AdminReportItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 12 */
+            total: number;
+        };
+        AdminReportSummaryDto: {
+            /**
+             * @description published waiting for spot check
+             * @example 12
+             */
+            spot_check: number;
+            /**
+             * @description machine_pending needing human review
+             * @example 3
+             */
+            pending: number;
+            /** @example 4 */
+            rejected: number;
+            /** @example 1 */
+            removed: number;
+            /**
+             * @description Pending abuse reports for the nav badge
+             * @example 2
+             */
+            abuse_pending: number;
+            /**
+             * @description Media checks not yet in a terminal state
+             * @example 1
+             */
+            media_check_unfinished: number;
+            /**
+             * @description Spot-check plus pending items older than 24 hours
+             * @example 2
+             */
+            sla_overdue: number;
+        };
+        AdminReportAuditItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            log_id: string;
+            /** @example report.approve */
+            action: string;
+            /** @example published */
+            status_before: string | null;
+            /** @example human_approved */
+            status_after: string | null;
+            /** @example null */
+            reason: string | null;
+            /** @example 01HX0000000000000000000001 */
+            admin_id: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReportHistoryAbuseDto: {
+            /** @example 01HX0000000000000000000000 */
+            abuse_id: string;
+            /**
+             * @example ad
+             * @enum {string}
+             */
+            reason: "ad" | "abuse" | "false_info" | "privacy" | "other";
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "removed" | "dismissed";
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            handled_at: string | null;
+        };
+        AdminReportHistoryDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /** @description Report scoped audit actions, newest first; no content or image payloads */
+            audit: components["schemas"]["AdminReportAuditItemDto"][];
+            /** @description Abuse reports for this content; reporter identity is never returned */
+            abuses: components["schemas"]["AdminReportHistoryAbuseDto"][];
+        };
+        AdminReportActionDto: {
+            /** @example 01HX0000000000000000000000 */
+            report_id: string;
+            /**
+             * @example human_approved
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            /**
+             * Format: date-time
+             * @example null
+             */
+            adopted_at: string | null;
+            /** @example null */
+            adopted_by: string | null;
+        };
+        RejectReportDto: {
+            /**
+             * @description Rejection reason stored on the report and shown to the author
+             * @example 广告引流
+             */
+            reason: string;
+        };
+        RemoveReportDto: {
+            /**
+             * @description Removal reason stored on the report and shown to the author
+             * @example 违规下架
+             */
+            reason: string;
+        };
+        AdminAbuseReportSummaryDto: {
+            /** @example 01HX0000000000000000000001 */
+            spot_id: string;
+            /** @example 深圳湾公园 */
+            spot_name: string;
+            /**
+             * @example comment
+             * @enum {string}
+             */
+            content_type: "comment" | "catch" | "intel";
+            /** @example 今天鱼口不错 */
+            content: string;
+            /**
+             * @example published
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+            images: string[];
+        };
+        AdminAbuseItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            abuse_id: string;
+            /** @example 01HX0000000000000000000001 */
+            report_id: string;
+            /**
+             * @example ad
+             * @enum {string}
+             */
+            reason: "ad" | "abuse" | "false_info" | "privacy" | "other";
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "removed" | "dismissed";
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            handled_at: string | null;
+            /** @example 25.4 */
+            age_hours: number;
+            /** @example true */
+            sla_overdue: boolean;
+            report: components["schemas"]["AdminAbuseReportSummaryDto"];
+        };
+        AdminAbusePageDto: {
+            items: components["schemas"]["AdminAbuseItemDto"][];
+            /** @example null */
+            next_cursor: string | null;
+            /** @example 4 */
+            total: number;
+        };
+        AdminAbuseHandleResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            abuse_id: string;
+            /** @example 01HX0000000000000000000001 */
+            report_id: string;
+            /**
+             * @example removed
+             * @enum {string}
+             */
+            status: "removed" | "dismissed";
+            /**
+             * @example removed
+             * @enum {string}
+             */
+            moderation_status: "machine_pending" | "machine_rejected" | "published" | "human_approved" | "human_rejected" | "removed";
+        };
+        HandleAbuseDto: {
+            /**
+             * @description remove takes the content down; dismiss keeps it unchanged
+             * @example remove
+             * @enum {string}
+             */
+            action: "remove" | "dismiss";
+            /**
+             * @description Handling note stored in the audit log and report reject_reason on removal
+             * @example 确认广告引流
+             */
+            reason?: string;
+        };
+        AdminUserRestrictResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            user_id: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            restricted_until: string | null;
+        };
+        RestrictUserDto: {
+            /**
+             * @description Restriction length in days; publishing is blocked until it expires
+             * @example 3
+             */
+            days: number;
+            /**
+             * @description Reason stored in the audit log
+             * @example 重复违规
+             */
+            reason: string;
+        };
+        AdminUserBanResponseDto: {
+            /** @example 01HX0000000000000000000000 */
+            user_id: string;
+            /**
+             * @example banned
+             * @enum {string}
+             */
+            status: "banned" | "active";
+        };
+        BanUserDto: {
+            /**
+             * @description Reason stored in the audit log; content is removed with reason user_banned
+             * @example 严重违规
+             */
+            reason: string;
         };
         AdminSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -1163,6 +2178,8 @@ export interface components {
             search: boolean;
             /** @example true */
             banned_spots: boolean;
+            /** @example false */
+            ugc: boolean;
         };
         DataFreshnessDto: {
             /** @example 30 */
@@ -1170,10 +2187,21 @@ export interface components {
             /** @example 90 */
             normal_days: number;
         };
+        LegalConfigDto: {
+            /** @example 2026-11-20 */
+            terms_version: string;
+            /** @example https://fish.unihuan.com/legal/terms */
+            terms_url: string;
+            /** @example https://fish.unihuan.com/legal/privacy */
+            privacy_url: string;
+            /** @example https://fish.unihuan.com/legal/community */
+            community_url: string;
+        };
         ClientConfigDto: {
             map: components["schemas"]["MapConfigDto"];
             features: components["schemas"]["FeatureFlagsDto"];
             data_freshness: components["schemas"]["DataFreshnessDto"];
+            legal: components["schemas"]["LegalConfigDto"];
         };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -1598,6 +2626,16 @@ export interface components {
              * @enum {string}
              */
             purpose: "cover" | "detail";
+        };
+        UploadUgcResponseDto: {
+            /** @example ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            key: string;
+            /** @example 1280 */
+            width: number;
+            /** @example 960 */
+            height: number;
+            /** @example 182400 */
+            size_bytes: number;
         };
     };
     responses: never;
@@ -2553,6 +3591,962 @@ export interface operations {
             };
         };
     };
+    AppAuthController_login: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WechatLoginDto"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AppSessionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many login attempts (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AppAuthController_refresh: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenDto"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AppSessionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AppAuthController_logout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenDto"];
+            };
+        };
+        responses: {
+            /** @description Logged out; data is null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        /** @example null */
+                        data: unknown;
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AppAuthController_me: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AppMeDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Business validation failed (42201) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReportDto"];
+            };
+        };
+        responses: {
+            /** @description Report stored; the machine review outcome is in moderation_status */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["CreateReportResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302, 40303, 40304, 40305) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_like: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The like exists and the current like count */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ReportLikeResponseDto"];
+                    };
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302, 40304) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_unlike: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The like is gone and the current like count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ReportLikeResponseDto"];
+                    };
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302, 40304) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_abuse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbuseReportDto"];
+            };
+        };
+        responses: {
+            /** @description The abuse report was accepted (or already existed) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AbuseReportResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302, 40304) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_remove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report is tombstoned and no longer visible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["DeleteReportResponseDto"];
+                    };
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302, 40304) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_mine: {
+        parameters: {
+            query?: {
+                /** @description pending=machine_pending; published=published/human_approved; rejected=machine_rejected/human_rejected; removed=admin removal */
+                status?: "all" | "pending" | "published" | "rejected" | "removed";
+                /** @description Opaque cursor: base64(created_at|report_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current user report page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["MyReportPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ReportsController_list: {
+        parameters: {
+            query?: {
+                content_type?: "comment" | "catch" | "intel";
+                /** @description Opaque cursor: base64(created_at|report_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Spot ULID */
+                spotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible reports, next cursor and total */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["PublicReportPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
     AuditLogController_list: {
         parameters: {
             query?: {
@@ -2887,6 +4881,1207 @@ export interface operations {
             };
             /** @description Dictionary row does not exist (40401) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_list: {
+        parameters: {
+            query?: {
+                /** @description spot_check=published; pending=machine_pending; rejected=machine_rejected/human_rejected; removed=removed */
+                queue?: "spot_check" | "pending" | "rejected" | "removed";
+                content_type?: "comment" | "catch" | "intel";
+                /** @description Spot ULID filter */
+                spot_id?: string;
+                /** @description Partial, case-insensitive spot name filter applied before pagination */
+                spot_name?: string;
+                /** @description Only rows older than the 24-hour SLA, applied before pagination so totals match */
+                sla_overdue?: boolean;
+                /** @description Opaque cursor: base64(created_at|report_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin report queue page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_summary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Moderation summary counts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportSummaryDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_detail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One admin report item */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportItemDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_history: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Report scoped audit and abuse history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportHistoryDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_approve: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Report set to human_approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportActionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401, 40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_reject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectReportDto"];
+            };
+        };
+        responses: {
+            /** @description Report set to human_rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportActionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401, 40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_remove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveReportDto"];
+            };
+        };
+        responses: {
+            /** @description Report set to removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportActionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401, 40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_adopt: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Intel report adopted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminReportActionDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401, 40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_listAbuses: {
+        parameters: {
+            query?: {
+                /** @description Abuse report handling status */
+                status?: "pending" | "removed" | "dismissed";
+                /** @description Partial, case-insensitive spot name filter applied before pagination */
+                spot_name?: string;
+                /** @description Only abuse reports older than the 24-hour SLA, applied before pagination so totals match */
+                sla_overdue?: boolean;
+                /** @description Opaque cursor: base64(created_at|abuse_id) */
+                cursor?: string;
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Abuse report page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminAbusePageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_handleAbuse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Abuse report ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandleAbuseDto"];
+            };
+        };
+        responses: {
+            /** @description Abuse report handled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminAbuseHandleResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401, 40402) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_restrictUser: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description App user ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestrictUserDto"];
+            };
+        };
+        responses: {
+            /** @description Restriction applied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminUserRestrictResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_unrestrictUser: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description App user ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restriction lifted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminUserRestrictResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_banUser: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description App user ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BanUserDto"];
+            };
+        };
+        responses: {
+            /** @description User banned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminUserBanResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminReportsController_unbanUser: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description App user ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User unbanned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminUserBanResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Not found (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description State conflict (40901) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4670,6 +7865,103 @@ export interface operations {
                 };
             };
             /** @description Storage unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    UploadsUgcController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Compressed WebP work-bucket key and dimensions */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["UploadUgcResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40302) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Payload too large (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Too many requests (42901) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Dependency unavailable (50301) */
             503: {
                 headers: {
                     [name: string]: unknown;

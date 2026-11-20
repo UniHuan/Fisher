@@ -7,5 +7,6 @@ import { ClientConfigService } from './config.service';
   imports: [PrismaModule],
   controllers: [ClientConfigController],
   providers: [ClientConfigService],
+  exports: [ClientConfigService],
 })
 export class ClientConfigModule {}

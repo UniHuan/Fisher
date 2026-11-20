@@ -9,9 +9,18 @@ export interface AdminContext {
   jti: string;
 }
 
+export interface AppUserContext {
+  userId: string;
+  openid: string;
+  nickname: string | null;
+  status: string;
+  tokenVersion: number;
+}
+
 export interface RequestWithContext extends Request {
   requestId: string;
   clientType?: ClientType;
   clientVersion?: string;
   admin?: AdminContext;
+  appUser?: AppUserContext;
 }

@@ -97,3 +97,158 @@ input {
 .card-pressed {
   opacity: 0.92;
 }
+
+.form-field {
+  margin-bottom: 26rpx;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #13211c;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.form-input {
+  width: 100%;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #d7e0d9;
+  border-radius: 10rpx;
+  background: #f2f5f0;
+  color: #13211c;
+  font-size: 27rpx;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 240rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #d7e0d9;
+  border-radius: 10rpx;
+  background: #f2f5f0;
+  color: #13211c;
+  font-size: 27rpx;
+  line-height: 1.6;
+}
+
+.form-counter {
+  display: block;
+  margin-top: 8rpx;
+  text-align: right;
+  color: #8a9691;
+  font-size: 22rpx;
+}
+
+.form-hint {
+  color: #7a8782;
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.form-error {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 10rpx;
+  background: #fbe7e1;
+  color: #b2412a;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.filter-chip {
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: #eef2ee;
+  color: #5e6b66;
+  font-size: 24rpx;
+}
+
+.filter-chip-active {
+  background: #0e6b5e;
+  color: #ffffff;
+}
+
+.login-card {
+  padding: 36rpx 28rpx;
+  text-align: center;
+}
+
+.login-title {
+  display: block;
+  color: #13211c;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.login-text {
+  display: block;
+  margin-top: 14rpx;
+  color: #5e6b66;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.login-button {
+  margin-top: 28rpx;
+}
+
+.retry-button {
+  margin-top: 24rpx;
+}
+
+.ugc-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.ugc-image-grid.cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.ugc-image-grid.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.ugc-image-thumb {
+  width: 100%;
+  height: 200rpx;
+  border-radius: 12rpx;
+  background: #e7ede8;
+}
+
+.ugc-image-grid.cols-1 .ugc-image-thumb {
+  height: 340rpx;
+}
+
+.ugc-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 6rpx 0;
+  color: #7a8782;
+  font-size: 24rpx;
+}
+
+.ugc-like.is-liked {
+  color: #e8623a;
+}
+
+.ugc-like-icon {
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.ugc-like-count {
+  font-size: 23rpx;
+}
+
+.ugc-menu {
+  padding: 6rpx 12rpx;
+  color: #7a8782;
+  font-size: 30rpx;
+  line-height: 1;
+  letter-spacing: 2rpx;
+}

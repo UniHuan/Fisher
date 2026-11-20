@@ -2,6 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
+import type { AppModuleOptions } from '../src/app.module';
 import { createApp } from '../src/app.factory';
 import { TestAdminController } from './support/test-admin.controller';
 
@@ -11,7 +12,7 @@ const TEST_JWT_ACCESS_SECRET = 'test-jwt-access-secret-0123456789abcdef';
 const TEST_CSRF_SECRET = 'test-csrf-secret-0123456789abcdefghij';
 const TEST_TOTP_ENCRYPTION_KEY = 'test-totp-encryption-key-0123456789abcdef';
 
-export async function createTestApp(): Promise<INestApplication> {
+export async function createTestApp(options: AppModuleOptions = {}): Promise<INestApplication> {
   process.env.NODE_ENV = 'test';
   process.env.PORT = '3999';
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -22,7 +23,7 @@ export async function createTestApp(): Promise<INestApplication> {
   process.env.STORAGE_DRIVER = 'local';
   process.env.STORAGE_LOCAL_ROOT = mkdtempSync(join(tmpdir(), 'szfisher-api-test-'));
 
-  const app = await createApp([TestAdminController]);
+  const app = await createApp([TestAdminController], options);
   await app.init();
   return app;
 }

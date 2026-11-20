@@ -38,7 +38,10 @@ export class WechatMediaCheckCallbackController {
     }
 
     response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-store');
-    response.send(echostr);
+    // codeql[js/reflected-xss] The WeChat protocol requires echoing this
+    // validated [A-Za-z0-9]{1,512} value as text/plain, never as HTML.
+    response.send(Buffer.from(echostr, 'utf8'));
   }
 }

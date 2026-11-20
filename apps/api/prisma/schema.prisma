@@ -45,6 +45,7 @@ model Spot {
 
   spot_pois     SpotPoi[]
   poi_sync_runs PoiSyncRun[]
+  reports       Report[]
 
   // The PRD 10.7 spot indexes (status, district), (status, is_core, verified_at),
   // (status, sort_weight, verified_at), (latitude, longitude) and (updated_at) are
@@ -95,18 +96,26 @@ model SpotPoi {
 }
 
 model AppUser {
-  user_id       String    @id @db.Char(26)
-  nickname      String?   @db.VarChar(40)
-  avatar_url    String?   @db.VarChar(255)
-  status        String    @default("active") @db.VarChar(32)
-  token_version Int       @default(0)
-  last_login_at DateTime? @db.Timestamptz(6)
-  created_at    DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime  @updatedAt @db.Timestamptz(6)
-  deleted_at    DateTime? @db.Timestamptz(6)
+  user_id           String    @id @db.Char(26)
+  nickname          String?   @db.VarChar(40)
+  avatar_url        String?   @db.VarChar(255)
+  status            String    @default("active") @db.VarChar(32)
+  token_version     Int       @default(0)
+  restricted_until  DateTime? @db.Timestamptz(6)
+  terms_version     String?   @db.VarChar(16)
+  terms_accepted_at DateTime? @db.Timestamptz(6)
+  last_login_at     DateTime? @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
 
   user_identities UserIdentity[]
   user_devices    UserDevice[]
+  reports         Report[]
+  report_likes    ReportLike[]
+  report_abuses   ReportAbuse[]
+  sessions        UserSession[]
+  uploads         UgcUpload[]
 
   @@index([status, created_at])
   @@map("app_user")
@@ -170,8 +179,10 @@ model AdminUser {
   created_at              DateTime  @default(now()) @db.Timestamptz(6)
   updated_at              DateTime  @updatedAt @db.Timestamptz(6)
 
-  audit_logs  AuditLog[]
-  import_jobs ImportJob[]
+  audit_logs      AuditLog[]
+  import_jobs     ImportJob[]
+  auditor_reports Report[]    @relation("ReportAuditor")
+  adopted_reports Report[]    @relation("ReportAdoptedBy")
 
   @@map("admin_user")
 }
@@ -289,4 +300,134 @@ model PoiSyncRun {
 
   @@index([spot_id, started_at])
   @@map("poi_sync_run")
+}
+
+model UserSession {
+  session_id         String    @id @db.Char(26)
+  user_id            String    @db.Char(26)
+  refresh_token_hash String    @unique @db.Char(64)
+  rotated_from       String?   @db.Char(26)
+  ip                 String?   @db.VarChar(45)
+  user_agent         String?   @db.VarChar(255)
+  expires_at         DateTime  @db.Timestamptz(6)
+  revoked_at         DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at       DateTime? @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@index([user_id, revoked_at])
+  @@index([expires_at])
+  @@map("user_session")
+}
+
+model Report {
+  report_id         String    @id @db.Char(26)
+  spot_id           String    @db.Char(26)
+  user_id           String    @db.Char(26)
+  content_type      String    @db.VarChar(16)
+  content           String    @db.Text
+  images            String[]  @default([])
+  fish_key          String?   @db.VarChar(64)
+  catch_weight_kg   Decimal?  @db.Decimal(5, 2)
+  report_time       DateTime  @default(now()) @db.Timestamptz(6)
+  like_count        Int       @default(0)
+  moderation_status String    @default("machine_pending") @db.VarChar(32)
+  machine_result    Json?     @db.JsonB
+  auditor_id        String?   @db.Char(26)
+  audit_time        DateTime? @db.Timestamptz(6)
+  reject_reason     String?   @db.VarChar(200)
+  adopted_at        DateTime? @db.Timestamptz(6)
+  adopted_by        String?   @db.Char(26)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
+
+  spot             Spot               @relation(fields: [spot_id], references: [spot_id], onDelete: Restrict)
+  user             AppUser            @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+  auditor          AdminUser?         @relation("ReportAuditor", fields: [auditor_id], references: [admin_id], onDelete: Restrict)
+  adopted_by_admin AdminUser?         @relation("ReportAdoptedBy", fields: [adopted_by], references: [admin_id], onDelete: Restrict)
+  likes            ReportLike[]
+  abuses           ReportAbuse[]
+  media            ReportMediaCheck[]
+
+  @@index([spot_id, moderation_status, created_at])
+  @@index([user_id, created_at])
+  @@index([moderation_status, created_at])
+  @@index([content_type, created_at])
+  @@map("report")
+}
+
+model ReportLike {
+  report_id  String   @db.Char(26)
+  user_id    String   @db.Char(26)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  report Report  @relation(fields: [report_id], references: [report_id], onDelete: Cascade)
+  user   AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@id([report_id, user_id])
+  @@index([user_id, created_at])
+  @@map("report_like")
+}
+
+model ReportAbuse {
+  abuse_id   String    @id @db.Char(26)
+  report_id  String    @db.Char(26)
+  user_id    String    @db.Char(26)
+  reason     String    @db.VarChar(32)
+  status     String    @default("pending") @db.VarChar(16)
+  handled_by String?   @db.Char(26)
+  handled_at DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  report Report  @relation(fields: [report_id], references: [report_id], onDelete: Cascade)
+  user   AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@unique([report_id, user_id])
+  @@index([status, created_at])
+  @@map("report_abuse")
+}
+
+model ReportMediaCheck {
+  trace_id   String    @id @db.VarChar(64)
+  report_id  String    @db.Char(26)
+  image_key  String    @db.VarChar(255)
+  status     String    @default("pending") @db.VarChar(16)
+  result     Json?     @db.JsonB
+  checked_at DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  report Report @relation(fields: [report_id], references: [report_id], onDelete: Cascade)
+
+  @@index([report_id, status])
+  @@map("report_media_check")
+}
+
+model UgcUpload {
+  upload_id  String    @id @db.Char(26)
+  user_id    String    @db.Char(26)
+  object_key String    @unique @db.VarChar(255)
+  size_bytes Int
+  status     String    @default("pending") @db.VarChar(16)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+
+  @@index([user_id, created_at])
+  @@index([status, created_at])
+  @@map("ugc_upload")
+}
+
+model RateLimitCounter {
+  counter_key  String   @db.VarChar(160)
+  window_start DateTime @db.Timestamptz(6)
+  count        Int      @default(0)
+  expires_at   DateTime @db.Timestamptz(6)
+
+  @@id([counter_key, window_start])
+  @@index([expires_at])
+  @@map("rate_limit_counter")
 }

@@ -474,6 +474,92 @@ select {
   overflow-wrap: anywhere;
 }
 
+.moderation-badge .ant-badge-count {
+  background: var(--danger);
+}
+
+.moderation-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.moderation-sla-alert,
+.moderation-error,
+.moderation-modal-alert {
+  margin-bottom: 12px;
+}
+
+.moderation-filter-row {
+  margin: 4px 0 12px;
+}
+
+.moderation-row-content {
+  min-width: 220px;
+}
+
+.moderation-row-content .moderation-excerpt {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.moderation-thumb {
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.moderation-actions .ant-btn {
+  padding-inline: 4px;
+}
+
+.moderation-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.moderation-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.moderation-image {
+  width: 100%;
+  height: 110px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.moderation-content-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.moderation-field {
+  margin-top: 14px;
+}
+
+.moderation-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.moderation-field-error {
+  margin-top: 4px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
   .login-shell {
     grid-template-columns: 1fr;
