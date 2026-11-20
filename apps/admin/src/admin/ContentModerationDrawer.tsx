@@ -465,6 +465,7 @@ function AbuseHandleModal({
   return (
     <Modal
       title="举报处理"
+      className="moderation-modal"
       open={abuse !== null}
       onCancel={onClose}
       onOk={() => {
@@ -503,11 +504,11 @@ function AbuseHandleModal({
           id="moderation-abuse-note"
           rows={3}
           maxLength={200}
-          showCount
           placeholder="选填，记录在审计日志"
           value={note}
           onChange={(event) => setNote(event.target.value)}
         />
+        <div className="moderation-count">{note.length} / 200</div>
       </div>
     </Modal>
   );
