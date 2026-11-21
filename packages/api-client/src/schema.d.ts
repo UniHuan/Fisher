@@ -2443,6 +2443,8 @@ export interface components {
             ugc: boolean;
             /** @example false */
             feedback: boolean;
+            /** @example false */
+            shop: boolean;
         };
         DataFreshnessDto: {
             /** @example 30 */

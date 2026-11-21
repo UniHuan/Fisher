@@ -479,3 +479,69 @@ model FeedbackImage {
   @@index([status, created_at])
   @@map("feedback_image")
 }
+
+model Product {
+  product_id      String    @id @db.Char(26)
+  brand           String    @default("unihuan") @db.VarChar(32)
+  title           String    @db.VarChar(80)
+  subtitle        String?   @db.VarChar(120)
+  description     String?   @db.Text
+  category        String    @db.VarChar(32)
+  image_keys      String[]  @default([])
+  cover_image_key String?   @db.VarChar(255)
+  status          String    @db.VarChar(32)
+  sort_weight     Int       @default(0)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at      DateTime? @db.Timestamptz(6)
+
+  channels   ProductChannel[]
+  placements ProductPlacement[]
+
+  @@index([status, sort_weight])
+  @@index([category, status])
+  @@index([updated_at])
+  @@map("product")
+}
+
+model ProductChannel {
+  channel_id          String   @id @db.Char(26)
+  product_id          String   @db.Char(26)
+  channel             String   @db.VarChar(32)
+  external_product_id String?  @db.VarChar(64)
+  purchase_action     String   @db.VarChar(16)
+  action_payload      Json     @db.JsonB
+  price_display       String?  @db.VarChar(32)
+  status              String   @db.VarChar(16)
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime @updatedAt @db.Timestamptz(6)
+
+  product Product @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@unique([product_id, channel])
+  @@index([channel, status])
+  @@map("product_channel")
+}
+
+model ProductPlacement {
+  placement_id String    @id @db.Char(26)
+  product_id   String    @db.Char(26)
+  surface      String    @db.VarChar(32)
+  scope        String    @db.VarChar(16)
+  target_id    String?   @db.Char(26)
+  fish_keys    String[]  @default([])
+  district     String?   @db.VarChar(32)
+  sort_order   Int       @default(0)
+  starts_at    DateTime? @db.Timestamptz(6)
+  ends_at      DateTime? @db.Timestamptz(6)
+  status       String    @db.VarChar(16)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+
+  product Product @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@index([surface, scope, target_id, status, sort_order])
+  @@index([product_id])
+  @@index([fish_keys], type: Gin)
+  @@map("product_placement")
+}

@@ -119,6 +119,7 @@ const DEFAULT_CONFIGS: ConfigEntry[] = [
   { config_key: 'analytics_event_retention_days', config_value: '180', description: '埋点明细保留时长（天）' },
   { config_key: 'features.ugc', config_value: 'false', description: 'V1.1 钓友情报开关' },
   { config_key: 'features.feedback', config_value: 'false', description: 'V1.1 体验反馈开关' },
+  { config_key: 'features.shop', config_value: 'false', description: 'V2 商品展示开关' },
 ];
 
 export async function seedDictionaries(prisma: PrismaClient): Promise<void> {

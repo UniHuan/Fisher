@@ -2,12 +2,15 @@ import type { ConfigService } from '@nestjs/config';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { ClientConfigService, DEFAULT_LEGAL_BASE_URL } from './config.service';
 
-function createService(values: Record<string, string | undefined>): ClientConfigService {
+function createService(
+  values: Record<string, string | undefined>,
+  configRows: Array<{ config_key: string; config_value: string }> = [],
+): ClientConfigService {
   const config = {
     get: jest.fn((key: string) => values[key]),
   } as unknown as ConfigService;
   const prisma = {
-    config: { findMany: jest.fn().mockResolvedValue([]) },
+    config: { findMany: jest.fn().mockResolvedValue(configRows) },
   } as unknown as PrismaService;
   return new ClientConfigService(prisma, config);
 }
@@ -18,6 +21,26 @@ const DEFAULT_LEGAL = {
   privacy_url: `${DEFAULT_LEGAL_BASE_URL}/privacy`,
   community_url: `${DEFAULT_LEGAL_BASE_URL}/community`,
 };
+
+describe('ClientConfigService features.shop', () => {
+  it('defaults features.shop to false when the config row is absent', async () => {
+    const service = createService({});
+
+    const result = await service.getClientConfig();
+
+    expect(result.features.shop).toBe(false);
+  });
+
+  it('returns true when the config row is true', async () => {
+    const service = createService({}, [
+      { config_key: 'features.shop', config_value: 'true' },
+    ]);
+
+    const result = await service.getClientConfig();
+
+    expect(result.features.shop).toBe(true);
+  });
+});
 
 describe('ClientConfigService legal config', () => {
   const fallbackCases: Array<[string, string | undefined, string | undefined]> = [

@@ -6918,12 +6918,16 @@ components:
         feedback:
           type: boolean
           example: false
+        shop:
+          type: boolean
+          example: false
       required:
         - map_tab
         - search
         - banned_spots
         - ugc
         - feedback
+        - shop
     DataFreshnessDto:
       type: object
       properties:
