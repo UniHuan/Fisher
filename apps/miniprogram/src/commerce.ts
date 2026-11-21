@@ -9,6 +9,7 @@ import {
 } from './api';
 
 export const SPOT_DETAIL_SURFACE = 'spot_detail';
+export const MAX_DETAIL_FISH_KEYS = 5;
 
 const H5_TOAST = '链接已复制，请在浏览器打开';
 const COPY_TOAST = '链接已复制';
@@ -45,6 +46,11 @@ export interface ProductCardView {
 
 export function productCategoryLabel(category: string): string {
   return CATEGORY_LABELS[category] ?? CATEGORY_LABELS.other ?? '';
+}
+
+/** The public product query accepts at most five fish keys. */
+export function fishKeysForDetail(fishTypes: string[]): string {
+  return fishTypes.slice(0, MAX_DETAIL_FISH_KEYS).join(',');
 }
 
 /** Loads product cards for a surface; a failure hides the section instead of raising. */

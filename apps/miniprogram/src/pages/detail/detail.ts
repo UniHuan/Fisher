@@ -24,6 +24,7 @@ import {
 } from '../../api';
 import {
   SPOT_DETAIL_SURFACE,
+  fishKeysForDetail,
   loadProductCards,
   openPurchaseAction,
   toProductCardView,
@@ -541,7 +542,7 @@ Page<DetailData, DetailMethods>({
     const cards = await loadProductCards({
       surface: SPOT_DETAIL_SURFACE,
       target_id: spot.spot_id,
-      fish_keys: spot.fish_types.join(','),
+      fish_keys: fishKeysForDetail(spot.fish_types),
     });
     if (this.data.spot?.spot_id !== spot.spot_id) {
       return;

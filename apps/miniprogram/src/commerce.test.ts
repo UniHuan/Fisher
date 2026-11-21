@@ -183,6 +183,31 @@ describe('commerce.openPurchaseAction', () => {
   });
 });
 
+describe('commerce.fishKeysForDetail', () => {
+  it('returns an empty string when the spot has no fish types', () => {
+    expect(commerce.fishKeysForDetail([])).toBe('');
+  });
+
+  it('keeps all five supported fish keys', () => {
+    expect(commerce.fishKeysForDetail(['luofei', 'luyu', 'hei yu', 'qiaozui', 'luyu2'])).toBe(
+      'luofei,luyu,hei yu,qiaozui,luyu2',
+    );
+  });
+
+  it('caps the request at the first five fish keys', () => {
+    expect(
+      commerce.fishKeysForDetail([
+        'luofei',
+        'luyu',
+        'hei yu',
+        'qiaozui',
+        'luyu2',
+        'extra',
+      ]),
+    ).toBe('luofei,luyu,hei yu,qiaozui,luyu2');
+  });
+});
+
 describe('commerce.loadProductCards', () => {
   it('returns an empty list when the product request rejects', async () => {
     requestMock.mockImplementation((options: WxRequestOptions) => {
