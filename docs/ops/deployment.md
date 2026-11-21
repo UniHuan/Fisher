@@ -281,9 +281,9 @@ API 会把公开列表、搜索和详情结果写入 `analytics_event`，字段�
 `features.ugc` 存在 `config` 表，种子值为 `false`，V1.0 部署不受影响。staging 验收时再打开，生产最后打开：
 
 ```sql
-INSERT INTO config (config_key, config_value, description)
-VALUES ('features.ugc', 'true', 'V1.1 钓友情报开关')
-ON CONFLICT (config_key) DO UPDATE SET config_value = 'true';
+INSERT INTO config (config_key, config_value, description, updated_at)
+VALUES ('features.ugc', 'true', 'V1.1 钓友情报开关', now())
+ON CONFLICT (config_key) DO UPDATE SET config_value = 'true', updated_at = now();
 ```
 
 回滚立即关闭：
@@ -351,9 +351,9 @@ GET /api/v1/uploads/public/ugc/:reportId/:file
 `features.feedback` 存在 `config` 表，种子值为 `false`，V1.0 与生产默认关闭。staging 部署并完成本地检查后打开：
 
 ```sql
-INSERT INTO config (config_key, config_value, description)
-VALUES ('features.feedback', 'true', 'V1.1 体验反馈开关')
-ON CONFLICT (config_key) DO UPDATE SET config_value = 'true';
+INSERT INTO config (config_key, config_value, description, updated_at)
+VALUES ('features.feedback', 'true', 'V1.1 体验反馈开关', now())
+ON CONFLICT (config_key) DO UPDATE SET config_value = 'true', updated_at = now();
 ```
 
 回滚立即关闭：
@@ -418,9 +418,9 @@ docker compose --env-file /etc/szfisher/staging.env \
 `features.shop` 存在 `config` 表，种子值为 `false`，生产默认关闭。staging 部署并完成商品配置后打开：
 
 ```sql
-INSERT INTO config (config_key, config_value, description)
-VALUES ('features.shop', 'true', 'UniHuan 商品扩展开关')
-ON CONFLICT (config_key) DO UPDATE SET config_value = 'true';
+INSERT INTO config (config_key, config_value, description, updated_at)
+VALUES ('features.shop', 'true', 'UniHuan 商品扩展开关', now())
+ON CONFLICT (config_key) DO UPDATE SET config_value = 'true', updated_at = now();
 ```
 
 回滚立即关闭：
