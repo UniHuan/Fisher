@@ -60,6 +60,10 @@ export type AdminProductChannel = components['schemas']['AdminProductChannelDto'
 export type CreateProductBody = components['schemas']['CreateProductDto'];
 export type UpdateProductBody = components['schemas']['UpdateProductDto'];
 export type ProductImageUpload = components['schemas']['ProductImageResponseDto'];
+export type AdminPlacementItem = components['schemas']['AdminPlacementItemDto'];
+export type AdminPlacementList = components['schemas']['AdminPlacementListDto'];
+export type CreatePlacementBody = components['schemas']['CreatePlacementDto'];
+export type UpdatePlacementBody = components['schemas']['UpdatePlacementDto'];
 export type LoginResponse =
   | components['schemas']['AdminSessionDto']
   | components['schemas']['LoginMfaRequiredDto']
@@ -129,6 +133,14 @@ export interface ProductListQuery {
   status?: string;
   category?: string;
   keyword?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface PlacementListQuery {
+  product_id?: string;
+  surface?: string;
+  status?: string;
   page?: number;
   page_size?: number;
 }
@@ -559,6 +571,38 @@ export const api = {
     return request<ProductImageUpload>(`/admin/products/${id}/images`, {
       method: 'POST',
       formData,
+      csrf,
+    });
+  },
+  listPlacements(query: PlacementListQuery): Promise<AdminPlacementList> {
+    return request<AdminPlacementList>(
+      `/admin/product-placements${querySuffix(query)}`,
+    );
+  },
+  createPlacement(
+    body: CreatePlacementBody,
+    csrf: string,
+  ): Promise<AdminPlacementItem> {
+    return request<AdminPlacementItem>('/admin/product-placements', {
+      method: 'POST',
+      body,
+      csrf,
+    });
+  },
+  updatePlacement(
+    id: string,
+    body: UpdatePlacementBody,
+    csrf: string,
+  ): Promise<AdminPlacementItem> {
+    return request<AdminPlacementItem>(`/admin/product-placements/${id}`, {
+      method: 'PUT',
+      body,
+      csrf,
+    });
+  },
+  deletePlacement(id: string, csrf: string): Promise<{ deleted: true }> {
+    return request<{ deleted: true }>(`/admin/product-placements/${id}`, {
+      method: 'DELETE',
       csrf,
     });
   },

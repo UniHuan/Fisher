@@ -1,4 +1,10 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import {
+  test,
+  expect,
+  type APIRequestContext,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
 import { argon2id, hash } from 'argon2';
 import { randomUUID } from 'node:crypto';
@@ -13,11 +19,17 @@ const TEST_DATABASE_URL =
 const STORAGE_ROOT = '/tmp/szfisher-playwright-storage';
 const PREFIX = `PW-COMMERCE-${Date.now()}`;
 const PRODUCT_TITLE = PREFIX;
+const PLACEMENT_PRODUCT_TITLE = `PW-PLACEMENT-${Date.now()} 展示商品`;
 const LUOFEI_SPOT_NAME = `${PREFIX} 罗非钓点`;
 const JIYU_SPOT_NAME = `${PREFIX} 鲷鱼钓点`;
 const IMAGE_DIR = path.resolve('test-results/playwright-commerce');
 const IMAGE_PATH = path.join(IMAGE_DIR, 'product.png');
 const PRODUCT_URL = 'https://weidian.com/item.html?itemID=10001';
+const API_ORIGIN = 'http://localhost:3011';
+const PUBLIC_CLIENT_HEADERS = {
+  'X-Client-Type': 'miniprogram',
+  'X-Client-Version': '1.0.0',
+} as const;
 
 const prisma = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } });
 
@@ -35,6 +47,8 @@ let reviewerId = '';
 // Task 8 placement tests reuse these published spots and their fish keys.
 let luofeiSpotId = '';
 let jiyuSpotId = '';
+let placementProductId = '';
+let shopFlagBefore = 'false';
 
 async function createRoleAccount(role: 'super_admin' | 'reviewer'): Promise<RoleAccount> {
   const username = `pw_commerce_${role}_${Date.now()}_${randomUUID().slice(0, 8)}`;
@@ -78,13 +92,44 @@ async function selectOption(
   option: string,
   scope?: Locator,
 ): Promise<void> {
-  const field = (scope ?? page).getByLabel(label);
+  const field = (scope ?? page).getByLabel(label, { exact: true });
   await field.click();
   await page
     .locator('.ant-select-dropdown:visible')
     .getByText(option, { exact: true })
     .last()
     .click();
+}
+
+async function selectMultipleOption(
+  page: Page,
+  label: string,
+  option: string,
+): Promise<void> {
+  await page.getByLabel(label, { exact: true }).click();
+  const optionLocator = page
+    .locator('.ant-select-dropdown:visible .ant-select-item-option')
+    .filter({ hasText: option })
+    .first();
+  // Multi-select dropdowns can render outside the viewport. Dispatch the DOM
+  // click directly so the Ant Design option handler runs without Playwright's
+  // viewport actionability check.
+  await optionLocator.evaluate((element) => (element as HTMLElement).click());
+  await page.keyboard.press('Escape');
+}
+
+async function fetchPublicProductIds(
+  request: APIRequestContext,
+  query: string,
+): Promise<string[]> {
+  const response = await request.get(`${API_ORIGIN}/api/v1/products?${query}`, {
+    headers: PUBLIC_CLIENT_HEADERS,
+  });
+  expect(response.ok()).toBeTruthy();
+  const payload = (await response.json()) as {
+    data: { items: Array<{ product_id: string }> };
+  };
+  return payload.data.items.map((item) => item.product_id);
 }
 
 async function loginWithPassword(page: Page, account: RoleAccount): Promise<void> {
@@ -176,9 +221,53 @@ test.beforeAll(async () => {
     },
   });
   jiyuSpotId = jiyuSpot.spot_id;
+
+  // The public product endpoint returns an empty list while features.shop is off.
+  const shopFlag = await prisma.config.findUnique({
+    where: { config_key: 'features.shop' },
+  });
+  shopFlagBefore = shopFlag?.config_value ?? 'false';
+  await prisma.config.upsert({
+    where: { config_key: 'features.shop' },
+    create: {
+      config_key: 'features.shop',
+      config_value: 'true',
+      description: 'V2 商品展示开关',
+    },
+    update: { config_value: 'true' },
+  });
+
+  // Placement tests start from a known active product with a usable channel.
+  const placementProduct = await prisma.product.create({
+    data: {
+      product_id: ulid(),
+      title: PLACEMENT_PRODUCT_TITLE,
+      category: 'rod',
+      status: 'active',
+      sort_weight: 0,
+      channels: {
+        create: [
+          {
+            channel_id: ulid(),
+            channel: 'weidian',
+            purchase_action: 'copy_link',
+            action_payload: { url: PRODUCT_URL },
+            status: 'active',
+          },
+        ],
+      },
+    },
+  });
+  placementProductId = placementProduct.product_id;
 });
 
 test.afterAll(async () => {
+  if (placementProductId !== '') {
+    await prisma.productPlacement.deleteMany({
+      where: { product_id: placementProductId },
+    });
+    await prisma.product.deleteMany({ where: { product_id: placementProductId } });
+  }
   const products = await prisma.product.findMany({
     where: { title: { startsWith: PREFIX } },
     select: { product_id: true },
@@ -210,6 +299,15 @@ test.afterAll(async () => {
     await prisma.idempotencyKey.deleteMany({ where: { actor_id: { in: adminIds } } });
     await prisma.adminUser.deleteMany({ where: { admin_id: { in: adminIds } } });
   }
+  await prisma.config.upsert({
+    where: { config_key: 'features.shop' },
+    create: {
+      config_key: 'features.shop',
+      config_value: shopFlagBefore,
+      description: 'V2 商品展示开关',
+    },
+    update: { config_value: shopFlagBefore },
+  });
   await prisma.$disconnect();
 });
 
@@ -260,4 +358,108 @@ test('reviewer does not see the product entry', async ({ page }) => {
   // Wait for the permission-driven header to settle before asserting absence.
   await expect(page.getByRole('button', { name: '体验反馈' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^商\s*品$/ })).toHaveCount(0);
+});
+
+test('super admin manages placements and public products follow them', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000);
+  await loginWithPassword(page, superAdminAccount);
+  await expect(page.getByRole('heading', { name: '钓点库' })).toBeVisible();
+
+  await page.getByRole('button', { name: /^商\s*品$/ }).click();
+  await expect(page.getByText('商品管理')).toBeVisible();
+  await page.getByRole('tab', { name: '展示位置' }).click();
+  await expect(page.getByRole('button', { name: '新增展示位置' })).toBeVisible();
+
+  const drawer = page.locator('.ant-drawer:visible').first();
+  const jiyuQuery = `surface=spot_detail&target_id=${jiyuSpotId}`;
+  const luofeiQuery = `surface=spot_detail&target_id=${luofeiSpotId}`;
+  const luofeiFishQuery = `${luofeiQuery}&fish_keys=luofei`;
+  const jiyuFishQuery = `${jiyuQuery}&fish_keys=jiyu`;
+
+  const createFishPlacement = async (
+    status: string,
+    endsAt: string | undefined,
+  ): Promise<void> => {
+    await page.getByRole('button', { name: '新增展示位置' }).click();
+    await expect(page.getByLabel('关联商品')).toBeVisible();
+    await selectOption(page, '关联商品', PLACEMENT_PRODUCT_TITLE);
+    await selectOption(page, '范围', '按鱼种');
+    await selectMultipleOption(page, '鱼种', '罗非');
+    await selectOption(page, '状态', status);
+    if (endsAt !== undefined) {
+      await page.getByLabel('生效结束').fill(endsAt);
+    }
+    await page.getByRole('button', { name: /^保\s*存$/ }).click();
+    await expectSuccessMessage(page, '展示位置已创建');
+  };
+
+  // One disabled and one expired fish placement must both stay hidden.
+  await createFishPlacement('停用', undefined);
+  await createFishPlacement('启用', '2020-01-01T00:00');
+
+  expect(await fetchPublicProductIds(request, luofeiFishQuery)).not.toContain(
+    placementProductId,
+  );
+  expect(await fetchPublicProductIds(request, jiyuFishQuery)).not.toContain(
+    placementProductId,
+  );
+
+  // Re-enabling the fish placement surfaces it on a spot with luofei.
+  const disabledRow = drawer
+    .locator('.ant-table-row')
+    .filter({ hasText: '按鱼种' })
+    .filter({ hasText: '停用' });
+  await disabledRow.getByRole('button', { name: /^编\s*辑$/ }).click();
+  await selectOption(page, '状态', '启用');
+  await page.getByRole('button', { name: /^保\s*存$/ }).click();
+  await expectSuccessMessage(page, '展示位置已保存');
+  expect(await fetchPublicProductIds(request, luofeiFishQuery)).toContain(
+    placementProductId,
+  );
+
+  // Spot placement on the jiyu spot surfaces there and nowhere else.
+  await page.getByRole('button', { name: '新增展示位置' }).click();
+  await expect(page.getByLabel('关联商品')).toBeVisible();
+  await selectOption(page, '关联商品', PLACEMENT_PRODUCT_TITLE);
+  await selectOption(page, '范围', '单个钓点');
+  await selectOption(page, '钓点', JIYU_SPOT_NAME);
+  await page.getByRole('button', { name: /^保\s*存$/ }).click();
+  await expectSuccessMessage(page, '展示位置已创建');
+
+  expect(await fetchPublicProductIds(request, jiyuQuery)).toContain(
+    placementProductId,
+  );
+  expect(await fetchPublicProductIds(request, luofeiQuery)).not.toContain(
+    placementProductId,
+  );
+
+  // Deleting the active fish placement leaves only the expired row, hidden.
+  const activeFishRow = drawer
+    .locator('.ant-table-row')
+    .filter({ hasText: '按鱼种' })
+    .filter({ hasText: '长期' });
+  await activeFishRow.getByRole('button', { name: /^删\s*除$/ }).click();
+  await page
+    .locator('.ant-modal:visible')
+    .getByRole('button', { name: /^删\s*除$/ })
+    .click();
+  await expectSuccessMessage(page, '展示位置已删除');
+  expect(await fetchPublicProductIds(request, luofeiFishQuery)).not.toContain(
+    placementProductId,
+  );
+
+  // Deleting the spot placement drops the product from its spot response.
+  const spotRow = drawer.locator('.ant-table-row').filter({ hasText: '单个钓点' });
+  await spotRow.getByRole('button', { name: /^删\s*除$/ }).click();
+  await page
+    .locator('.ant-modal:visible')
+    .getByRole('button', { name: /^删\s*除$/ })
+    .click();
+  await expectSuccessMessage(page, '展示位置已删除');
+  expect(await fetchPublicProductIds(request, jiyuQuery)).not.toContain(
+    placementProductId,
+  );
 });

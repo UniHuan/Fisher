@@ -16,6 +16,7 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
   Typography,
   type TableProps,
@@ -25,9 +26,12 @@ import {
   api,
   ApiError,
   resolveMediaUrl,
+  type AdminPlacementItem,
   type AdminProductDetail,
   type AdminProductListItem,
   type AdminProductPage,
+  type AdminSpotListItem,
+  type CreatePlacementBody,
   type CreateProductBody,
   type Session,
   type UpdateProductBody,
@@ -137,6 +141,42 @@ const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({
   label,
 }));
 
+const PLACEMENT_SURFACE_LABEL: Record<string, string> = {
+  spot_detail: '钓点详情',
+};
+
+const PLACEMENT_SCOPE_LABEL: Record<string, string> = {
+  spot: '单个钓点',
+  fish: '按鱼种',
+};
+
+const PLACEMENT_SCOPE_COLOR: Record<string, string> = {
+  spot: 'blue',
+  fish: 'purple',
+};
+
+const PLACEMENT_STATUS_LABEL: Record<string, string> = {
+  active: '启用',
+  disabled: '停用',
+};
+
+const PLACEMENT_STATUS_COLOR: Record<string, string> = {
+  active: 'green',
+  disabled: 'default',
+};
+
+const PLACEMENT_SURFACE_OPTIONS = Object.entries(PLACEMENT_SURFACE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
+const PLACEMENT_SCOPE_OPTIONS = Object.entries(PLACEMENT_SCOPE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
+const PLACEMENT_STATUS_OPTIONS = Object.entries(PLACEMENT_STATUS_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
 function textOrNull(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -175,6 +215,35 @@ function categoryTag(category: string) {
 
 function statusTag(status: string) {
   return <Tag color={STATUS_COLOR[status] ?? 'default'}>{STATUS_LABEL[status] ?? status}</Tag>;
+}
+
+function toLocalDateTimeInput(value: string | null): string | undefined {
+  if (value === null) {
+    return undefined;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+  const pad = (part: number): string => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function parseLocalDateTime(value: string | undefined): string | null {
+  if (value === undefined || value.trim() === '') {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function placementWindowText(startsAt: string | null, endsAt: string | null): string {
+  if (startsAt === null && endsAt === null) {
+    return '长期';
+  }
+  const start = startsAt === null ? '立即' : formatDateTime(startsAt);
+  const end = endsAt === null ? '不限' : formatDateTime(endsAt);
+  return `${start} 至 ${end}`;
 }
 
 interface ProductEditorDrawerProps {
@@ -722,6 +791,552 @@ function ProductEditorDrawer({
   );
 }
 
+interface PlacementFormValues {
+  product_id: string;
+  surface: 'spot_detail';
+  scope: 'spot' | 'fish';
+  target_id?: string | null;
+  fish_keys?: string[];
+  sort_order?: number;
+  starts_at?: string;
+  ends_at?: string;
+  status: 'active' | 'disabled';
+}
+
+interface PlacementEditorDrawerProps {
+  open: boolean;
+  placement: AdminPlacementItem | null;
+  products: AdminProductListItem[];
+  spots: AdminSpotListItem[];
+  fishOptions: Array<{ value: string; label: string }>;
+  optionsLoading: boolean;
+  session: Session;
+  onClose: () => void;
+  onSaved: () => void;
+  onExpired: () => void;
+}
+
+function PlacementEditorDrawer({
+  open,
+  placement,
+  products,
+  spots,
+  fishOptions,
+  optionsLoading,
+  session,
+  onClose,
+  onSaved,
+  onExpired,
+}: PlacementEditorDrawerProps) {
+  const { message } = App.useApp();
+  const [form] = Form.useForm<PlacementFormValues>();
+  const [saving, setSaving] = useState(false);
+  const scope = Form.useWatch('scope', form) ?? 'spot';
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    form.resetFields();
+    if (placement === null) {
+      form.setFieldsValue({
+        surface: 'spot_detail',
+        scope: 'spot',
+        fish_keys: [],
+        sort_order: 0,
+        status: 'active',
+      });
+      return;
+    }
+    form.setFieldsValue({
+      product_id: placement.product_id,
+      surface: 'spot_detail',
+      scope: placement.scope,
+      target_id: placement.target_id,
+      fish_keys: placement.fish_keys,
+      sort_order: placement.sort_order,
+      starts_at: toLocalDateTimeInput(placement.starts_at),
+      ends_at: toLocalDateTimeInput(placement.ends_at),
+      status: placement.status,
+    });
+  }, [open, placement, form]);
+
+  const handleSave = async (): Promise<void> => {
+    let values: PlacementFormValues;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    const body: CreatePlacementBody = {
+      product_id: values.product_id,
+      surface: values.surface,
+      scope: values.scope,
+      sort_order: values.sort_order ?? 0,
+      starts_at: parseLocalDateTime(values.starts_at),
+      ends_at: parseLocalDateTime(values.ends_at),
+      status: values.status,
+      ...(values.scope === 'spot'
+        ? { target_id: values.target_id ?? null, fish_keys: [] }
+        : { target_id: null, fish_keys: values.fish_keys ?? [] }),
+    };
+
+    setSaving(true);
+    try {
+      if (placement === null) {
+        await api.createPlacement(body, session.csrf);
+        message.success('展示位置已创建');
+      } else {
+        await api.updatePlacement(placement.placement_id, body, session.csrf);
+        message.success('展示位置已保存');
+      }
+      onSaved();
+      onClose();
+    } catch (error) {
+      if (isAuthError(error)) {
+        onExpired();
+        return;
+      }
+      message.error(errorText(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Drawer
+      open={open}
+      width={640}
+      title={placement === null ? '新增展示位置' : '编辑展示位置'}
+      onClose={onClose}
+      destroyOnHidden
+      footer={
+        <div className="editor-footer">
+          <Button onClick={onClose}>取消</Button>
+          <Button type="primary" loading={saving} onClick={() => void handleSave()}>
+            保存
+          </Button>
+        </div>
+      }
+    >
+      <Form form={form} layout="vertical" requiredMark={false}>
+        <Row gutter={16}>
+          <Col span={16}>
+            <Form.Item
+              label="关联商品"
+              name="product_id"
+              rules={[{ required: true, message: '请选择商品' }]}
+            >
+              <Select
+                showSearch
+                optionFilterProp="label"
+                loading={optionsLoading}
+                placeholder="选择商品"
+                options={products.map((product) => ({
+                  value: product.product_id,
+                  label: product.title,
+                }))}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="状态"
+              name="status"
+              rules={[{ required: true, message: '请选择状态' }]}
+            >
+              <Select options={PLACEMENT_STATUS_OPTIONS} />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="展示页面" name="surface">
+              <Select options={PLACEMENT_SURFACE_OPTIONS} disabled />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="范围"
+              name="scope"
+              rules={[{ required: true, message: '请选择范围' }]}
+            >
+              <Select
+                options={PLACEMENT_SCOPE_OPTIONS}
+                onChange={(value: 'spot' | 'fish') => {
+                  // Switch scope clears the other targeting field explicitly.
+                  form.setFieldsValue(
+                    value === 'spot'
+                      ? { target_id: undefined, fish_keys: [] }
+                      : { target_id: null, fish_keys: [] },
+                  );
+                }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="排序" name="sort_order">
+              <InputNumber min={0} max={1000000} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          {scope === 'spot' && (
+            <Col span={24}>
+              <Form.Item
+                label="钓点"
+                name="target_id"
+                rules={[{ required: true, message: '请选择钓点' }]}
+              >
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  loading={optionsLoading}
+                  placeholder="选择钓点"
+                  options={spots.map((spot) => ({
+                    value: spot.spot_id,
+                    label: spot.spot_name,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          )}
+          {scope === 'fish' && (
+            <Col span={24}>
+              <Form.Item
+                label="鱼种"
+                name="fish_keys"
+                rules={[{ required: true, message: '请选择至少一个鱼种' }]}
+              >
+                <Select
+                  mode="multiple"
+                  showSearch
+                  optionFilterProp="label"
+                  loading={optionsLoading}
+                  placeholder="最多选择 5 个鱼种"
+                  options={fishOptions}
+                />
+              </Form.Item>
+            </Col>
+          )}
+          <Col span={12}>
+            <Form.Item label="生效开始" name="starts_at">
+              <Input type="datetime-local" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="生效结束" name="ends_at">
+              <Input type="datetime-local" />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Form>
+    </Drawer>
+  );
+}
+
+interface PlacementPanelProps {
+  session: Session;
+  onExpired: () => void;
+}
+
+function PlacementPanel({ session, onExpired }: PlacementPanelProps) {
+  const { message, modal } = App.useApp();
+  const [rows, setRows] = useState<AdminPlacementItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [products, setProducts] = useState<AdminProductListItem[]>([]);
+  const [spots, setSpots] = useState<AdminSpotListItem[]>([]);
+  const [fishOptions, setFishOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminPlacementItem | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setOptionsLoading(true);
+    Promise.all([
+      api.listProducts({ page: 1, page_size: 50 }),
+      api.listSpots({ page: 1, page_size: 100 }),
+      api.dictionaries(),
+    ])
+      .then(([productPage, spotPage, dictionaries]) => {
+        if (!active) {
+          return;
+        }
+        setProducts(productPage.items);
+        setSpots(spotPage.items);
+        setFishOptions(
+          dictionaries.fish_types.map((item) => ({
+            value: item.key,
+            label: item.label,
+          })),
+        );
+      })
+      .catch((cause: unknown) => {
+        if (!active) {
+          return;
+        }
+        if (isAuthError(cause)) {
+          onExpired();
+          return;
+        }
+        message.error(errorText(cause));
+      })
+      .finally(() => {
+        if (active) {
+          setOptionsLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [message, onExpired]);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    api
+      .listPlacements({
+        status: statusFilter,
+        page,
+        page_size: pageSize,
+      })
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        setRows(result.items);
+        setTotal(result.total);
+      })
+      .catch((cause: unknown) => {
+        if (!active) {
+          return;
+        }
+        if (isAuthError(cause)) {
+          onExpired();
+          return;
+        }
+        setError(errorText(cause));
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [statusFilter, page, pageSize, reloadKey, onExpired]);
+
+  const refresh = (): void => {
+    setReloadKey((value) => value + 1);
+  };
+
+  const productTitle = (productId: string): string =>
+    products.find((product) => product.product_id === productId)?.title ?? productId;
+
+  const spotName = (spotId: string | null): string => {
+    if (spotId === null) {
+      return '';
+    }
+    return spots.find((spot) => spot.spot_id === spotId)?.spot_name ?? spotId;
+  };
+
+  const fishLabel = (key: string): string =>
+    fishOptions.find((option) => option.value === key)?.label ?? key;
+
+  const openEditor = (placement: AdminPlacementItem | null): void => {
+    setEditing(placement);
+    setEditorOpen(true);
+  };
+
+  const handleDelete = (row: AdminPlacementItem): void => {
+    modal.confirm({
+      title: '删除展示位置',
+      content: '删除后该商品不再出现在对应位置，确定删除？',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await api.deletePlacement(row.placement_id, session.csrf);
+          message.success('展示位置已删除');
+          refresh();
+        } catch (cause) {
+          if (isAuthError(cause)) {
+            onExpired();
+            return;
+          }
+          message.error(errorText(cause));
+        }
+      },
+    });
+  };
+
+  const columns: TableProps<AdminPlacementItem>['columns'] = [
+    {
+      title: '商品',
+      dataIndex: 'product_id',
+      render: (value: string) => <Typography.Text strong>{productTitle(value)}</Typography.Text>,
+    },
+    {
+      title: '范围',
+      dataIndex: 'scope',
+      width: 210,
+      render: (_value, row) => (
+        <Space size={4} wrap>
+          <Tag color={PLACEMENT_SCOPE_COLOR[row.scope] ?? 'default'}>
+            {PLACEMENT_SCOPE_LABEL[row.scope] ?? row.scope}
+          </Tag>
+          <span>
+            {row.scope === 'spot'
+              ? spotName(row.target_id)
+              : row.fish_keys.map(fishLabel).join('、')}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      title: '排序',
+      dataIndex: 'sort_order',
+      width: 72,
+    },
+    {
+      title: '生效时间',
+      key: 'window',
+      width: 220,
+      render: (_value, row) => placementWindowText(row.starts_at, row.ends_at),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 82,
+      render: (value: string) => (
+        <Tag color={PLACEMENT_STATUS_COLOR[value] ?? 'default'}>
+          {PLACEMENT_STATUS_LABEL[value] ?? value}
+        </Tag>
+      ),
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updated_at',
+      width: 168,
+      render: (value: string) => formatDateTime(value),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 120,
+      render: (_value, row) => (
+        <Space size={4} wrap>
+          <Button
+            size="small"
+            type="link"
+            onClick={() => {
+              openEditor(row);
+            }}
+          >
+            编辑
+          </Button>
+          <Button
+            size="small"
+            type="link"
+            danger
+            onClick={() => {
+              handleDelete(row);
+            }}
+          >
+            删除
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <Row gutter={[12, 12]} align="middle" className="feedback-filter-row">
+        <Col xs={24} md={6}>
+          <Select
+            allowClear
+            placeholder="全部状态"
+            value={statusFilter}
+            onChange={(value: string | undefined) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            options={PLACEMENT_STATUS_OPTIONS}
+            style={{ width: '100%' }}
+          />
+        </Col>
+        <Col xs={24} md={18}>
+          <Space>
+            <Button onClick={refresh}>刷新</Button>
+            <Button type="primary" onClick={() => openEditor(null)}>
+              新增展示位置
+            </Button>
+          </Space>
+        </Col>
+      </Row>
+      {error !== null && (
+        <Alert
+          type="error"
+          showIcon
+          message="加载失败"
+          description={error}
+          action={
+            <Button size="small" onClick={refresh}>
+              重试
+            </Button>
+          }
+          className="feedback-error"
+        />
+      )}
+      <Table<AdminPlacementItem>
+        rowKey="placement_id"
+        size="small"
+        loading={loading}
+        columns={columns}
+        dataSource={rows}
+        scroll={{ x: 960 }}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          pageSizeOptions: [20, 50],
+          showTotal: (count) => `共 ${count} 个展示位置`,
+          onChange: (nextPage, nextPageSize) => {
+            setPage(nextPage);
+            setPageSize(nextPageSize);
+          },
+        }}
+        locale={{ emptyText: <Empty description="还没有展示位置" /> }}
+      />
+      <PlacementEditorDrawer
+        open={editorOpen}
+        placement={editing}
+        products={products}
+        spots={spots}
+        fishOptions={fishOptions}
+        optionsLoading={optionsLoading}
+        session={session}
+        onClose={() => {
+          setEditorOpen(false);
+          setEditing(null);
+        }}
+        onSaved={refresh}
+        onExpired={onExpired}
+      />
+    </>
+  );
+}
+
 export function ProductDrawer({
   open,
   reloadKey,
@@ -743,11 +1358,13 @@ export function ProductDrawer({
   const [listReloadKey, setListReloadKey] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorProductId, setEditorProductId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('products');
 
   useEffect(() => {
     if (!open) {
       setEditorOpen(false);
       setEditorProductId(null);
+      setActiveTab('products');
       return;
     }
     let active = true;
@@ -914,88 +1531,111 @@ export function ProductDrawer({
 
   return (
     <Drawer title="商品管理" width={1120} open={open} onClose={onClose} destroyOnHidden>
-      <Row gutter={[12, 12]} align="middle" className="feedback-filter-row">
-        <Col xs={24} md={5}>
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={statusFilter}
-            onChange={(value: string | undefined) => {
-              setStatusFilter(value);
-              setPage(1);
-            }}
-            options={STATUS_OPTIONS}
-            style={{ width: '100%' }}
-          />
-        </Col>
-        <Col xs={24} md={5}>
-          <Select
-            allowClear
-            placeholder="全部分类"
-            value={categoryFilter}
-            onChange={(value: string | undefined) => {
-              setCategoryFilter(value);
-              setPage(1);
-            }}
-            options={CATEGORY_OPTIONS}
-            style={{ width: '100%' }}
-          />
-        </Col>
-        <Col xs={24} md={8}>
-          <Input.Search
-            allowClear
-            placeholder="按商品名称搜索"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            onSearch={() => {
-              setPage(1);
-              refresh();
-            }}
-          />
-        </Col>
-        <Col xs={24} md={6}>
-          <Space>
-            <Button onClick={refresh}>刷新</Button>
-            <Button type="primary" onClick={() => openEditor(null)}>
-              新增商品
-            </Button>
-          </Space>
-        </Col>
-      </Row>
-      {error !== null && (
-        <Alert
-          type="error"
-          showIcon
-          message="加载失败"
-          description={error}
-          action={
-            <Button size="small" onClick={refresh}>
-              重试
-            </Button>
-          }
-          className="feedback-error"
-        />
-      )}
-      <Table<AdminProductListItem>
-        rowKey="product_id"
-        size="small"
-        loading={loading}
-        columns={columns}
-        dataSource={rows}
-        scroll={{ x: 960 }}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          pageSizeOptions: [20, 50],
-          showTotal: (count) => `共 ${count} 个商品`,
-          onChange: (nextPage, nextPageSize) => {
-            setPage(nextPage);
-            setPageSize(nextPageSize);
-          },
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => {
+          setActiveTab(key);
         }}
-        locale={{ emptyText: <Empty description="还没有商品，先新增一个草稿" /> }}
+        items={[
+          {
+            key: 'products',
+            label: '商品',
+            children: (
+              <>
+                <Row gutter={[12, 12]} align="middle" className="feedback-filter-row">
+                  <Col xs={24} md={5}>
+                    <Select
+                      allowClear
+                      placeholder="全部状态"
+                      value={statusFilter}
+                      onChange={(value: string | undefined) => {
+                        setStatusFilter(value);
+                        setPage(1);
+                      }}
+                      options={STATUS_OPTIONS}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col xs={24} md={5}>
+                    <Select
+                      allowClear
+                      placeholder="全部分类"
+                      value={categoryFilter}
+                      onChange={(value: string | undefined) => {
+                        setCategoryFilter(value);
+                        setPage(1);
+                      }}
+                      options={CATEGORY_OPTIONS}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <Input.Search
+                      allowClear
+                      placeholder="按商品名称搜索"
+                      value={keyword}
+                      onChange={(event) => setKeyword(event.target.value)}
+                      onSearch={() => {
+                        setPage(1);
+                        refresh();
+                      }}
+                    />
+                  </Col>
+                  <Col xs={24} md={6}>
+                    <Space>
+                      <Button onClick={refresh}>刷新</Button>
+                      <Button type="primary" onClick={() => openEditor(null)}>
+                        新增商品
+                      </Button>
+                    </Space>
+                  </Col>
+                </Row>
+                {error !== null && (
+                  <Alert
+                    type="error"
+                    showIcon
+                    message="加载失败"
+                    description={error}
+                    action={
+                      <Button size="small" onClick={refresh}>
+                        重试
+                      </Button>
+                    }
+                    className="feedback-error"
+                  />
+                )}
+                <Table<AdminProductListItem>
+                  rowKey="product_id"
+                  size="small"
+                  loading={loading}
+                  columns={columns}
+                  dataSource={rows}
+                  scroll={{ x: 960 }}
+                  pagination={{
+                    current: page,
+                    pageSize,
+                    total,
+                    showSizeChanger: true,
+                    pageSizeOptions: [20, 50],
+                    showTotal: (count) => `共 ${count} 个商品`,
+                    onChange: (nextPage, nextPageSize) => {
+                      setPage(nextPage);
+                      setPageSize(nextPageSize);
+                    },
+                  }}
+                  locale={{
+                    emptyText: <Empty description="还没有商品，先新增一个草稿" />,
+                  }}
+                />
+              </>
+            ),
+          },
+          {
+            key: 'placements',
+            label: '展示位置',
+            children: <PlacementPanel session={session} onExpired={onExpired} />,
+          },
+        ]}
       />
       <ProductEditorDrawer
         open={editorOpen}
