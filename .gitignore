@@ -33,3 +33,6 @@ backups/
 
 # Local git worktrees
 .worktrees/
+
+# Local workbench state
+.workbuddy/
