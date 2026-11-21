@@ -7,7 +7,7 @@ export const MAX_CONTENT_CODE_POINTS = 500;
 export const MAX_CONTACT_LENGTH = 80;
 export const MAX_FEEDBACK_IMAGES = 3;
 
-export const PHOTO_CONSENT_TEXT = '提交即授权深圳钓鱼助手在对应钓点页展示这张照片，我们会先审核';
+export const PHOTO_CONSENT_TEXT = '提交即授权优丽环钓鱼助手在对应钓点页展示这张照片，我们会先审核';
 
 export interface FeedbackDraft {
   category: FeedbackCategory | '';

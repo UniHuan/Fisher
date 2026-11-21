@@ -181,7 +181,7 @@ describe('Admin auth (e2e)', () => {
     const otpauthUri = setup.body.data.otpauth_uri as string;
     const manualKey = setup.body.data.manual_key as string;
     expect(otpauthUri).toMatch(/^otpauth:\/\/totp\//);
-    expect(otpauthUri).toContain(encodeURIComponent('深圳钓鱼助手'));
+    expect(otpauthUri).toContain(encodeURIComponent('优丽环钓鱼助手'));
     expect(otpauthUri).toContain(manualKey);
     admin.totpSecret = manualKey;
 

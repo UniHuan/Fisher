@@ -406,7 +406,7 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
             <Typography.Text strong className="header-title">
               钓点运营台
             </Typography.Text>
-            <div className="header-subtitle">深圳钓鱼助手</div>
+            <div className="header-subtitle">优丽环钓鱼助手</div>
           </div>
         </Space>
         <Space size={12}>

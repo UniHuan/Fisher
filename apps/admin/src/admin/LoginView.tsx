@@ -93,7 +93,7 @@ export function LoginView({ onSession }: LoginViewProps) {
     <main className="login-shell">
       <section className="login-brand">
         <div className="brand-mark">SZ</div>
-        <p className="brand-kicker">深圳钓鱼助手</p>
+        <p className="brand-kicker">优丽环钓鱼助手</p>
         <h1>运营后台</h1>
         <p className="brand-copy">
           钓点录入、核实与发布。所有关键操作都会留下审计记录。

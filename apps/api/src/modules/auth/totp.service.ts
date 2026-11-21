@@ -7,7 +7,7 @@ import {
 } from 'otplib';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
-const ISSUER = '深圳钓鱼助手';
+const ISSUER = '优丽环钓鱼助手';
 const SECRET_VERSION = 'v1';
 const GCM_IV_BYTES = 12;
 const TOTP_TOLERANCE_SECONDS = 30;

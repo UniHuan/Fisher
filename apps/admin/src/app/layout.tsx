@@ -4,7 +4,7 @@ import 'antd/dist/reset.css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '深圳钓鱼助手运营后台',
+  title: '优丽环钓鱼助手运营后台',
   description: '钓点录入、核实与发布',
 };
 
