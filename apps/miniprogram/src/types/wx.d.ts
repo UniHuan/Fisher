@@ -118,6 +118,15 @@ interface WxNavigateBackOptions {
   delta?: number;
 }
 
+interface WxNavigateToMiniProgramOptions {
+  appId: string;
+  path?: string;
+  extraData?: Record<string, unknown>;
+  envVersion?: 'develop' | 'trial' | 'release';
+  success?: () => void;
+  fail?: (error: { errMsg: string }) => void;
+}
+
 interface WxLoginOptions {
   success?: (result: { code?: string; errMsg?: string }) => void;
   fail?: (error: { errMsg: string }) => void;
@@ -182,6 +191,7 @@ declare const wx: {
   previewImage(options: WxPreviewImageOptions): void;
   navigateTo(options: WxNavigateOptions): void;
   navigateBack(options?: WxNavigateBackOptions): void;
+  navigateToMiniProgram(options: WxNavigateToMiniProgramOptions): void;
   switchTab(options: WxNavigateOptions): void;
   enableAlertBeforeUnload(options: WxAlertBeforeUnloadOptions): void;
   disableAlertBeforeUnload(): void;
@@ -209,6 +219,8 @@ declare function Page<TData extends object, TMethods extends object = object>(
 ): void;
 
 declare function App(options: Record<string, unknown>): void;
+
+declare function Component(options: Record<string, unknown>): void;
 
 declare function setTimeout(handler: () => void, timeout?: number): number;
 declare function clearTimeout(id: number): void;

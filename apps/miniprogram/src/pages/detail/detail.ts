@@ -22,6 +22,14 @@ import {
   type ReportContentType,
   type SpotReportParams,
 } from '../../api';
+import {
+  SPOT_DETAIL_SURFACE,
+  fishKeysForDetail,
+  loadProductCards,
+  openPurchaseAction,
+  toProductCardView,
+  type ProductCardView,
+} from '../../commerce';
 import { ensureSession, getMe, getSession } from '../../session';
 
 interface DisplayPoiGroup {
@@ -93,6 +101,9 @@ interface DetailData {
     };
   }>;
   canNavigate: boolean;
+  shopEnabled: boolean;
+  products: ProductCardView[];
+  productsLoading: boolean;
   ugcVisible: boolean;
   feedbackEnabled: boolean;
   reports: DisplayReport[];
@@ -126,6 +137,10 @@ interface ReportFilterTapEvent {
   currentTarget: { dataset: { key: string } };
 }
 
+interface ProductTapEvent {
+  currentTarget: { dataset: { id: string } };
+}
+
 interface ReportTapEvent {
   currentTarget: { dataset: { id: string } };
 }
@@ -137,6 +152,9 @@ interface ReportImageTapEvent {
 interface DetailMethods {
   load(spotId: string): Promise<void>;
   display(spot: PublicSpotDetail): void;
+  loadProducts(spot: PublicSpotDetail): Promise<void>;
+  openProduct(event: ProductTapEvent): void;
+  openShop(): void;
   loadReports(reset: boolean): Promise<void>;
   displayReport(item: PublicReportItem): DisplayReport;
   changeReportFilter(event: ReportFilterTapEvent): void;
@@ -214,6 +232,9 @@ Page<DetailData, DetailMethods>({
     poiGroups: [],
     markers: [],
     canNavigate: false,
+    shopEnabled: false,
+    products: [],
+    productsLoading: false,
     ugcVisible: false,
     feedbackEnabled: false,
     reports: [],
@@ -272,11 +293,17 @@ Page<DetailData, DetailMethods>({
     const spot = spotResult.value;
     const ugcVisible = config?.features.ugc === true && !spot.is_banned;
     const feedbackEnabled = config?.features.feedback === true;
+    const shopEnabled = config?.features.shop === true;
 
-    this.setData({ dictionaries, ugcVisible, feedbackEnabled });
+    this.setData({ dictionaries, ugcVisible, feedbackEnabled, shopEnabled });
     this.display(spot);
     this.setData({ loading: false });
     track('spot_detail_view', { spot_id: spot.spot_id, source: 'list' });
+
+    if (shopEnabled) {
+      // Products load independently so a commerce failure never blocks the spot.
+      void this.loadProducts(spot);
+    }
 
     if (ugcVisible) {
       track('ugc_section_view', { spot_id: spot.spot_id });
@@ -508,6 +535,52 @@ Page<DetailData, DetailMethods>({
       ],
       canNavigate: !spot.is_banned && navigation !== null,
     });
+  },
+
+  async loadProducts(spot: PublicSpotDetail): Promise<void> {
+    this.setData({ productsLoading: true });
+    const cards = await loadProductCards({
+      surface: SPOT_DETAIL_SURFACE,
+      target_id: spot.spot_id,
+      fish_keys: fishKeysForDetail(spot.fish_types),
+    });
+    if (this.data.spot?.spot_id !== spot.spot_id) {
+      return;
+    }
+    const products = cards.map((card) => toProductCardView(card));
+    this.setData({ products, productsLoading: false });
+    for (const product of products) {
+      track('product_impression', {
+        product_id: product.product_id,
+        surface: SPOT_DETAIL_SURFACE,
+        target_id: spot.spot_id,
+        channel: product.channel,
+      });
+    }
+  },
+
+  openProduct(event: ProductTapEvent): void {
+    const product = this.data.products.find(
+      (item) => item.product_id === event.currentTarget.dataset.id,
+    );
+    if (product === undefined) {
+      return;
+    }
+    const targetId = this.data.spot?.spot_id ?? currentSpotId;
+    track('product_click', {
+      product_id: product.product_id,
+      surface: SPOT_DETAIL_SURFACE,
+      target_id: targetId,
+      channel: product.channel,
+    });
+    openPurchaseAction(product.purchaseAction, {
+      product_id: product.product_id,
+      channel: product.channel,
+    });
+  },
+
+  openShop(): void {
+    wx.navigateTo({ url: '/pages/shop/index' });
   },
 
   previewImage(event: ImageTapEvent) {

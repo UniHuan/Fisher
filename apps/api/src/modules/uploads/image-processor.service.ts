@@ -6,12 +6,13 @@ import type { UploadPurpose } from './dto/upload-image.dto';
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-export type ImagePurpose = UploadPurpose | 'ugc';
+export type ImagePurpose = UploadPurpose | 'ugc' | 'product';
 
 const TARGET_BYTES: Record<ImagePurpose, number> = {
   cover: 200 * 1024,
   detail: 300 * 1024,
   ugc: 300 * 1024,
+  product: 250 * 1024,
 };
 const MAX_DIMENSION = 1600;
 const QUALITIES = [82, 75, 68, 60] as const;

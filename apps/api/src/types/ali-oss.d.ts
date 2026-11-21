@@ -25,6 +25,7 @@ declare module 'ali-oss' {
     delete(name: string): Promise<unknown>;
     signatureUrl(name: string, options: SignatureUrlOptions): string;
     get(name: string): Promise<GetResult>;
+    head(name: string): Promise<unknown>;
   }
 
   export default OSS;

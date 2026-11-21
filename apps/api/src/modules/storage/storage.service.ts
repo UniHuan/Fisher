@@ -82,4 +82,8 @@ export class StorageService {
   readObject(key: string, area: StorageArea): Promise<Buffer> {
     return this.adapter.getObject(key, area);
   }
+
+  objectExists(key: string, area: StorageArea): Promise<boolean> {
+    return this.adapter.objectExists(key, area);
+  }
 }

@@ -30,3 +30,6 @@ apps/miniprogram/src/**/*.js.map
 *.keystore
 *.bak
 backups/
+
+# Local git worktrees
+.worktrees/

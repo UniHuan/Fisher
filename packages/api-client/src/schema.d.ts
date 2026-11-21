@@ -899,6 +899,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List public product cards for a surface */
+        get: operations["ProductController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List products for admin management */
+        get: operations["AdminProductController_list"];
+        put?: never;
+        /** Create a draft product with its channel */
+        post: operations["AdminProductController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one product with channels and image urls */
+        get: operations["AdminProductController_detail"];
+        /** Update a product and replace its channel set */
+        put: operations["AdminProductController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a product */
+        post: operations["AdminProductController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload and compress a product image */
+        post: operations["AdminProductImageController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/product-placements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List product placements for admin management */
+        get: operations["AdminPlacementController_list"];
+        put?: never;
+        /** Create a product placement */
+        post: operations["AdminPlacementController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/product-placements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a product placement */
+        put: operations["AdminPlacementController_update"];
+        post?: never;
+        /** Delete a product placement */
+        delete: operations["AdminPlacementController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spots": {
         parameters: {
             query?: never;
@@ -2443,6 +2566,8 @@ export interface components {
             ugc: boolean;
             /** @example false */
             feedback: boolean;
+            /** @example false */
+            shop: boolean;
         };
         DataFreshnessDto: {
             /** @example 30 */
@@ -2465,6 +2590,410 @@ export interface components {
             features: components["schemas"]["FeatureFlagsDto"];
             data_freshness: components["schemas"]["DataFreshnessDto"];
             legal: components["schemas"]["LegalConfigDto"];
+        };
+        PurchaseActionDto: {
+            /**
+             * @example mini_program
+             * @enum {string}
+             */
+            type: "mini_program" | "h5" | "copy_link";
+            /** @example wx0123456789abcdef */
+            app_id?: string;
+            /** @example /pages/product/detail?id=1 */
+            path?: string;
+            /** @example https://weidian.com/item.html?itemID=1 */
+            fallback_url?: string;
+            /** @example https://weidian.com/item.html?itemID=1 */
+            url?: string;
+            /** @example 链接已复制 */
+            toast?: string;
+        };
+        ProductChannelCardDto: {
+            /** @example weidian */
+            channel: string;
+            /** @example 微店 */
+            label: string;
+            /** @example ¥299 起 */
+            price_display: string | null;
+            purchase_action: components["schemas"]["PurchaseActionDto"];
+        };
+        ProductCardDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /** @example UniHuan 轻量路亚竿 */
+            title: string;
+            /** @example 深圳湾岸钓适用 */
+            subtitle: string | null;
+            /**
+             * @example rod
+             * @enum {string}
+             */
+            category: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+            /** @example /api/v1/uploads/public/products/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            image_url: string | null;
+            channels: components["schemas"]["ProductChannelCardDto"][];
+        };
+        ProductCardListDto: {
+            items: components["schemas"]["ProductCardDto"][];
+        };
+        AdminProductListItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /** @example UniHuan 轻量路亚竿 */
+            title: string;
+            /** @example 深圳湾岸钓适用 */
+            subtitle: string | null;
+            /**
+             * @example rod
+             * @enum {string}
+             */
+            category: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+            /**
+             * @example draft
+             * @enum {string}
+             */
+            status: "draft" | "active" | "archived";
+            /** @example 10 */
+            sort_weight: number;
+            cover_image_url: string | null;
+            /** @example 1 */
+            channel_count: number;
+            /** @example 2 */
+            placement_count: number;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminProductPageDto: {
+            items: components["schemas"]["AdminProductListItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 42 */
+            total: number;
+            /** @example true */
+            has_more: boolean;
+        };
+        AdminProductChannelDto: {
+            /** @example 01HX0000000000000000000000 */
+            channel_id: string;
+            /**
+             * @example weidian
+             * @enum {string}
+             */
+            channel: "weidian" | "jd";
+            /** @example wd-item-10001 */
+            external_product_id: string | null;
+            /**
+             * @example mini_program
+             * @enum {string}
+             */
+            purchase_action: "mini_program" | "h5" | "copy_link";
+            /**
+             * @example {
+             *       "type": "mini_program",
+             *       "app_id": "wx0123456789abcdef",
+             *       "path": "/pages/product/detail?id=1"
+             *     }
+             */
+            action_payload: {
+                [key: string]: unknown;
+            };
+            /** @example ¥299 起 */
+            price_display: string | null;
+            /** @example active */
+            status: string;
+        };
+        AdminProductDetailDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /** @example UniHuan 轻量路亚竿 */
+            title: string;
+            /** @example 深圳湾岸钓适用 */
+            subtitle: string | null;
+            /** @description Admin copy; never written to audit logs */
+            description: string | null;
+            /**
+             * @example rod
+             * @enum {string}
+             */
+            category: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+            /** @example 10 */
+            sort_weight: number;
+            /**
+             * @example draft
+             * @enum {string}
+             */
+            status: "draft" | "active" | "archived";
+            image_keys: string[];
+            /** @description Index-aligned with image_keys. Signed working previews unless active, and null when a stored key is malformed. */
+            image_urls: (string | null)[];
+            cover_image_key: string | null;
+            cover_image_url: string | null;
+            channels: components["schemas"]["AdminProductChannelDto"][];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ProductChannelInputDto: {
+            /**
+             * @description V1 accepts only weidian.
+             * @example weidian
+             * @enum {string}
+             */
+            channel: "weidian" | "jd";
+            /** @example wd-item-10001 */
+            external_product_id?: string | null;
+            /**
+             * @description Action type the client executes. V1 accepts mini_program, h5 and copy_link.
+             * @example mini_program
+             * @enum {string}
+             */
+            purchase_action: "mini_program" | "h5" | "copy_link";
+            /**
+             * @description Action parameters. The type is supplied by purchase_action, not this object.
+             * @example {
+             *       "app_id": "wx0123456789abcdef",
+             *       "path": "/pages/product/detail?id=1"
+             *     }
+             */
+            action_payload: {
+                [key: string]: unknown;
+            };
+            /** @example ¥299 起 */
+            price_display?: string | null;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status?: "active" | "disabled";
+        };
+        CreateProductDto: {
+            /** @example UniHuan 轻量路亚竿 */
+            title: string;
+            /** @example 深圳湾岸钓适用 */
+            subtitle?: string | null;
+            description?: string | null;
+            /**
+             * @example rod
+             * @enum {string}
+             */
+            category: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+            /**
+             * @description Larger values sort first on the brand page.
+             * @default 0
+             */
+            sort_weight: number;
+            /**
+             * @description Keys uploaded for this product. Create listens on a generated id, so images are attached after the draft exists.
+             * @example [
+             *       "products/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            image_keys?: string[];
+            /** @description Must belong to this product and be one of image_keys when set. */
+            cover_image_key?: string | null;
+            /** @description V1 accepts exactly one weidian channel. */
+            channels: components["schemas"]["ProductChannelInputDto"][];
+        };
+        UpdateProductDto: {
+            /** @example UniHuan 轻量路亚竿 */
+            title?: string;
+            /** @example 深圳湾岸钓适用 */
+            subtitle?: string | null;
+            description?: string | null;
+            /**
+             * @example rod
+             * @enum {string}
+             */
+            category?: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+            /**
+             * @description Larger values sort first on the brand page.
+             * @default 0
+             */
+            sort_weight: number;
+            /**
+             * @description Keys uploaded for this product. Create listens on a generated id, so images are attached after the draft exists.
+             * @example [
+             *       "products/01HX0000000000000000000000/01HX0000000000000000000001.webp"
+             *     ]
+             */
+            image_keys?: string[];
+            /** @description Must belong to this product and be one of image_keys when set. */
+            cover_image_key?: string | null;
+            /** @description V1 accepts exactly one weidian channel. */
+            channels?: components["schemas"]["ProductChannelInputDto"][];
+            /**
+             * @description Draft to active publishes the current image set before the status changes.
+             * @example active
+             * @enum {string}
+             */
+            status?: "draft" | "active" | "archived";
+        };
+        ProductImageResponseDto: {
+            /** @example products/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            key: string;
+            /** @example /api/v1/uploads/preview?key=...&area=working&expires=...&signature=... */
+            preview_url: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @example 900 */
+            width: number;
+            /** @example 600 */
+            height: number;
+            /** @example 122880 */
+            size_bytes: number;
+        };
+        AdminPlacementItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            placement_id: string;
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /**
+             * @example spot_detail
+             * @enum {string}
+             */
+            surface: "spot_detail";
+            /**
+             * @example spot
+             * @enum {string}
+             */
+            scope: "spot" | "fish";
+            /** @example 01HX0000000000000000000000 */
+            target_id: string | null;
+            /**
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_keys: string[];
+            /** @example 0 */
+            sort_order: number;
+            /** Format: date-time */
+            starts_at: string | null;
+            /** Format: date-time */
+            ends_at: string | null;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminPlacementListDto: {
+            items: components["schemas"]["AdminPlacementItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 42 */
+            total: number;
+            /** @example true */
+            has_more: boolean;
+        };
+        CreatePlacementDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /**
+             * @description V1 opens spot_detail only; home and report_detail stay reserved.
+             * @example spot_detail
+             * @enum {string}
+             */
+            surface: "spot_detail";
+            /**
+             * @description spot targets one spot id; fish matches requested fish keys.
+             * @example spot
+             * @enum {string}
+             */
+            scope: "spot" | "fish";
+            /**
+             * @description Required when scope=spot and must be omitted when scope=fish.
+             * @example 01HX0000000000000000000000
+             */
+            target_id?: string | null;
+            /**
+             * @description Required when scope=fish and must be empty when scope=spot.
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_keys?: string[];
+            /**
+             * @description Smaller values sort first within a scope.
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Format: date-time
+             * @example 2026-11-21T00:00:00.000Z
+             */
+            starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-12-31T23:59:59.999Z
+             */
+            ends_at?: string | null;
+            /**
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+        };
+        UpdatePlacementDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id?: string;
+            /**
+             * @description V1 opens spot_detail only; home and report_detail stay reserved.
+             * @example spot_detail
+             * @enum {string}
+             */
+            surface?: "spot_detail";
+            /**
+             * @description spot targets one spot id; fish matches requested fish keys.
+             * @example spot
+             * @enum {string}
+             */
+            scope?: "spot" | "fish";
+            /**
+             * @description Required when scope=spot and must be omitted when scope=fish.
+             * @example 01HX0000000000000000000000
+             */
+            target_id?: string | null;
+            /**
+             * @description Required when scope=fish and must be empty when scope=spot.
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_keys?: string[];
+            /**
+             * @description Smaller values sort first within a scope.
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Format: date-time
+             * @example 2026-11-21T00:00:00.000Z
+             */
+            starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-12-31T23:59:59.999Z
+             */
+            ends_at?: string | null;
+            /**
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+        };
+        AdminPlacementDeleteDto: {
+            /** @example true */
+            deleted: boolean;
         };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -7624,6 +8153,863 @@ export interface operations {
             };
             /** @description Bad request (40001) */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ProductController_list: {
+        parameters: {
+            query: {
+                /** @description Requested public surface. home and report_detail return an empty list in V1. */
+                surface: "spot_detail" | "brand_page" | "home" | "report_detail";
+                /** @description Spot ULID. Required when surface=spot_detail and ignored for brand_page. */
+                target_id?: string;
+                /** @description Reserved district filter. Accepted for compatibility and ignored in V1. */
+                district?: string;
+                /** @description Comma-separated fish dictionary keys, at most 5. */
+                fish_keys?: string;
+                category?: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+                /** @description Only used by spot_detail. */
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product cards in placement order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ProductCardListDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductController_list: {
+        parameters: {
+            query?: {
+                status?: "draft" | "active" | "archived";
+                category?: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+                /** @description Title keyword */
+                keyword?: string;
+                /** @description Page number, starting at 1; defaults to 1 */
+                page?: number;
+                /** @description Page size; defaults to 20 */
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated admin product rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminProductPageDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductDto"];
+            };
+        };
+        responses: {
+            /** @description Created draft product and channel */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminProductDetailDto"];
+                    };
+                };
+            };
+            /** @description Invalid product, channel or purchase action (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductController_detail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path: {
+                /** @description Product ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin product detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminProductDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductController_update: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Product ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductDto"];
+            };
+        };
+        responses: {
+            /** @description Updated product detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminProductDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Image publishing unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductController_archive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Product ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived product detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminProductDetailDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductImageController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Compressed WebP image and short-lived preview URL */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ProductImageResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product is archived (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Image exceeds 10 MB (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Storage unavailable (50301) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_list: {
+        parameters: {
+            query?: {
+                product_id?: string;
+                surface?: "spot_detail";
+                status?: "active" | "disabled";
+                /** @description Page number, starting at 1; defaults to 1 */
+                page?: number;
+                /** @description Page size; defaults to 20 */
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated placement rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementListDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlacementDto"];
+            };
+        };
+        responses: {
+            /** @description Created product placement */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementItemDto"];
+                    };
+                };
+            };
+            /** @description Invalid scope fields or unknown fish keys (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product or spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_update: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Placement ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlacementDto"];
+            };
+        };
+        responses: {
+            /** @description Updated product placement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementItemDto"];
+                    };
+                };
+            };
+            /** @description Invalid scope fields or unknown fish keys (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Placement, product or spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_remove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Placement ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Placement deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementDeleteDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Placement does not exist (40401) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

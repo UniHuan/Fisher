@@ -121,3 +121,69 @@ export const FEEDBACK_IMAGE_STATUS = {
 } as const;
 
 export type FeedbackImageStatus = (typeof FEEDBACK_IMAGE_STATUS)[keyof typeof FEEDBACK_IMAGE_STATUS];
+
+export const PRODUCT_STATUS = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  ARCHIVED: 'archived',
+} as const;
+
+export type ProductStatus = (typeof PRODUCT_STATUS)[keyof typeof PRODUCT_STATUS];
+
+export const PRODUCT_CATEGORY = {
+  ROD: 'rod',
+  REEL: 'reel',
+  LINE: 'line',
+  BAIT: 'bait',
+  HAT: 'hat',
+  SUN_PROTECTION: 'sun_protection',
+  ACCESSORY: 'accessory',
+  OTHER: 'other',
+} as const;
+
+export type ProductCategory = (typeof PRODUCT_CATEGORY)[keyof typeof PRODUCT_CATEGORY];
+
+/** `jd` is reserved for Phase 3; V1 only writes `weidian`. */
+export const COMMERCE_CHANNEL = {
+  WEIDIAN: 'weidian',
+  JD: 'jd',
+} as const;
+
+export type CommerceChannel = (typeof COMMERCE_CHANNEL)[keyof typeof COMMERCE_CHANNEL];
+
+/** `qr` is reserved for offline material and stays out of the V1 contract. */
+export const PURCHASE_ACTION_TYPE = {
+  MINI_PROGRAM: 'mini_program',
+  H5: 'h5',
+  COPY_LINK: 'copy_link',
+  QR: 'qr',
+} as const;
+
+export type PurchaseActionType = (typeof PURCHASE_ACTION_TYPE)[keyof typeof PURCHASE_ACTION_TYPE];
+
+export const PLACEMENT_SCOPE = {
+  SPOT: 'spot',
+  FISH: 'fish',
+} as const;
+
+export type PlacementScope = (typeof PLACEMENT_SCOPE)[keyof typeof PLACEMENT_SCOPE];
+
+/** Placement rows only target content surfaces; V1 writes `spot_detail` only. */
+export const PLACEMENT_SURFACE = {
+  SPOT_DETAIL: 'spot_detail',
+  HOME: 'home',
+  REPORT_DETAIL: 'report_detail',
+} as const;
+
+export type PlacementSurface = (typeof PLACEMENT_SURFACE)[keyof typeof PLACEMENT_SURFACE];
+
+/** Public product queries accept `brand_page` in addition to the placement surfaces. */
+export const PRODUCT_QUERY_SURFACE = {
+  SPOT_DETAIL: 'spot_detail',
+  BRAND_PAGE: 'brand_page',
+  HOME: 'home',
+  REPORT_DETAIL: 'report_detail',
+} as const;
+
+export type ProductQuerySurface =
+  (typeof PRODUCT_QUERY_SURFACE)[keyof typeof PRODUCT_QUERY_SURFACE];

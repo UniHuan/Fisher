@@ -1,0 +1,50 @@
+.shop-page {
+  padding-bottom: 60rpx;
+}
+
+.shop-hero {
+  padding: 32rpx 28rpx;
+  border-radius: 16rpx;
+  background: #123B32;
+}
+
+.shop-title {
+  display: block;
+  color: #F5F4EE;
+  font-size: 40rpx;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.shop-intro {
+  display: block;
+  margin-top: 12rpx;
+  color: #C8D6CE;
+  font-size: 24rpx;
+  line-height: 1.65;
+}
+
+.shop-filters {
+  margin: 24rpx 0 20rpx;
+  white-space: nowrap;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.shop-grid-item {
+  min-width: 0;
+}
+
+.shop-footnote {
+  display: block;
+  margin-top: 28rpx;
+  padding: 0 12rpx;
+  text-align: center;
+  color: #6B7772;
+  font-size: 21rpx;
+  line-height: 1.6;
+}

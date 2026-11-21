@@ -230,6 +230,11 @@
   background: #E8EDE6;
 }
 
+.shop-card {
+  margin-top: 0;
+  margin-bottom: 20rpx;
+}
+
 .legal-note {
   display: block;
   margin-top: 14rpx;

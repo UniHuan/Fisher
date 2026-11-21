@@ -35,6 +35,7 @@ import { DictionaryDrawer } from './DictionaryDrawer';
 import { FeedbackDrawer } from './FeedbackDrawer';
 import { ImportDrawer } from './ImportDrawer';
 import { PoiDrawer } from './PoiDrawer';
+import { ProductDrawer } from './ProductDrawer';
 import { SpotEditor } from './SpotEditor';
 
 interface SpotsWorkspaceProps {
@@ -101,6 +102,8 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackOpenCount, setFeedbackOpenCount] = useState(0);
   const [feedbackReloadKey, setFeedbackReloadKey] = useState(0);
+  const [productOpen, setProductOpen] = useState(false);
+  const [productReloadKey, setProductReloadKey] = useState(0);
 
   const writable = session.admin.role !== 'reviewer';
 
@@ -412,6 +415,11 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
               内容审核
             </Button>
           </Badge>
+          {permissions?.includes('product:read') === true && (
+            <Button size="small" onClick={() => setProductOpen(true)}>
+              商品
+            </Button>
+          )}
           {permissions?.includes('feedback:read') === true && (
             <Badge count={feedbackOpenCount} size="small" className="feedback-badge">
               <Button size="small" onClick={() => setFeedbackOpen(true)}>
@@ -609,6 +617,18 @@ export function SpotsWorkspace({ session, onLogout, onExpired }: SpotsWorkspaceP
         onChanged={() => setFeedbackReloadKey((value) => value + 1)}
         onExpired={onExpired}
       />
+      {permissions?.includes('product:read') === true && (
+        <ProductDrawer
+          open={productOpen}
+          reloadKey={productReloadKey}
+          session={session}
+          onClose={() => {
+            setProductOpen(false);
+          }}
+          onChanged={() => setProductReloadKey((value) => value + 1)}
+          onExpired={onExpired}
+        />
+      )}
     </Layout>
   );
 }

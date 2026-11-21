@@ -10,6 +10,16 @@
       </view>
     </view>
 
+    <view wx:if="{{shopEnabled}}" class="settings-card shop-card">
+      <view class="settings-row" bindtap="openShop">
+        <view class="settings-row-main">
+          <text class="settings-row-title">UniHuan 装备</text>
+          <text class="settings-row-desc">竿、轮、线、饵，按场景挑选</text>
+        </view>
+        <text class="settings-chevron">›</text>
+      </view>
+    </view>
+
     <view wx:if="{{configError}}" class="card empty">
       <text>{{configError}}</text>
       <button class="primary-button retry-button" bindtap="retryConfig">重试</button>

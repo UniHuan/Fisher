@@ -5,7 +5,7 @@ import type { StorageArea } from '../storage/storage.types';
 
 /** Only server-generated image keys may be signed or read through the preview route. */
 const PREVIEW_KEY_PATTERN =
-  /^(spots|ugc|feedback)\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp$/;
+  /^(spots|ugc|feedback|products)\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp$/;
 
 export interface PreviewSignature {
   url: string;

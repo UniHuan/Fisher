@@ -7,6 +7,7 @@ export const SERVER_ANALYTICS_EVENTS = new Set([
   'api_spot_list',
   'api_spot_detail',
   'api_search',
+  'api_product_list',
   'api_error',
   'api_rate_limited',
 ]);
@@ -15,6 +16,7 @@ const ALLOWED_PROPERTIES = new Set([
   'result_count',
   'has_location',
   'sort',
+  'surface',
   'spot_id',
   'open_status',
   'latency_ms',

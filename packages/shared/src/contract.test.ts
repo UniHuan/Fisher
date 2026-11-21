@@ -2,13 +2,20 @@ import {
   ABUSE_REASON,
   ADMIN_ROLE,
   CLIENT_TYPE,
+  COMMERCE_CHANNEL,
   ERROR_CODES,
   FEEDBACK_CATEGORY,
   FEEDBACK_IMAGE_STATUS,
   FEEDBACK_STATUS,
   MODERATION_STATUS,
   OPEN_STATUS,
+  PLACEMENT_SCOPE,
+  PLACEMENT_SURFACE,
   POI_TYPE,
+  PRODUCT_CATEGORY,
+  PRODUCT_QUERY_SURFACE,
+  PRODUCT_STATUS,
+  PURCHASE_ACTION_TYPE,
   REPORT_CONTENT_TYPE,
   SPOT_STATUS,
   UGC_UPLOAD_STATUS,
@@ -23,12 +30,19 @@ import type {
   AdminRole,
   ApiResponse,
   ClientType,
+  CommerceChannel,
   FeedbackCategory,
   FeedbackImageStatus,
   FeedbackStatus,
   OpenStatus,
   Paginated,
+  PlacementScope,
+  PlacementSurface,
   PoiType,
+  ProductCategory,
+  ProductQuerySurface,
+  ProductStatus,
+  PurchaseActionType,
   SpotStatus,
   ValidationIssue,
 } from './index';
@@ -140,6 +154,71 @@ describe('shared contract', () => {
     const imageStatus: FeedbackImageStatus = FEEDBACK_IMAGE_STATUS.DELETED;
 
     expect([category, status, imageStatus]).toEqual(['photo', 'reviewing', 'deleted']);
+  });
+
+  it('exposes the commerce enums', () => {
+    expect(PRODUCT_STATUS).toEqual({
+      DRAFT: 'draft',
+      ACTIVE: 'active',
+      ARCHIVED: 'archived',
+    });
+    expect(PRODUCT_CATEGORY).toEqual({
+      ROD: 'rod',
+      REEL: 'reel',
+      LINE: 'line',
+      BAIT: 'bait',
+      HAT: 'hat',
+      SUN_PROTECTION: 'sun_protection',
+      ACCESSORY: 'accessory',
+      OTHER: 'other',
+    });
+    expect(COMMERCE_CHANNEL).toEqual({ WEIDIAN: 'weidian', JD: 'jd' });
+    expect(PURCHASE_ACTION_TYPE).toEqual({
+      MINI_PROGRAM: 'mini_program',
+      H5: 'h5',
+      COPY_LINK: 'copy_link',
+      QR: 'qr',
+    });
+    expect(PLACEMENT_SCOPE).toEqual({ SPOT: 'spot', FISH: 'fish' });
+    expect(PLACEMENT_SURFACE).toEqual({
+      SPOT_DETAIL: 'spot_detail',
+      HOME: 'home',
+      REPORT_DETAIL: 'report_detail',
+    });
+    expect(PRODUCT_QUERY_SURFACE).toEqual({
+      SPOT_DETAIL: 'spot_detail',
+      BRAND_PAGE: 'brand_page',
+      HOME: 'home',
+      REPORT_DETAIL: 'report_detail',
+    });
+  });
+
+  it('types the commerce enum union members', () => {
+    const productStatus: ProductStatus = PRODUCT_STATUS.ACTIVE;
+    const productCategory: ProductCategory = PRODUCT_CATEGORY.SUN_PROTECTION;
+    const channel: CommerceChannel = COMMERCE_CHANNEL.WEIDIAN;
+    const purchaseAction: PurchaseActionType = PURCHASE_ACTION_TYPE.MINI_PROGRAM;
+    const scope: PlacementScope = PLACEMENT_SCOPE.FISH;
+    const placementSurface: PlacementSurface = PLACEMENT_SURFACE.SPOT_DETAIL;
+    const querySurface: ProductQuerySurface = PRODUCT_QUERY_SURFACE.BRAND_PAGE;
+
+    expect([
+      productStatus,
+      productCategory,
+      channel,
+      purchaseAction,
+      scope,
+      placementSurface,
+      querySurface,
+    ]).toEqual([
+      'active',
+      'sun_protection',
+      'weidian',
+      'mini_program',
+      'fish',
+      'spot_detail',
+      'brand_page',
+    ]);
   });
 
   it('wraps success and failure', () => {

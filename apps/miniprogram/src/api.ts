@@ -54,6 +54,12 @@ export type CreateFeedbackResult = components['schemas']['CreateFeedbackResponse
 export type ReportLikeResult = components['schemas']['ReportLikeResponseDto'];
 export type AbuseReportResult = components['schemas']['AbuseReportResponseDto'];
 export type DeleteReportResult = components['schemas']['DeleteReportResponseDto'];
+export type ProductCard = components['schemas']['ProductCardDto'];
+export type ProductCardList = components['schemas']['ProductCardListDto'];
+export type ProductChannelCard = components['schemas']['ProductChannelCardDto'];
+export type PurchaseAction = components['schemas']['PurchaseActionDto'];
+export type ProductCategory = ProductCard['category'];
+export type ProductQuerySurface = 'spot_detail' | 'brand_page' | 'home' | 'report_detail';
 export type ReportContentType = 'comment' | 'catch' | 'intel';
 export type MyReportStatusFilter = 'all' | 'pending' | 'published' | 'rejected' | 'removed';
 export type AbuseReason = 'ad' | 'abuse' | 'false_info' | 'privacy' | 'other';
@@ -105,6 +111,14 @@ export interface RequestOptions {
    * 'required' behaves the same and is used by endpoints that need a user.
    */
   auth?: 'optional' | 'required';
+}
+
+export interface ProductCardQuery {
+  surface: ProductQuerySurface;
+  target_id?: string;
+  fish_keys?: string;
+  category?: ProductCategory;
+  limit?: number;
 }
 
 export class ApiError extends Error {
@@ -246,6 +260,18 @@ export function getSpotPois(spotId: string, poiType?: string): Promise<PublicPoi
 
 export function getClientConfig(): Promise<ClientConfig> {
   return request<ClientConfig>('/config');
+}
+
+export function fetchProductCards(query: ProductCardQuery): Promise<ProductCardList> {
+  return request<ProductCardList>('/products', {
+    query: {
+      surface: query.surface,
+      target_id: query.target_id,
+      fish_keys: query.fish_keys,
+      category: query.category,
+      limit: query.limit,
+    },
+  });
 }
 
 export function loginWithWechat(code: string): Promise<AppSession> {

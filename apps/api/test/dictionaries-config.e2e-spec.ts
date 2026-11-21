@@ -179,7 +179,14 @@ describe('dictionaries and client config (e2e)', () => {
 
     expect(data).toEqual({
       map: { default_latitude: 22.5431, default_longitude: 114.0579, default_zoom: 12 },
-      features: { map_tab: true, search: true, banned_spots: true, ugc: false, feedback: false },
+      features: {
+        map_tab: true,
+        search: true,
+        banned_spots: true,
+        ugc: false,
+        feedback: false,
+        shop: false,
+      },
       data_freshness: { core_days: 30, normal_days: 90 },
       legal: {
         terms_version: '2026-11-20',
@@ -199,6 +206,7 @@ describe('dictionaries and client config (e2e)', () => {
       'feedback',
       'map_tab',
       'search',
+      'shop',
       'ugc',
     ]);
     expect(Object.keys(data.data_freshness).sort()).toEqual(['core_days', 'normal_days']);
@@ -524,6 +532,7 @@ describe('dictionaries and client config (e2e)', () => {
           banned_spots: true,
           ugc: false,
           feedback: false,
+          shop: false,
         },
         data_freshness: { core_days: 30, normal_days: 90 },
         legal: {
