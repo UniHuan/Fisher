@@ -986,6 +986,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/product-placements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List product placements for admin management */
+        get: operations["AdminPlacementController_list"];
+        put?: never;
+        /** Create a product placement */
+        post: operations["AdminPlacementController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/product-placements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a product placement */
+        put: operations["AdminPlacementController_update"];
+        post?: never;
+        /** Delete a product placement */
+        delete: operations["AdminPlacementController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spots": {
         parameters: {
             query?: never;
@@ -2806,6 +2842,156 @@ export interface components {
             height: number;
             /** @example 122880 */
             size_bytes: number;
+        };
+        AdminPlacementItemDto: {
+            /** @example 01HX0000000000000000000000 */
+            placement_id: string;
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /**
+             * @example spot_detail
+             * @enum {string}
+             */
+            surface: "spot_detail";
+            /**
+             * @example spot
+             * @enum {string}
+             */
+            scope: "spot" | "fish";
+            /** @example 01HX0000000000000000000000 */
+            target_id: string | null;
+            /**
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_keys: string[];
+            /** @example 0 */
+            sort_order: number;
+            /** Format: date-time */
+            starts_at: string | null;
+            /** Format: date-time */
+            ends_at: string | null;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminPlacementListDto: {
+            items: components["schemas"]["AdminPlacementItemDto"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+            /** @example 42 */
+            total: number;
+            /** @example true */
+            has_more: boolean;
+        };
+        CreatePlacementDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /**
+             * @description V1 opens spot_detail only; home and report_detail stay reserved.
+             * @example spot_detail
+             * @enum {string}
+             */
+            surface: "spot_detail";
+            /**
+             * @description spot targets one spot id; fish matches requested fish keys.
+             * @example spot
+             * @enum {string}
+             */
+            scope: "spot" | "fish";
+            /**
+             * @description Required when scope=spot and must be omitted when scope=fish.
+             * @example 01HX0000000000000000000000
+             */
+            target_id?: string | null;
+            /**
+             * @description Required when scope=fish and must be empty when scope=spot.
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_keys?: string[];
+            /**
+             * @description Smaller values sort first within a scope.
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Format: date-time
+             * @example 2026-11-21T00:00:00.000Z
+             */
+            starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-12-31T23:59:59.999Z
+             */
+            ends_at?: string | null;
+            /**
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+        };
+        UpdatePlacementDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id?: string;
+            /**
+             * @description V1 opens spot_detail only; home and report_detail stay reserved.
+             * @example spot_detail
+             * @enum {string}
+             */
+            surface?: "spot_detail";
+            /**
+             * @description spot targets one spot id; fish matches requested fish keys.
+             * @example spot
+             * @enum {string}
+             */
+            scope?: "spot" | "fish";
+            /**
+             * @description Required when scope=spot and must be omitted when scope=fish.
+             * @example 01HX0000000000000000000000
+             */
+            target_id?: string | null;
+            /**
+             * @description Required when scope=fish and must be empty when scope=spot.
+             * @example [
+             *       "luofei"
+             *     ]
+             */
+            fish_keys?: string[];
+            /**
+             * @description Smaller values sort first within a scope.
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Format: date-time
+             * @example 2026-11-21T00:00:00.000Z
+             */
+            starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-12-31T23:59:59.999Z
+             */
+            ends_at?: string | null;
+            /**
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+        };
+        AdminPlacementDeleteDto: {
+            /** @example true */
+            deleted: boolean;
         };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -8522,6 +8708,313 @@ export interface operations {
             };
             /** @description Storage unavailable (50301) */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_list: {
+        parameters: {
+            query?: {
+                product_id?: string;
+                surface?: "spot_detail";
+                status?: "active" | "disabled";
+                /** @description Page number, starting at 1; defaults to 1 */
+                page?: number;
+                /** @description Page size; defaults to 20 */
+                page_size?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated placement rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementListDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlacementDto"];
+            };
+        };
+        responses: {
+            /** @description Created product placement */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementItemDto"];
+                    };
+                };
+            };
+            /** @description Invalid scope fields or unknown fish keys (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product or spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_update: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Placement ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlacementDto"];
+            };
+        };
+        responses: {
+            /** @description Updated product placement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementItemDto"];
+                    };
+                };
+            };
+            /** @description Invalid scope fields or unknown fish keys (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Placement, product or spot does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminPlacementController_remove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                /** @description Placement ULID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Placement deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["AdminPlacementDeleteDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Placement does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

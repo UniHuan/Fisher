@@ -4,9 +4,12 @@ import {
   ADMIN_ROLE,
   COMMERCE_CHANNEL,
   ERROR_CODES,
+  PLACEMENT_SCOPE,
+  PLACEMENT_SURFACE,
   PRODUCT_CATEGORY,
   PRODUCT_STATUS,
   PURCHASE_ACTION_TYPE,
+  SPOT_STATUS,
 } from '@szfisher/shared';
 import request from 'supertest';
 import { ulid } from 'ulid';
@@ -91,6 +94,29 @@ interface PublicProductCard {
   product_id: string;
 }
 
+interface AdminPlacementItem {
+  placement_id: string;
+  product_id: string;
+  surface: string;
+  scope: string;
+  target_id: string | null;
+  fish_keys: string[];
+  sort_order: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AdminPlacementList {
+  items: AdminPlacementItem[];
+  page: number;
+  page_size: number;
+  total: number;
+  has_more: boolean;
+}
+
 let app: INestApplication;
 let server: ReturnType<INestApplication['getHttpServer']>;
 let prisma: PrismaClient;
@@ -99,7 +125,10 @@ let superAdmin: AuthSession;
 let reviewer: AuthSession;
 let originalShopRow: { config_key: string; config_value: string } | null = null;
 let titleSequence = 0;
+let luofeiSpotId = '';
+let jiyuSpotId = '';
 const trackedProductIds: string[] = [];
+const trackedSpotIds: string[] = [];
 
 function adminRead(session: AuthSession, path: string): request.Test {
   return request(server).get(path).set(clientHeaders()).set('Cookie', session.cookie);
@@ -107,7 +136,7 @@ function adminRead(session: AuthSession, path: string): request.Test {
 
 function adminWrite(
   session: AuthSession,
-  method: 'post' | 'put',
+  method: 'post' | 'put' | 'delete',
   path: string,
   body: unknown,
 ): request.Test {
@@ -117,6 +146,76 @@ function adminWrite(
     .set('Cookie', session.cookie)
     .set('X-CSRF-Token', session.csrf)
     .send(body as object);
+}
+
+async function seedSpot(fishTypes: string[]): Promise<string> {
+  const spotId = ulid();
+  await prisma.spot.create({
+    data: {
+      spot_id: spotId,
+      spot_name: `UniHuan 展示位置测试钓点 ${fishTypes.join(',') || 'none'}`,
+      city_code: '440300',
+      status: SPOT_STATUS.PUBLISHED,
+      fish_types: fishTypes,
+    },
+  });
+  trackedSpotIds.push(spotId);
+  return spotId;
+}
+
+async function activateProduct(productId: string): Promise<void> {
+  await adminWrite(operator, 'put', `/api/v1/admin/products/${productId}`, {
+    status: PRODUCT_STATUS.ACTIVE,
+  }).expect(200);
+}
+
+async function createPlacement(
+  session: AuthSession,
+  body: Record<string, unknown>,
+): Promise<AdminPlacementItem> {
+  const response = await adminWrite(
+    session,
+    'post',
+    '/api/v1/admin/product-placements',
+    body,
+  ).expect(201);
+  return (response.body as Envelope<AdminPlacementItem>).data;
+}
+
+function spotPlacement(
+  productId: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    product_id: productId,
+    surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+    scope: PLACEMENT_SCOPE.SPOT,
+    target_id: luofeiSpotId,
+    sort_order: 0,
+    status: 'active',
+    ...overrides,
+  };
+}
+
+async function publicSpotProductIds(
+  targetId: string,
+  fishKeys: string[] = [],
+): Promise<string[]> {
+  const params = new URLSearchParams({
+    surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+    target_id: targetId,
+    limit: '12',
+  });
+  if (fishKeys.length > 0) {
+    params.set('fish_keys', fishKeys.join(','));
+  }
+  const response = await request(server)
+    .get(`/api/v1/products?${params.toString()}`)
+    .set(MINI_PROGRAM_HEADERS)
+    .expect(200);
+  return (response.body as Envelope<{ items: PublicProductCard[] }>).data.items.map(
+    (item) => item.product_id,
+  );
 }
 
 function fakeImageKey(): string {
@@ -192,6 +291,10 @@ describe('admin products (e2e)', () => {
     superAdmin = await loginAs(app, ADMIN_ROLE.SUPER_ADMIN);
     reviewer = await loginAs(app, ADMIN_ROLE.REVIEWER);
 
+    // Two published spots cover the spot and fish placement cases.
+    luofeiSpotId = await seedSpot(['luofei']);
+    jiyuSpotId = await seedSpot(['jiyu']);
+
     originalShopRow = await prisma.config.findUnique({
       where: { config_key: SHOP_FLAG_KEY },
       select: { config_key: true, config_value: true },
@@ -212,6 +315,10 @@ describe('admin products (e2e)', () => {
       await prisma.product.deleteMany({ where: { product_id: { in: trackedProductIds } } });
     }
     trackedProductIds.length = 0;
+    if (trackedSpotIds.length > 0) {
+      await prisma.spot.deleteMany({ where: { spot_id: { in: trackedSpotIds } } });
+    }
+    trackedSpotIds.length = 0;
 
     await prisma.config.deleteMany({ where: { config_key: SHOP_FLAG_KEY } });
     if (originalShopRow !== null) {
@@ -731,5 +838,383 @@ describe('admin products (e2e)', () => {
     expect((rows.find((row) => row.action === 'product.archive')?.after_json as {
       status: string;
     }).status).toBe(PRODUCT_STATUS.ARCHIVED);
+  });
+
+  it('requires target_id for spot placements and rejects fish keys on them', async () => {
+    const product = await createProduct();
+
+    const missingTarget = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      {
+        product_id: product.product_id,
+        surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+        scope: PLACEMENT_SCOPE.SPOT,
+      },
+    ).expect(400);
+    expect((missingTarget.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const fishKeysOnSpot = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      spotPlacement(product.product_id, { fish_keys: ['luofei'] }),
+    ).expect(400);
+    expect((fishKeysOnSpot.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const missingSpot = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      spotPlacement(product.product_id, { target_id: ulid() }),
+    ).expect(404);
+    expect((missingSpot.body as Envelope<null>).code).toBe(ERROR_CODES.NOT_FOUND);
+
+    const missingProduct = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      spotPlacement(ulid()),
+    ).expect(404);
+    expect((missingProduct.body as Envelope<null>).code).toBe(ERROR_CODES.NOT_FOUND);
+
+    const unsupportedSurface = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      spotPlacement(product.product_id, { surface: 'home' }),
+    ).expect(400);
+    expect((unsupportedSurface.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+  });
+
+  it('requires fish keys for fish placements and rejects their target_id', async () => {
+    const product = await createProduct();
+
+    const noFishKeys = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      {
+        product_id: product.product_id,
+        surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+        scope: PLACEMENT_SCOPE.FISH,
+      },
+    ).expect(400);
+    expect((noFishKeys.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const emptyFishKeys = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      {
+        product_id: product.product_id,
+        surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+        scope: PLACEMENT_SCOPE.FISH,
+        fish_keys: [],
+      },
+    ).expect(400);
+    expect((emptyFishKeys.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const targetedFish = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      {
+        product_id: product.product_id,
+        surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+        scope: PLACEMENT_SCOPE.FISH,
+        target_id: luofeiSpotId,
+        fish_keys: ['luofei'],
+      },
+    ).expect(400);
+    expect((targetedFish.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const unknownFish = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      {
+        product_id: product.product_id,
+        surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+        scope: PLACEMENT_SCOPE.FISH,
+        fish_keys: ['luofei', 'not_a_fish'],
+      },
+    ).expect(400);
+    expect((unknownFish.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const tooManyFish = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/product-placements',
+      {
+        product_id: product.product_id,
+        surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+        scope: PLACEMENT_SCOPE.FISH,
+        fish_keys: ['luofei', 'jiyu', 'liyu', 'caoyu', 'luyu', 'heiyu'],
+      },
+    ).expect(400);
+    expect((tooManyFish.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+  });
+
+  it('forbids reviewers from creating, updating and deleting placements', async () => {
+    const product = await createProduct();
+    const placement = await createPlacement(operator, spotPlacement(product.product_id));
+
+    const reviewerCreate = await adminWrite(
+      reviewer,
+      'post',
+      '/api/v1/admin/product-placements',
+      spotPlacement(product.product_id),
+    ).expect(403);
+    expect((reviewerCreate.body as Envelope<null>).code).toBe(ERROR_CODES.FORBIDDEN);
+
+    const reviewerUpdate = await adminWrite(
+      reviewer,
+      'put',
+      `/api/v1/admin/product-placements/${placement.placement_id}`,
+      { sort_order: 9 },
+    ).expect(403);
+    expect((reviewerUpdate.body as Envelope<null>).code).toBe(ERROR_CODES.FORBIDDEN);
+
+    const reviewerDelete = await adminWrite(
+      reviewer,
+      'delete',
+      `/api/v1/admin/product-placements/${placement.placement_id}`,
+      {},
+    ).expect(403);
+    expect((reviewerDelete.body as Envelope<null>).code).toBe(ERROR_CODES.FORBIDDEN);
+  });
+
+  it('makes a spot placement visible only on its own spot detail', async () => {
+    const product = await createProduct();
+    await activateProduct(product.product_id);
+
+    const placement = await createPlacement(
+      operator,
+      spotPlacement(product.product_id, { sort_order: 1 }),
+    );
+    expect(placement).toMatchObject({
+      product_id: product.product_id,
+      surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+      scope: PLACEMENT_SCOPE.SPOT,
+      target_id: luofeiSpotId,
+      fish_keys: [],
+      sort_order: 1,
+      status: 'active',
+    });
+
+    await expect(publicSpotProductIds(luofeiSpotId)).resolves.toContain(product.product_id);
+    await expect(publicSpotProductIds(jiyuSpotId)).resolves.not.toContain(
+      product.product_id,
+    );
+  });
+
+  it('makes a fish placement visible on another spot with that fish key', async () => {
+    const product = await createProduct();
+    await activateProduct(product.product_id);
+
+    const placement = await createPlacement(operator, {
+      product_id: product.product_id,
+      surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+      scope: PLACEMENT_SCOPE.FISH,
+      fish_keys: ['luofei'],
+      sort_order: 1,
+    });
+    expect(placement.target_id).toBeNull();
+    expect(placement.fish_keys).toEqual(['luofei']);
+
+    await expect(publicSpotProductIds(jiyuSpotId, ['luofei'])).resolves.toContain(
+      product.product_id,
+    );
+    await expect(publicSpotProductIds(jiyuSpotId, ['jiyu'])).resolves.not.toContain(
+      product.product_id,
+    );
+  });
+
+  it('hides disabled and expired placements and honors status updates', async () => {
+    const product = await createProduct();
+    await activateProduct(product.product_id);
+
+    const placement = await createPlacement(
+      operator,
+      spotPlacement(product.product_id, { status: 'disabled', sort_order: 2 }),
+    );
+    await expect(publicSpotProductIds(luofeiSpotId)).resolves.not.toContain(
+      product.product_id,
+    );
+
+    const expiredEnd = new Date(Date.now() - 60_000).toISOString();
+    const enabled = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/product-placements/${placement.placement_id}`,
+      { status: 'active', ends_at: expiredEnd },
+    ).expect(200);
+    const enabledBody = (enabled.body as Envelope<AdminPlacementItem>).data;
+    expect(enabledBody.status).toBe('active');
+    expect(enabledBody.ends_at).toBe(expiredEnd);
+    await expect(publicSpotProductIds(luofeiSpotId)).resolves.not.toContain(
+      product.product_id,
+    );
+
+    const reopened = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/product-placements/${placement.placement_id}`,
+      { ends_at: null },
+    ).expect(200);
+    expect((reopened.body as Envelope<AdminPlacementItem>).data.ends_at).toBeNull();
+    await expect(publicSpotProductIds(luofeiSpotId)).resolves.toContain(
+      product.product_id,
+    );
+  });
+
+  it('updates and deletes a placement with compact audit rows', async () => {
+    const product = await createProduct();
+    const placement = await createPlacement(operator, spotPlacement(product.product_id));
+
+    const updated = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/product-placements/${placement.placement_id}`,
+      { sort_order: 7, status: 'disabled' },
+    ).expect(200);
+    expect((updated.body as Envelope<AdminPlacementItem>).data).toMatchObject({
+      placement_id: placement.placement_id,
+      sort_order: 7,
+      status: 'disabled',
+    });
+
+    const removed = await adminWrite(
+      operator,
+      'delete',
+      `/api/v1/admin/product-placements/${placement.placement_id}`,
+      {},
+    ).expect(200);
+    expect((removed.body as Envelope<{ deleted: boolean }>).data).toEqual({ deleted: true });
+
+    const missingUpdate = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/product-placements/${ulid()}`,
+      { sort_order: 1 },
+    ).expect(404);
+    expect((missingUpdate.body as Envelope<null>).code).toBe(ERROR_CODES.NOT_FOUND);
+
+    const missingDelete = await adminWrite(
+      operator,
+      'delete',
+      `/api/v1/admin/product-placements/${ulid()}`,
+      {},
+    ).expect(404);
+    expect((missingDelete.body as Envelope<null>).code).toBe(ERROR_CODES.NOT_FOUND);
+
+    const list = await adminRead(
+      operator,
+      `/api/v1/admin/product-placements?product_id=${product.product_id}`,
+    ).expect(200);
+    expect((list.body as Envelope<AdminPlacementList>).data.items).toEqual([]);
+
+    const rows = await prisma.auditLog.findMany({
+      where: {
+        entity_type: 'product',
+        entity_id: product.product_id,
+        action: {
+          in: [
+            'product.placement_create',
+            'product.placement_update',
+            'product.placement_delete',
+          ],
+        },
+      },
+      orderBy: { created_at: 'asc' },
+    });
+    expect(rows.map((row) => row.action).sort()).toEqual([
+      'product.placement_create',
+      'product.placement_delete',
+      'product.placement_update',
+    ]);
+
+    const expectedSummary = {
+      product_id: product.product_id,
+      surface: PLACEMENT_SURFACE.SPOT_DETAIL,
+      scope: PLACEMENT_SCOPE.SPOT,
+      target_id: luofeiSpotId,
+      fish_keys: [],
+    };
+    for (const row of rows) {
+      expect(row.admin_id).toBe(operator.admin.adminId);
+      const summary = (
+        row.action === 'product.placement_delete' ? row.before_json : row.after_json
+      ) as Record<string, unknown>;
+      expect(Object.keys(summary).sort()).toEqual([
+        'fish_keys',
+        'product_id',
+        'scope',
+        'surface',
+        'target_id',
+      ]);
+      expect(summary).toEqual(expectedSummary);
+    }
+    expect(rows.find((row) => row.action === 'product.placement_delete')?.after_json).toBeNull();
+  });
+
+  it('lists placements with filters and pagination', async () => {
+    const product = await createProduct();
+    const placement = await createPlacement(
+      operator,
+      spotPlacement(product.product_id, { status: 'disabled' }),
+    );
+
+    const filtered = await adminRead(
+      operator,
+      `/api/v1/admin/product-placements?product_id=${product.product_id}&surface=${PLACEMENT_SURFACE.SPOT_DETAIL}&status=disabled&page=1&page_size=5`,
+    ).expect(200);
+    const page = (filtered.body as Envelope<AdminPlacementList>).data;
+    expect(page.page).toBe(1);
+    expect(page.page_size).toBe(5);
+    expect(page.total).toBe(1);
+    expect(page.has_more).toBe(false);
+    expect(page.items.map((item) => item.placement_id)).toEqual([placement.placement_id]);
+    expect(page.items[0]).toMatchObject({
+      product_id: product.product_id,
+      status: 'disabled',
+    });
+
+    const defaulted = await adminRead(
+      operator,
+      `/api/v1/admin/product-placements?product_id=${product.product_id}`,
+    ).expect(200);
+    const defaultedBody = (defaulted.body as Envelope<AdminPlacementList>).data;
+    expect(defaultedBody.page).toBe(1);
+    expect(defaultedBody.page_size).toBe(20);
+
+    await adminRead(operator, '/api/v1/admin/product-placements?page_size=51').expect(400);
+    await adminRead(operator, '/api/v1/admin/product-placements?page=0').expect(400);
+    await adminRead(operator, '/api/v1/admin/product-placements?surface=home').expect(400);
+    await adminRead(operator, '/api/v1/admin/product-placements?status=archived').expect(400);
+  });
+
+  it('orders equal sort_order placements by product sort_weight descending', async () => {
+    const orderSpotId = await seedSpot([]);
+    const lowerWeight = await createProduct({ title: '低权重展示商品', sort_weight: 10 });
+    const higherWeight = await createProduct({ title: '高权重展示商品', sort_weight: 60 });
+    await activateProduct(lowerWeight.product_id);
+    await activateProduct(higherWeight.product_id);
+
+    await createPlacement(
+      operator,
+      spotPlacement(lowerWeight.product_id, { target_id: orderSpotId, sort_order: 0 }),
+    );
+    await createPlacement(
+      operator,
+      spotPlacement(higherWeight.product_id, { target_id: orderSpotId, sort_order: 0 }),
+    );
+
+    await expect(publicSpotProductIds(orderSpotId)).resolves.toEqual([
+      higherWeight.product_id,
+      lowerWeight.product_id,
+    ]);
   });
 });

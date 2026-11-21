@@ -4,6 +4,7 @@ import { AuditLogModule } from '../audit/audit-log.module';
 import { ClientConfigModule } from '../config/client-config.module';
 import { StorageModule } from '../storage/storage.module';
 import { UploadsModule } from '../uploads/uploads.module';
+import { AdminPlacementController } from './admin-placement.controller';
 import { AdminProductImageController } from './admin-product-image.controller';
 import { AdminProductController } from './admin-product.controller';
 import { PlacementService } from './placement.service';
@@ -15,7 +16,12 @@ import { PurchaseActionService } from './purchase-action.service';
 
 @Module({
   imports: [AdminAuthModule, AuditLogModule, ClientConfigModule, StorageModule, UploadsModule],
-  controllers: [ProductController, AdminProductController, AdminProductImageController],
+  controllers: [
+    ProductController,
+    AdminProductController,
+    AdminProductImageController,
+    AdminPlacementController,
+  ],
   providers: [
     ProductService,
     ProductRepository,
