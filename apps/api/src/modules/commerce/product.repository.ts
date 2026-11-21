@@ -6,6 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 export const BRAND_PAGE_LIMIT = 100;
 
+const CHANNEL_STATUS_ACTIVE = 'active';
+
 export type ProductWithChannels = Prisma.ProductGetPayload<{
   include: { channels: true };
 }>;
@@ -79,6 +81,7 @@ export class ProductRepository {
       where: {
         status: PRODUCT_STATUS.ACTIVE,
         deleted_at: null,
+        channels: { some: { status: CHANNEL_STATUS_ACTIVE } },
         ...(category === undefined ? {} : { category }),
       },
       include: { channels: true },

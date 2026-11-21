@@ -8176,6 +8176,8 @@ export interface operations {
                 surface: "spot_detail" | "brand_page" | "home" | "report_detail";
                 /** @description Spot ULID. Required when surface=spot_detail and ignored for brand_page. */
                 target_id?: string;
+                /** @description Reserved district filter. Accepted for compatibility and ignored in V1. */
+                district?: string;
                 /** @description Comma-separated fish dictionary keys, at most 5. */
                 fish_keys?: string;
                 category?: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";

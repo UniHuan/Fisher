@@ -410,3 +410,33 @@ docker compose --env-file /etc/szfisher/staging.env \
 - 联系方式只用于回访，不进入公开数据；日志、审计和导出不得包含 openid、联系方式和反馈正文。
 - 反馈和图片保留 90 天，由 `feedback:purge` 自动删除。需要留存的结论应在删除前汇总到体验反馈模板或验收记录，不导出原文和联系方式。
 - `photo` 类型反馈转钓点图片前必须完成授权和内容审核，来源、作者、授权方式、许可证、审核人和上线日期写入来源登记；没有合格图片的钓点继续显示「实景图待补充」品牌占位。
+
+## 15. UniHuan 商品扩展（Phase 1）上线与回滚
+
+### 15.1 功能开关
+
+`features.shop` 存在 `config` 表，种子值为 `false`，生产默认关闭。staging 部署并完成商品配置后打开：
+
+```sql
+INSERT INTO config (config_key, config_value, description)
+VALUES ('features.shop', 'true', 'UniHuan 商品扩展开关')
+ON CONFLICT (config_key) DO UPDATE SET config_value = 'true';
+```
+
+回滚立即关闭：
+
+```sql
+UPDATE config SET config_value = 'false' WHERE config_key = 'features.shop';
+```
+
+关闭后 `GET /api/v1/products` 仍返回 HTTP 200，`data.items` 为空数组；小程序钓点详情不显示商品区块，品牌页与「我的」页商品入口隐藏。钓点详情、搜索、情报和反馈不受影响。后台商品和展示位置接口不受开关控制，可以继续准备草稿。
+
+### 15.2 商品图片桶与公开路由
+
+- 商品图 key 固定为 `products/{product_id}/{ulid}.webp`。输入支持 JPG、PNG、WebP，单张不超过 10 MB；服务端自动旋转、清除 EXIF、最长边缩到 1600 px 并转为 WebP，目标约 250 KB。
+- 上传和草稿阶段只写私有工作桶 `OSS_WORK_BUCKET`。后台通过 `GET /api/v1/uploads/preview` 的 15 分钟签名 URL 预览草稿图。
+- 商品发布时把 `image_keys` 复制到公开发布桶 `OSS_PUBLIC_BUCKET`，复制失败时商品保持草稿，不进入公开列表。
+- 公开读取支持两种方式，二者都只读取发布桶：商品卡使用 `OSS_PUBLIC_BASE_URL` 拼接 key；`GET /api/v1/uploads/public/products/:productId/:file` 会校验商品为 `status=active`、`deleted_at` 为空且 `image_keys` 包含完整 key，否则返回 404。
+- `GET /api/v1/uploads/public/products/:productId/:file` 响应为 `image/webp`，缓存一年且 `immutable`；使用 `OSS_PUBLIC_BASE_URL` 时在 OSS 或 CDN 上配置相同的缓存策略。
+- 归档商品保留已发布的公开图，不删除对象，避免历史外链失效；需要清理时单独评估。
+- OSS 账号需要对工作桶读写，并对发布桶具备复制写入和删除权限。小程序「开发设置」的 downloadFile 合法域名需要包含 `OSS_PUBLIC_BASE_URL` 使用的域名；使用 API 公开路由时沿用 API 域名。

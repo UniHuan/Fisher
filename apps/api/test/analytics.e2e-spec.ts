@@ -116,4 +116,31 @@ describe('analytics (e2e)', () => {
       status: 400,
     });
   });
+
+  it('records product list events with surface, result count and target spot', async () => {
+    const spot = await createPublishedSpot({
+      spot_name: `分析测试商品钓点-${Date.now()}`,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/products')
+      .query({ surface: 'spot_detail', target_id: spot.spot_id })
+      .set(CLIENT_HEADERS)
+      .expect(200);
+    const requestId = response.headers['x-request-id'] as string;
+    requestIds.push(requestId);
+
+    const event = await waitForEvent(prisma, requestId, 'api_product_list');
+    expect(event).not.toBeNull();
+    expect(event).toMatchObject({
+      event_name: 'api_product_list',
+      client_type: 'miniprogram',
+      app_version: '1.0.0',
+    });
+    expect(event?.properties).toMatchObject({
+      surface: 'spot_detail',
+      result_count: response.body.data.items.length,
+      spot_id: spot.spot_id,
+    });
+  });
 });

@@ -41,6 +41,15 @@ export class PublicProductQueryDto {
   target_id?: string;
 
   @ApiPropertyOptional({
+    description: 'Reserved district filter. Accepted for compatibility and ignored in V1.',
+    example: '南山区',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 32)
+  district?: string;
+
+  @ApiPropertyOptional({
     type: String,
     description: 'Comma-separated fish dictionary keys, at most 5.',
     example: 'luofei,jiyu',

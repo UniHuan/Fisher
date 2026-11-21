@@ -308,6 +308,19 @@ describe('public products (e2e)', () => {
     });
     trackedProductIds.push(...hatIds);
 
+    // Active products without an active channel must not consume the brand cap (R18).
+    const hatNoiseIds = [ulid(), ulid(), ulid()];
+    await prisma.product.createMany({
+      data: hatNoiseIds.map((productId, index) => ({
+        product_id: productId,
+        title: `UniHuan 无渠道防晒帽 ${index + 1}`,
+        category: PRODUCT_CATEGORY.HAT,
+        status: PRODUCT_STATUS.ACTIVE,
+        sort_weight: 10,
+      })),
+    });
+    trackedProductIds.push(...hatNoiseIds);
+
     // scope=spot matching.
     spotProductCover = `products/${ulid()}/${ulid()}.webp`;
     spotProduct = await seedProduct({
@@ -494,11 +507,20 @@ describe('public products (e2e)', () => {
     expect(idsOf(response.body)).toEqual([reel]);
   });
 
-  it('caps the brand page at 100 products', async () => {
+  it('caps the brand page at 100 usable products', async () => {
     const response = await listProducts('surface=brand_page&category=hat').expect(200);
     const items = itemsOf(response.body);
     expect(items).toHaveLength(100);
     expect(items.every((item) => item.category === PRODUCT_CATEGORY.HAT)).toBe(true);
+  });
+
+  it('accepts the reserved district query and ignores it', async () => {
+    const plain = await listProducts('surface=brand_page&category=rod').expect(200);
+    const withDistrict = await listProducts(
+      `surface=brand_page&category=rod&district=${encodeURIComponent('南山区')}`,
+    ).expect(200);
+
+    expect(idsOf(withDistrict.body)).toEqual(idsOf(plain.body));
   });
 
   it('returns only the target spot product for scope=spot', async () => {
