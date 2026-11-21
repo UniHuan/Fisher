@@ -40,7 +40,7 @@ export class ImportsService {
 
   async getTemplate(): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = '深圳钓鱼助手';
+    workbook.creator = '优丽环钓鱼助手';
     workbook.created = new Date();
     const sheet = workbook.addWorksheet('钓点导入');
     sheet.columns = IMPORT_COLUMNS.map((column) => ({

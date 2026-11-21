@@ -167,6 +167,6 @@
     </view>
     <text wx:if="{{legalNote}}" class="legal-note">{{legalNote}}</text>
     <button wx:if="{{sessionReady}}" class="logout-button" bindtap="logout">退出登录</button>
-    <text class="app-version">深圳钓鱼助手 v{{appVersion}}</text>
+    <text class="app-version">优丽环钓鱼助手 v{{appVersion}}</text>
   </block>
 </view>

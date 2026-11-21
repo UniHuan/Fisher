@@ -1,7 +1,7 @@
 {
   "appid": "wx0d2443850022120f",
   "projectname": "szfisher-miniprogram",
-  "description": "深圳钓鱼助手小程序",
+  "description": "优丽环钓鱼助手小程序",
   "compileType": "miniprogram",
   "miniprogramRoot": "src/",
   "setting": {
