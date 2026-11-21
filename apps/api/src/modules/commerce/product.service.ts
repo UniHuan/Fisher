@@ -1,21 +1,46 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import type { ProductChannel } from '@prisma/client';
+import type { Prisma, ProductChannel } from '@prisma/client';
 import {
   COMMERCE_CHANNEL,
   ERROR_CODES,
   PRODUCT_QUERY_SURFACE,
+  PRODUCT_STATUS,
+  normalizeKeyword,
 } from '@szfisher/shared';
+import { ulid } from 'ulid';
 import { AppError } from '../../common/errors/app-error';
+import type { AdminContext, RequestWithContext } from '../../common/types/request-context';
+import { AuditLogService } from '../audit/audit-log.service';
 import { ClientConfigService } from '../config/config.service';
-import { StorageService } from '../storage/storage.service';
+import { PREVIEW_URL_TTL_SECONDS, StorageService } from '../storage/storage.service';
+import { PreviewSignerService } from '../uploads/preview-signer.service';
+import type {
+  AdminProductChannelDto,
+  AdminProductDetailDto,
+  AdminProductListItemDto,
+  AdminProductListQueryDto,
+  AdminProductPageDto,
+} from './dto/admin-product.dto';
+import type { CreateProductDto, ProductChannelInputDto } from './dto/create-product.dto';
 import type { PublicProductQueryDto } from './dto/public-product-query.dto';
 import type { ProductCardDto, ProductCardListDto } from './dto/product-card.dto';
-import type { PurchaseActionDto } from './dto/purchase-action.dto';
+import type { PurchaseActionDto, PurchaseActionInputDto } from './dto/purchase-action.dto';
+import type { UpdateProductDto } from './dto/update-product.dto';
 import { PlacementService } from './placement.service';
-import { ProductRepository, type ProductWithChannels } from './product.repository';
+import { ProductImageService } from './product-image.service';
+import {
+  ProductRepository,
+  type AdminProductRow,
+  type AdminProductWriteData,
+  type ProductChannelWrite,
+  type ProductWithChannels,
+} from './product.repository';
+import { PurchaseActionService } from './purchase-action.service';
 
 const CHANNEL_STATUS_ACTIVE = 'active';
 const SPOT_DETAIL_DEFAULT_LIMIT = 6;
+const ADMIN_PAGE_DEFAULT_SIZE = 20;
+const V1_CHANNELS_PER_PRODUCT = 1;
 const CHANNEL_LABELS: Record<string, string> = {
   [COMMERCE_CHANNEL.WEIDIAN]: '微店',
   [COMMERCE_CHANNEL.JD]: '京东',
@@ -41,6 +66,10 @@ export class ProductService {
     private readonly products: ProductRepository,
     private readonly placements: PlacementService,
     private readonly storage: StorageService,
+    private readonly purchaseActions: PurchaseActionService,
+    private readonly productImages: ProductImageService,
+    private readonly previewSigner: PreviewSignerService,
+    private readonly auditLogs: AuditLogService,
   ) {}
 
   async listPublic(query: PublicProductQueryDto): Promise<ProductCardListDto> {
@@ -63,6 +92,303 @@ export class ProductService {
   private async listBrandPage(category?: string): Promise<ProductCardListDto> {
     const rows = await this.products.listBrandPage(category);
     return { items: this.toCards(rows) };
+  }
+
+  async listAdmin(query: AdminProductListQueryDto): Promise<AdminProductPageDto> {
+    const page = query.page ?? 1;
+    const pageSize = query.page_size ?? ADMIN_PAGE_DEFAULT_SIZE;
+    const keyword = query.keyword === undefined ? undefined : normalizeKeyword(query.keyword);
+    const { rows, total } = await this.products.findAdminPage({
+      ...(query.status === undefined ? {} : { status: query.status }),
+      ...(query.category === undefined ? {} : { category: query.category }),
+      ...(keyword === undefined || keyword.length === 0 ? {} : { keyword }),
+      page,
+      pageSize,
+    });
+    return {
+      items: rows.map((row) => this.toAdminListItem(row)),
+      page,
+      page_size: pageSize,
+      total,
+      has_more: page * pageSize < total,
+    };
+  }
+
+  async getAdmin(productId: string): Promise<AdminProductDetailDto> {
+    return this.toAdminDetail(await this.findAdminRow(productId));
+  }
+
+  async create(
+    input: CreateProductDto,
+    admin: AdminContext,
+    request: RequestWithContext,
+  ): Promise<AdminProductDetailDto> {
+    const channels = this.channelWrites(input.channels);
+    const imageKeys = input.image_keys ?? [];
+    const coverImageKey = input.cover_image_key ?? null;
+    this.assertCoverInImageKeys(coverImageKey, imageKeys);
+
+    const data: AdminProductWriteData = {
+      product_id: ulid(),
+      title: input.title,
+      subtitle: input.subtitle ?? null,
+      description: input.description ?? null,
+      category: input.category,
+      image_keys: imageKeys,
+      cover_image_key: coverImageKey,
+      // R2: create always lands as a draft; publishing happens through update.
+      status: PRODUCT_STATUS.DRAFT,
+      sort_weight: input.sort_weight ?? 0,
+    };
+    const row = await this.products.createAdminProduct(data, channels);
+    await this.recordAudit(admin, request, 'product.create', row.product_id, null, this.auditSummary(row));
+    return this.toAdminDetail(row);
+  }
+
+  async update(
+    productId: string,
+    input: UpdateProductDto,
+    admin: AdminContext,
+    request: RequestWithContext,
+  ): Promise<AdminProductDetailDto> {
+    const existing = await this.findAdminRow(productId);
+    const imageKeys = input.image_keys ?? existing.image_keys;
+    let coverImageKey: string | null;
+    if (input.cover_image_key !== undefined) {
+      coverImageKey = input.cover_image_key;
+      this.assertCoverInImageKeys(coverImageKey, imageKeys);
+    } else if (
+      existing.cover_image_key !== null &&
+      imageKeys.includes(existing.cover_image_key)
+    ) {
+      coverImageKey = existing.cover_image_key;
+    } else {
+      // The submitted image set dropped the previous cover, so the invariant clears it.
+      coverImageKey = null;
+    }
+    const channels =
+      input.channels === undefined ? undefined : this.channelWrites(input.channels);
+    const nextStatus = input.status ?? existing.status;
+
+    // R13: fields and image_keys land before any image is published.
+    await this.products.updateAdminFields(productId, {
+      title: input.title ?? existing.title,
+      subtitle: input.subtitle !== undefined ? input.subtitle : existing.subtitle,
+      description:
+        input.description !== undefined ? input.description : existing.description,
+      category: input.category ?? existing.category,
+      sort_weight: input.sort_weight ?? existing.sort_weight,
+      image_keys: imageKeys,
+      cover_image_key: coverImageKey,
+    });
+    if (channels !== undefined) {
+      await this.products.replaceAdminChannels(productId, channels);
+    }
+
+    const becomingActive =
+      nextStatus === PRODUCT_STATUS.ACTIVE && existing.status !== PRODUCT_STATUS.ACTIVE;
+    const activeImagesChanged =
+      nextStatus === PRODUCT_STATUS.ACTIVE &&
+      existing.status === PRODUCT_STATUS.ACTIVE &&
+      input.image_keys !== undefined;
+    if (becomingActive || activeImagesChanged) {
+      // Never mark active before images reach the published bucket.
+      await this.productImages.publishForProduct(productId);
+    }
+    if (nextStatus !== existing.status) {
+      await this.products.updateAdminFields(productId, { status: nextStatus });
+    }
+
+    const row = await this.findAdminRow(productId);
+    await this.recordAudit(
+      admin,
+      request,
+      'product.update',
+      productId,
+      this.auditSummary(existing),
+      this.auditSummary(row),
+    );
+    return this.toAdminDetail(row);
+  }
+
+  async archive(
+    productId: string,
+    admin: AdminContext,
+    request: RequestWithContext,
+  ): Promise<AdminProductDetailDto> {
+    const existing = await this.findAdminRow(productId);
+    if (existing.status === PRODUCT_STATUS.ARCHIVED) {
+      return this.toAdminDetail(existing);
+    }
+
+    await this.products.updateAdminFields(productId, { status: PRODUCT_STATUS.ARCHIVED });
+    const row = await this.findAdminRow(productId);
+    await this.recordAudit(
+      admin,
+      request,
+      'product.archive',
+      productId,
+      this.auditSummary(existing),
+      this.auditSummary(row),
+    );
+    return this.toAdminDetail(row);
+  }
+
+  private async findAdminRow(productId: string): Promise<AdminProductRow> {
+    const row = await this.products.findAdminById(productId);
+    if (row === null) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, HttpStatus.NOT_FOUND, 'Product not found');
+    }
+    return row;
+  }
+
+  private channelWrites(inputs: ProductChannelInputDto[]): ProductChannelWrite[] {
+    if (inputs.length > V1_CHANNELS_PER_PRODUCT) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION,
+        HttpStatus.BAD_REQUEST,
+        'V1 supports exactly one commerce channel per product',
+      );
+    }
+    return inputs.map((input) => {
+      // The action type is the channel's purchase_action; any type in the payload is ignored.
+      const action = this.purchaseActions.validate(input.channel, {
+        ...input.action_payload,
+        type: input.purchase_action,
+      } as PurchaseActionInputDto);
+      return {
+        channel: input.channel,
+        external_product_id: input.external_product_id ?? null,
+        purchase_action: action.type,
+        action_payload: action as unknown as Prisma.InputJsonValue,
+        price_display: input.price_display ?? null,
+        status: input.status ?? CHANNEL_STATUS_ACTIVE,
+      };
+    });
+  }
+
+  private assertCoverInImageKeys(coverImageKey: string | null, imageKeys: string[]): void {
+    if (coverImageKey !== null && !imageKeys.includes(coverImageKey)) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION,
+        HttpStatus.BAD_REQUEST,
+        'cover_image_key must be one of image_keys',
+      );
+    }
+  }
+
+  private async recordAudit(
+    admin: AdminContext,
+    request: RequestWithContext,
+    action: string,
+    productId: string,
+    before: unknown,
+    after: unknown,
+  ): Promise<void> {
+    const userAgent = request.headers['user-agent'];
+    await this.auditLogs.record({
+      adminId: admin.adminId,
+      action,
+      entityType: 'product',
+      entityId: productId,
+      before,
+      after,
+      ip: request.ip ?? null,
+      requestId: request.requestId ?? null,
+      userAgent: typeof userAgent === 'string' ? userAgent : null,
+    });
+  }
+
+  /** Audit rows keep only compact identity fields; description text never leaves this map. */
+  private auditSummary(row: {
+    title: string;
+    status: string;
+    category: string;
+    channels: Array<{ channel: string }>;
+  }): { title: string; status: string; category: string; channels: string[] } {
+    return {
+      title: row.title,
+      status: row.status,
+      category: row.category,
+      channels: row.channels.map((channel) => channel.channel),
+    };
+  }
+
+  private toAdminListItem(row: AdminProductRow): AdminProductListItemDto {
+    const published = row.status !== PRODUCT_STATUS.DRAFT;
+    return {
+      product_id: row.product_id,
+      title: row.title,
+      subtitle: row.subtitle,
+      category: row.category,
+      status: row.status,
+      sort_weight: row.sort_weight,
+      cover_image_url:
+        row.cover_image_key === null
+          ? null
+          : this.adminImageUrl(row.cover_image_key, published),
+      channel_count: row.channels.length,
+      placement_count: row._count.placements,
+      updated_at: row.updated_at.toISOString(),
+    };
+  }
+
+  private toAdminDetail(row: AdminProductRow): AdminProductDetailDto {
+    const published = row.status !== PRODUCT_STATUS.DRAFT;
+    const imageUrls: string[] = [];
+    for (const key of row.image_keys) {
+      const url = this.adminImageUrl(key, published);
+      if (url !== null) {
+        imageUrls.push(url);
+      }
+    }
+    return {
+      product_id: row.product_id,
+      title: row.title,
+      subtitle: row.subtitle,
+      description: row.description,
+      category: row.category,
+      sort_weight: row.sort_weight,
+      status: row.status,
+      image_keys: row.image_keys,
+      image_urls: imageUrls,
+      cover_image_key: row.cover_image_key,
+      cover_image_url:
+        row.cover_image_key === null
+          ? null
+          : this.adminImageUrl(row.cover_image_key, published),
+      channels: [...row.channels]
+        .sort((left, right) => channelRank(left.channel) - channelRank(right.channel))
+        .map((channel) => this.toAdminChannel(channel)),
+      created_at: row.created_at.toISOString(),
+      updated_at: row.updated_at.toISOString(),
+    };
+  }
+
+  private toAdminChannel(channel: ProductChannel): AdminProductChannelDto {
+    return {
+      channel_id: channel.channel_id,
+      channel: channel.channel,
+      external_product_id: channel.external_product_id,
+      purchase_action: channel.purchase_action,
+      action_payload: (channel.action_payload ?? {}) as Record<string, unknown>,
+      price_display: channel.price_display,
+      status: channel.status,
+    };
+  }
+
+  /**
+   * Draft images live in the private work bucket, so they require a signed preview.
+   * Active and archived products serve published images through the public route.
+   */
+  private adminImageUrl(key: string, published: boolean): string | null {
+    try {
+      return published
+        ? this.storage.getPublicUrl(key)
+        : this.previewSigner.sign(key, 'working', PREVIEW_URL_TTL_SECONDS).url;
+    } catch {
+      return null;
+    }
   }
 
   private async listSpotDetail(query: PublicProductQueryDto): Promise<ProductCardListDto> {

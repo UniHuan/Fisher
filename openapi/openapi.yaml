@@ -3579,6 +3579,302 @@ paths:
       summary: List public product cards for a surface
       tags:
         - public products
+  /api/v1/admin/products:
+    get:
+      operationId: AdminProductController_list
+      parameters:
+        - &a60
+          name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - &a61
+          name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: status
+          required: false
+          in: query
+          schema:
+            example: draft
+            type: string
+            enum:
+              - draft
+              - active
+              - archived
+        - name: category
+          required: false
+          in: query
+          schema:
+            example: rod
+            type: string
+            enum:
+              - rod
+              - reel
+              - line
+              - bait
+              - hat
+              - sun_protection
+              - accessory
+              - other
+        - name: keyword
+          required: false
+          in: query
+          description: Title keyword
+          schema:
+            maxLength: 80
+            example: 路亚竿
+            type: string
+        - name: page
+          required: false
+          in: query
+          description: Page number, starting at 1; defaults to 1
+          schema:
+            minimum: 1
+            type: integer
+        - name: page_size
+          required: false
+          in: query
+          description: Page size; defaults to 20
+          schema:
+            minimum: 1
+            maximum: 50
+            type: integer
+      responses:
+        "200":
+          description: Paginated admin product rows
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminProductPageDto"
+        "400": &a67
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401": &a62
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403": &a63
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": &a64
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: &a65
+        - admin-cookie: []
+      summary: List products for admin management
+      tags: &a66
+        - admin products
+    post:
+      operationId: AdminProductController_create
+      parameters:
+        - *a60
+        - *a61
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductDto"
+      responses:
+        "201":
+          description: Created draft product and channel
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminProductDetailDto"
+        "400":
+          description: Invalid product, channel or purchase action (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401": *a62
+        "403": *a63
+        "500": *a64
+      security: *a65
+      summary: Create a draft product with its channel
+      tags: *a66
+  /api/v1/admin/products/{id}:
+    get:
+      operationId: AdminProductController_detail
+      parameters:
+        - *a60
+        - *a61
+        - name: id
+          required: true
+          in: path
+          description: Product ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+      responses:
+        "200":
+          description: Admin product detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminProductDetailDto"
+        "400": *a67
+        "401": *a62
+        "403": *a63
+        "404":
+          description: Product does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a64
+      security: *a65
+      summary: Get one product with channels and image urls
+      tags: *a66
+    put:
+      operationId: AdminProductController_update
+      parameters:
+        - *a60
+        - *a61
+        - name: id
+          required: true
+          in: path
+          description: Product ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductDto"
+      responses:
+        "200":
+          description: Updated product detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminProductDetailDto"
+        "400": *a67
+        "401": *a62
+        "403": *a63
+        "404":
+          description: Product does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a64
+        "503":
+          description: Image publishing unavailable (50301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security: *a65
+      summary: Update a product and replace its channel set
+      tags: *a66
+  /api/v1/admin/products/{id}/archive:
+    post:
+      operationId: AdminProductController_archive
+      parameters:
+        - *a60
+        - *a61
+        - name: id
+          required: true
+          in: path
+          description: Product ULID
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Archived product detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminProductDetailDto"
+        "400": *a67
+        "401": *a62
+        "403": *a63
+        "404":
+          description: Product does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500": *a64
+      security: *a65
+      summary: Archive a product
+      tags: *a66
   /api/v1/admin/products/{id}/images:
     post:
       operationId: AdminProductImageController_create
@@ -3694,7 +3990,7 @@ paths:
     get:
       operationId: PublicSpotsController_list
       parameters:
-        - &a60
+        - &a68
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -3706,7 +4002,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a61
+        - &a69
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -3821,33 +4117,33 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicSpotPageDto"
-        "400": &a62
+        "400": &a70
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "404": &a63
+        "404": &a71
           description: Not found (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a64
+        "500": &a72
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
       summary: List published spots with filters, search and sorting
-      tags: &a65
+      tags: &a73
         - public spots
   /api/v1/spots/map:
     get:
       operationId: PublicSpotsController_map
       parameters:
-        - *a60
-        - *a61
+        - *a68
+        - *a69
         - name: north
           required: false
           in: query
@@ -3903,17 +4199,17 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicMapResponseDto"
-        "400": *a62
-        "404": *a63
-        "500": *a64
+        "400": *a70
+        "404": *a71
+        "500": *a72
       summary: Return lightweight published spot map points or clusters
-      tags: *a65
+      tags: *a73
   /api/v1/spots/{id}:
     get:
       operationId: PublicSpotsController_detail
       parameters:
-        - *a60
-        - *a61
+        - *a68
+        - *a69
         - name: id
           required: true
           in: path
@@ -3934,22 +4230,22 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicSpotDetailDto"
-        "400": *a62
+        "400": *a70
         "404":
           description: Spot is not published or does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a64
+        "500": *a72
       summary: Get a published spot detail
-      tags: *a65
+      tags: *a73
   /api/v1/spots/{id}/pois:
     get:
       operationId: PublicSpotsController_pois
       parameters:
-        - *a60
-        - *a61
+        - *a68
+        - *a69
         - name: id
           required: true
           in: path
@@ -3983,21 +4279,21 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PublicPoiListDto"
-        "400": *a62
+        "400": *a70
         "404":
           description: Spot is not published or does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a64
+        "500": *a72
       summary: List nearby POIs for a published spot
-      tags: *a65
+      tags: *a73
   /api/v1/admin/pois:
     get:
       operationId: PoisController_list
       parameters:
-        - &a66
+        - &a74
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -4009,7 +4305,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a67
+        - &a75
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -4072,40 +4368,40 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminPoiPageDto"
-        "400": &a68
+        "400": &a76
           description: Bad request (40001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "401": &a69
+        "401": &a77
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a70
+        "403": &a78
           description: Forbidden (40301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a71
+        "500": &a79
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a72
+      security: &a80
         - admin-cookie: []
       summary: List POIs in the shared POI library
-      tags: &a73
+      tags: &a81
         - admin pois
     post:
       operationId: PoisController_create
       parameters:
-        - *a66
-        - *a67
+        - *a74
+        - *a75
         - name: X-CSRF-Token
           in: header
           description: Synchronizer CSRF token issued by login or refresh
@@ -4131,19 +4427,19 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminPoiItemDto"
-        "400": *a68
-        "401": *a69
-        "403": *a70
-        "500": *a71
-      security: *a72
+        "400": *a76
+        "401": *a77
+        "403": *a78
+        "500": *a79
+      security: *a80
       summary: Create a manually entered POI
-      tags: *a73
+      tags: *a81
   /api/v1/admin/pois/{id}:
     put:
       operationId: PoisController_update
       parameters:
-        - *a66
-        - *a67
+        - *a74
+        - *a75
         - name: id
           required: true
           in: path
@@ -4176,25 +4472,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminPoiItemDto"
-        "400": *a68
-        "401": *a69
-        "403": *a70
+        "400": *a76
+        "401": *a77
+        "403": *a78
         "404":
           description: POI does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a71
-      security: *a72
+        "500": *a79
+      security: *a80
       summary: Correct or hide a POI
-      tags: *a73
+      tags: *a81
   /api/v1/admin/spots/{id}/pois:
     get:
       operationId: PoisController_listSpotPois
       parameters:
-        - *a66
-        - *a67
+        - *a74
+        - *a75
         - name: id
           required: true
           in: path
@@ -4215,24 +4511,24 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPoiListDto"
-        "400": *a68
-        "401": *a69
-        "403": *a70
+        "400": *a76
+        "401": *a77
+        "403": *a78
         "404":
           description: Spot does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a71
-      security: *a72
+        "500": *a79
+      security: *a80
       summary: List a spot POI bindings, including hidden POIs and last sync
-      tags: *a73
+      tags: *a81
     post:
       operationId: PoisController_bind
       parameters:
-        - *a66
-        - *a67
+        - *a74
+        - *a75
         - name: id
           required: true
           in: path
@@ -4265,9 +4561,9 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPoiItemDto"
-        "400": *a68
-        "401": *a69
-        "403": *a70
+        "400": *a76
+        "401": *a77
+        "403": *a78
         "404":
           description: Spot or POI does not exist (40401)
           content:
@@ -4280,16 +4576,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a71
-      security: *a72
+        "500": *a79
+      security: *a80
       summary: Bind an existing POI to a spot
-      tags: *a73
+      tags: *a81
   /api/v1/admin/spots/{id}/pois/{poi_id}:
     delete:
       operationId: PoisController_unbind
       parameters:
-        - *a66
-        - *a67
+        - *a74
+        - *a75
         - name: id
           required: true
           in: path
@@ -4323,25 +4619,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/AdminSpotPoiUnbindDto"
-        "400": *a68
-        "401": *a69
-        "403": *a70
+        "400": *a76
+        "401": *a77
+        "403": *a78
         "404":
           description: Spot or binding does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a71
-      security: *a72
+        "500": *a79
+      security: *a80
       summary: Unbind a POI from a spot
-      tags: *a73
+      tags: *a81
   /api/v1/admin/spots/{id}/pois/sync:
     post:
       operationId: PoisController_sync
       parameters:
-        - *a66
-        - *a67
+        - *a74
+        - *a75
         - name: id
           required: true
           in: path
@@ -4368,25 +4664,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/PoiSyncRunDto"
-        "400": *a68
-        "401": *a69
-        "403": *a70
+        "400": *a76
+        "401": *a77
+        "403": *a78
         "404":
           description: Spot does not exist (40401)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a71
+        "500": *a79
         "503":
           description: POI provider unavailable (50301)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: *a72
+      security: *a80
       summary: Sync nearby POIs from the configured provider
-      tags: *a73
+      tags: *a81
   /api/v1/admin/uploads:
     post:
       operationId: UploadsController_create
@@ -4597,7 +4893,7 @@ paths:
     get:
       operationId: ImportsController_job
       parameters:
-        - &a74
+        - &a82
           name: X-Client-Type
           in: header
           description: Client platform; the request is rejected when missing or unknown
@@ -4609,7 +4905,7 @@ paths:
               - ios
               - admin
             example: admin
-        - &a75
+        - &a83
           name: X-Client-Version
           in: header
           description: Client build version; required on every /api/v1 request
@@ -4637,13 +4933,13 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/ImportJobDto"
-        "401": &a76
+        "401": &a84
           description: Authentication required (40101, 40102)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "403": &a77
+        "403": &a85
           description: Forbidden (40301)
           content:
             application/json:
@@ -4655,23 +4951,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": &a78
+        "500": &a86
           description: Internal server error (50001)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-      security: &a79
+      security: &a87
         - admin-cookie: []
       summary: Get an import job status and counts
-      tags: &a80
+      tags: &a88
         - admin imports
   /api/v1/admin/imports/{id}/errors:
     get:
       operationId: ImportsController_errors
       parameters:
-        - *a74
-        - *a75
+        - *a82
+        - *a83
         - name: id
           required: true
           in: path
@@ -4682,18 +4978,18 @@ paths:
       responses:
         "200":
           description: CSV report
-        "401": *a76
-        "403": *a77
+        "401": *a84
+        "403": *a85
         "404":
           description: Import or report does not exist (40401)
           content:
             text/csv:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
-        "500": *a78
-      security: *a79
+        "500": *a86
+      security: *a87
       summary: Download the import error and warning CSV
-      tags: *a80
+      tags: *a88
 info:
   title: SZFisher API
   description: "Shenzhen fishing assistant API. Base path: /api/v1."
@@ -5755,7 +6051,7 @@ components:
           example: 01HX0000000000000000000000
         category:
           type: string
-          enum: &a81
+          enum: &a89
             - bug
             - suggestion
             - content
@@ -5767,7 +6063,7 @@ components:
           example: 钓点详情页的收藏按钮点击后没有反应。
         status:
           type: string
-          enum: &a82
+          enum: &a90
             - open
             - reviewing
             - resolved
@@ -5833,7 +6129,7 @@ components:
           example: 01HX0000000000000000000000
         category:
           type: string
-          enum: *a81
+          enum: *a89
           example: bug
         content:
           type: string
@@ -5876,7 +6172,7 @@ components:
             type: string
         status:
           type: string
-          enum: *a82
+          enum: *a90
           example: open
         user_nickname:
           type: string
@@ -5927,7 +6223,7 @@ components:
           example: 01HX0000000000000000000000
         status:
           type: string
-          enum: *a82
+          enum: *a90
           example: reviewing
       required:
         - feedback_id
@@ -5994,7 +6290,7 @@ components:
           example: 深圳湾公园
         content_type:
           type: string
-          enum: &a84
+          enum: &a92
             - comment
             - catch
             - intel
@@ -6020,7 +6316,7 @@ components:
           example: "2.50"
         moderation_status:
           type: string
-          enum: &a83
+          enum: &a91
             - machine_pending
             - machine_rejected
             - published
@@ -6199,7 +6495,7 @@ components:
           example: 01HX0000000000000000000000
         reason:
           type: string
-          enum: &a85
+          enum: &a93
             - ad
             - abuse
             - false_info
@@ -6256,7 +6552,7 @@ components:
           example: 01HX0000000000000000000000
         moderation_status:
           type: string
-          enum: *a83
+          enum: *a91
           example: human_approved
         adopted_at:
           type: string
@@ -6303,14 +6599,14 @@ components:
           example: 深圳湾公园
         content_type:
           type: string
-          enum: *a84
+          enum: *a92
           example: comment
         content:
           type: string
           example: 今天鱼口不错
         moderation_status:
           type: string
-          enum: *a83
+          enum: *a91
           example: published
         images:
           type: array
@@ -6334,7 +6630,7 @@ components:
           example: 01HX0000000000000000000001
         reason:
           type: string
-          enum: *a85
+          enum: *a93
           example: ad
         status:
           type: string
@@ -6404,7 +6700,7 @@ components:
           example: removed
         moderation_status:
           type: string
-          enum: *a83
+          enum: *a91
           example: removed
       required:
         - abuse_id
@@ -6869,7 +7165,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: &a86
+          example: &a94
             - luofei
             - jiyu
           type: array
@@ -6897,7 +7193,7 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: &a87
+          example: &a95
             - tai_diao
             - lu_ya
           type: array
@@ -6905,7 +7201,7 @@ components:
             type: string
         open_status:
           type: string
-          enum: &a88
+          enum: &a96
             - open
             - paused
             - banned
@@ -6931,7 +7227,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: &a89
+          example: &a97
             - spots/a.jpg
           type: array
           items:
@@ -6949,7 +7245,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: &a90
+          enum: &a98
             - official
             - operation
             - user_report
@@ -7003,7 +7299,7 @@ components:
           maxLength: 120
           example: 深圳市南山区…
         fish_types:
-          example: *a86
+          example: *a94
           type: array
           items:
             type: string
@@ -7029,13 +7325,13 @@ components:
           nullable: true
           example: wild
         fishing_method:
-          example: *a87
+          example: *a95
           type: array
           items:
             type: string
         open_status:
           type: string
-          enum: *a88
+          enum: *a96
           nullable: true
           example: open
         ban_note:
@@ -7058,7 +7354,7 @@ components:
           maxLength: 2000
         images:
           maxItems: 9
-          example: *a89
+          example: *a97
           type: array
           items:
             type: string
@@ -7075,7 +7371,7 @@ components:
           description: Defaults to false
         source:
           type: string
-          enum: *a90
+          enum: *a98
           nullable: true
           description: Defaults to operation
     AdminSpotDeleteResponseDto:
@@ -7194,7 +7490,7 @@ components:
       properties:
         type:
           type: string
-          enum:
+          enum: &a99
             - mini_program
             - h5
             - copy_link
@@ -7285,6 +7581,357 @@ components:
             $ref: "#/components/schemas/ProductCardDto"
       required:
         - items
+    AdminProductListItemDto:
+      type: object
+      properties:
+        product_id:
+          type: string
+          example: 01HX0000000000000000000000
+        title:
+          type: string
+          example: UniHuan 轻量路亚竿
+        subtitle:
+          type: string
+          nullable: true
+          example: 深圳湾岸钓适用
+        category:
+          type: string
+          enum: &a100
+            - rod
+            - reel
+            - line
+            - bait
+            - hat
+            - sun_protection
+            - accessory
+            - other
+          example: rod
+        status:
+          type: string
+          enum: &a101
+            - draft
+            - active
+            - archived
+          example: draft
+        sort_weight:
+          type: integer
+          example: 10
+        cover_image_url:
+          type: string
+          nullable: true
+        channel_count:
+          type: integer
+          example: 1
+        placement_count:
+          type: integer
+          example: 2
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - product_id
+        - title
+        - subtitle
+        - category
+        - status
+        - sort_weight
+        - cover_image_url
+        - channel_count
+        - placement_count
+        - updated_at
+    AdminProductPageDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminProductListItemDto"
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 42
+        has_more:
+          type: boolean
+          example: true
+      required:
+        - items
+        - page
+        - page_size
+        - total
+        - has_more
+    AdminProductChannelDto:
+      type: object
+      properties:
+        channel_id:
+          type: string
+          example: 01HX0000000000000000000000
+        channel:
+          type: string
+          enum:
+            - weidian
+            - jd
+          example: weidian
+        external_product_id:
+          type: string
+          nullable: true
+          example: wd-item-10001
+        purchase_action:
+          type: string
+          enum: *a99
+          example: mini_program
+        action_payload:
+          type: object
+          additionalProperties: true
+          example:
+            type: mini_program
+            app_id: wx0123456789abcdef
+            path: /pages/product/detail?id=1
+        price_display:
+          type: string
+          nullable: true
+          example: ¥299 起
+        status:
+          type: string
+          example: active
+      required:
+        - channel_id
+        - channel
+        - external_product_id
+        - purchase_action
+        - action_payload
+        - price_display
+        - status
+    AdminProductDetailDto:
+      type: object
+      properties:
+        product_id:
+          type: string
+          example: 01HX0000000000000000000000
+        title:
+          type: string
+          example: UniHuan 轻量路亚竿
+        subtitle:
+          type: string
+          nullable: true
+          example: 深圳湾岸钓适用
+        description:
+          type: string
+          nullable: true
+          description: Admin copy; never written to audit logs
+        category:
+          type: string
+          enum: *a100
+          example: rod
+        sort_weight:
+          type: integer
+          example: 10
+        status:
+          type: string
+          enum: *a101
+          example: draft
+        image_keys:
+          type: array
+          items:
+            type: string
+        image_urls:
+          description: Signed working previews while draft; public URLs once active or
+            archived
+          type: array
+          items:
+            type: string
+        cover_image_key:
+          type: string
+          nullable: true
+        cover_image_url:
+          type: string
+          nullable: true
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminProductChannelDto"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - product_id
+        - title
+        - subtitle
+        - description
+        - category
+        - sort_weight
+        - status
+        - image_keys
+        - image_urls
+        - cover_image_key
+        - cover_image_url
+        - channels
+        - created_at
+        - updated_at
+    ProductChannelInputDto:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum:
+            - weidian
+            - jd
+          example: weidian
+          description: V1 accepts only weidian.
+        external_product_id:
+          type: object
+          maxLength: 64
+          example: wd-item-10001
+        purchase_action:
+          type: string
+          enum:
+            - mini_program
+            - h5
+            - copy_link
+          example: mini_program
+          description: Action type the client executes. V1 accepts mini_program, h5 and
+            copy_link.
+        action_payload:
+          type: object
+          additionalProperties: true
+          example:
+            app_id: wx0123456789abcdef
+            path: /pages/product/detail?id=1
+          description: Action parameters. The type is supplied by purchase_action, not
+            this object.
+        price_display:
+          type: object
+          maxLength: 32
+          example: ¥299 起
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+          example: active
+      required:
+        - channel
+        - purchase_action
+        - action_payload
+    CreateProductDto:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+          example: UniHuan 轻量路亚竿
+        subtitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: 深圳湾岸钓适用
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        category:
+          type: string
+          enum: &a102
+            - rod
+            - reel
+            - line
+            - bait
+            - hat
+            - sun_protection
+            - accessory
+            - other
+          example: rod
+        sort_weight:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          default: 0
+          description: Larger values sort first on the brand page.
+        image_keys:
+          maxItems: 9
+          example: &a103
+            - products/01HX0000000000000000000000/01HX0000000000000000000001.webp
+          type: array
+          items:
+            type: string
+        cover_image_key:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: Must be one of image_keys when set.
+        channels:
+          minItems: 1
+          maxItems: 2
+          description: V1 accepts exactly one weidian channel.
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductChannelInputDto"
+      required:
+        - title
+        - category
+        - channels
+    UpdateProductDto:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+          example: UniHuan 轻量路亚竿
+        subtitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: 深圳湾岸钓适用
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        category:
+          type: string
+          enum: *a102
+          example: rod
+        sort_weight:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+          default: 0
+          description: Larger values sort first on the brand page.
+        image_keys:
+          maxItems: 9
+          example: *a103
+          type: array
+          items:
+            type: string
+        cover_image_key:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: Must be one of image_keys when set.
+        channels:
+          minItems: 1
+          maxItems: 2
+          description: V1 accepts exactly one weidian channel.
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductChannelInputDto"
+        status:
+          type: string
+          enum:
+            - draft
+            - active
+            - archived
+          example: active
+          description: Draft to active publishes the current image set before the status
+            changes.
     ProductImageResponseDto:
       type: object
       properties:
@@ -7327,7 +7974,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: &a91
+          example: &a104
             - luofei
             - jiyu
           type: array
@@ -7347,7 +7994,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: &a92
+          enum: &a105
             - open
             - paused
             - banned
@@ -7368,7 +8015,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: &a93
+          enum: &a106
             - fresh
             - stale
             - expired
@@ -7631,7 +8278,7 @@ components:
           nullable: true
           example: 南山区
         fish_types:
-          example: *a91
+          example: *a104
           type: array
           items:
             type: string
@@ -7649,7 +8296,7 @@ components:
           example: park
         open_status:
           type: string
-          enum: *a92
+          enum: *a105
           example: open
         is_core:
           type: boolean
@@ -7667,7 +8314,7 @@ components:
           format: date-time
         freshness:
           type: string
-          enum: *a93
+          enum: *a106
           example: fresh
         distance_m:
           type: integer
@@ -7802,7 +8449,7 @@ components:
           example: 深圳湾公园停车场
         poi_type:
           type: string
-          enum: &a94
+          enum: &a107
             - food
             - parking
             - toilet
@@ -7833,7 +8480,7 @@ components:
           example: manual
         status:
           type: string
-          enum: &a95
+          enum: &a108
             - active
             - hidden
           example: active
@@ -7981,7 +8628,7 @@ components:
           example: 深圳湾公园停车场
         poi_type:
           type: string
-          enum: *a94
+          enum: *a107
           example: parking
         latitude:
           type: string
@@ -8006,7 +8653,7 @@ components:
           example: manual
         status:
           type: string
-          enum: *a95
+          enum: *a108
           example: active
         created_at:
           type: string
