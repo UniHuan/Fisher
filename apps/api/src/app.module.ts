@@ -8,6 +8,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AppAuthModule } from './modules/app-auth/app-auth.module';
 import { AdminAuthModule } from './modules/auth/admin-auth.module';
 import { AuditLogModule } from './modules/audit/audit-log.module';
+import { CommerceModule } from './modules/commerce/commerce.module';
 import { ClientConfigModule } from './modules/config/client-config.module';
 import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
@@ -56,6 +57,7 @@ export class AppModule {
         AdminReportsModule,
         AdminSpotsModule,
         ClientConfigModule,
+        CommerceModule,
         PublicSpotsModule,
         PoisModule,
         StorageModule,

@@ -899,6 +899,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List public product cards for a surface */
+        get: operations["ProductController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spots": {
         parameters: {
             query?: never;
@@ -2467,6 +2484,51 @@ export interface components {
             features: components["schemas"]["FeatureFlagsDto"];
             data_freshness: components["schemas"]["DataFreshnessDto"];
             legal: components["schemas"]["LegalConfigDto"];
+        };
+        PurchaseActionDto: {
+            /**
+             * @example mini_program
+             * @enum {string}
+             */
+            type: "mini_program" | "h5" | "copy_link";
+            /** @example wx0123456789abcdef */
+            app_id?: string;
+            /** @example /pages/product/detail?id=1 */
+            path?: string;
+            /** @example https://weidian.com/item.html?itemID=1 */
+            fallback_url?: string;
+            /** @example https://weidian.com/item.html?itemID=1 */
+            url?: string;
+            /** @example 链接已复制 */
+            toast?: string;
+        };
+        ProductChannelCardDto: {
+            /** @example weidian */
+            channel: string;
+            /** @example 微店 */
+            label: string;
+            /** @example ¥299 起 */
+            price_display: string | null;
+            purchase_action: components["schemas"]["PurchaseActionDto"];
+        };
+        ProductCardDto: {
+            /** @example 01HX0000000000000000000000 */
+            product_id: string;
+            /** @example UniHuan 轻量路亚竿 */
+            title: string;
+            /** @example 深圳湾岸钓适用 */
+            subtitle: string | null;
+            /**
+             * @example rod
+             * @enum {string}
+             */
+            category: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+            /** @example /api/v1/uploads/public/products/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            image_url: string | null;
+            channels: components["schemas"]["ProductChannelCardDto"][];
+        };
+        ProductCardListDto: {
+            items: components["schemas"]["ProductCardDto"][];
         };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -7623,6 +7685,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    ProductController_list: {
+        parameters: {
+            query: {
+                /** @description Requested public surface. home and report_detail return an empty list in V1. */
+                surface: "spot_detail" | "brand_page" | "home" | "report_detail";
+                /** @description Spot ULID. Required when surface=spot_detail and ignored for brand_page. */
+                target_id?: string;
+                /** @description Comma-separated fish dictionary keys, at most 5. */
+                fish_keys?: string;
+                category?: "rod" | "reel" | "line" | "bait" | "hat" | "sun_protection" | "accessory" | "other";
+                /** @description Only used by spot_detail. */
+                limit?: number;
+            };
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product cards in placement order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ProductCardListDto"];
+                    };
+                };
             };
             /** @description Bad request (40001) */
             400: {

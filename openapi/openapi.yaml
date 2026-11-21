@@ -3477,6 +3477,108 @@ paths:
                 $ref: "#/components/schemas/ApiErrorEnvelopeDto"
       tags:
         - config
+  /api/v1/products:
+    get:
+      operationId: ProductController_list
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: surface
+          required: true
+          in: query
+          description: Requested public surface. home and report_detail return an empty
+            list in V1.
+          schema:
+            example: spot_detail
+            type: string
+            enum:
+              - spot_detail
+              - brand_page
+              - home
+              - report_detail
+        - name: target_id
+          required: false
+          in: query
+          description: Spot ULID. Required when surface=spot_detail and ignored for
+            brand_page.
+          schema:
+            example: 01HX0000000000000000000000
+            type: string
+        - name: fish_keys
+          required: false
+          in: query
+          description: Comma-separated fish dictionary keys, at most 5.
+          schema:
+            example: luofei,jiyu
+            type: string
+        - name: category
+          required: false
+          in: query
+          schema:
+            example: rod
+            type: string
+            enum:
+              - rod
+              - reel
+              - line
+              - bait
+              - hat
+              - sun_protection
+              - accessory
+              - other
+        - name: limit
+          required: false
+          in: query
+          description: Only used by spot_detail.
+          schema:
+            minimum: 1
+            maximum: 12
+            default: 6
+            type: integer
+      responses:
+        "200":
+          description: Product cards in placement order
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProductCardListDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      summary: List public product cards for a surface
+      tags:
+        - public products
   /api/v1/spots:
     get:
       operationId: PublicSpotsController_list
@@ -6976,6 +7078,102 @@ components:
         - features
         - data_freshness
         - legal
+    PurchaseActionDto:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - mini_program
+            - h5
+            - copy_link
+          example: mini_program
+        app_id:
+          type: string
+          example: wx0123456789abcdef
+        path:
+          type: string
+          example: /pages/product/detail?id=1
+        fallback_url:
+          type: string
+          example: https://weidian.com/item.html?itemID=1
+        url:
+          type: string
+          example: https://weidian.com/item.html?itemID=1
+        toast:
+          type: string
+          example: 链接已复制
+      required:
+        - type
+    ProductChannelCardDto:
+      type: object
+      properties:
+        channel:
+          type: string
+          example: weidian
+        label:
+          type: string
+          example: 微店
+        price_display:
+          type: string
+          nullable: true
+          example: ¥299 起
+        purchase_action:
+          $ref: "#/components/schemas/PurchaseActionDto"
+      required:
+        - channel
+        - label
+        - price_display
+        - purchase_action
+    ProductCardDto:
+      type: object
+      properties:
+        product_id:
+          type: string
+          example: 01HX0000000000000000000000
+        title:
+          type: string
+          example: UniHuan 轻量路亚竿
+        subtitle:
+          type: string
+          nullable: true
+          example: 深圳湾岸钓适用
+        category:
+          type: string
+          enum:
+            - rod
+            - reel
+            - line
+            - bait
+            - hat
+            - sun_protection
+            - accessory
+            - other
+          example: rod
+        image_url:
+          type: string
+          nullable: true
+          example: /api/v1/uploads/public/products/01HX0000000000000000000000/01HX0000000000000000000001.webp
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductChannelCardDto"
+      required:
+        - product_id
+        - title
+        - subtitle
+        - category
+        - image_url
+        - channels
+    ProductCardListDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductCardDto"
+      required:
+        - items
     PublicSpotListItemDto:
       type: object
       properties:
