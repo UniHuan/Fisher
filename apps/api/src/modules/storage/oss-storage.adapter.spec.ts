@@ -9,6 +9,7 @@ jest.mock('ali-oss', () => ({
     delete: jest.fn().mockResolvedValue(undefined),
     copy: jest.fn().mockResolvedValue(undefined),
     signatureUrl: jest.fn(),
+    head: jest.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -37,5 +38,41 @@ describe('OssStorageAdapter', () => {
       'spots/a.jpg',
       'work-bucket',
     );
+  });
+
+  it('reports a missing object only for a confirmed not-found response', async () => {
+    const adapter = new OssStorageAdapter({
+      region: 'oss-cn-shenzhen',
+      accessKeyId: 'test-id',
+      accessKeySecret: 'test-secret',
+      workBucket: 'work-bucket',
+      publicBucket: 'public-bucket',
+      publicBaseUrl: 'https://static.example.com/',
+    });
+    const workClient = OSSMock.mock.results[0]?.value;
+
+    workClient.head.mockResolvedValueOnce({});
+    await expect(adapter.objectExists('products/a.webp', 'working')).resolves.toBe(true);
+
+    workClient.head.mockRejectedValueOnce({ status: 404, code: 'NoSuchKey' });
+    await expect(adapter.objectExists('products/a.webp', 'working')).resolves.toBe(false);
+  });
+
+  it('rethrows a storage failure that is not a not-found response', async () => {
+    const adapter = new OssStorageAdapter({
+      region: 'oss-cn-shenzhen',
+      accessKeyId: 'test-id',
+      accessKeySecret: 'test-secret',
+      workBucket: 'work-bucket',
+      publicBucket: 'public-bucket',
+      publicBaseUrl: 'https://static.example.com/',
+    });
+    const workClient = OSSMock.mock.results[0]?.value;
+
+    workClient.head.mockRejectedValueOnce({ status: 503, code: 'ServiceUnavailable' });
+    await expect(adapter.objectExists('products/a.webp', 'working')).rejects.toEqual({
+      status: 503,
+      code: 'ServiceUnavailable',
+    });
   });
 });

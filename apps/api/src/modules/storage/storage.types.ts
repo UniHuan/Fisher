@@ -10,4 +10,6 @@ export interface StorageAdapter {
   getSignedUrl(key: string, expiresSeconds: number): Promise<string>;
   getPublicUrl(key: string): string;
   getObject(key: string, area: StorageArea): Promise<Buffer>;
+  /** True when the object exists; transport failures other than not-found must throw. */
+  objectExists(key: string, area: StorageArea): Promise<boolean>;
 }

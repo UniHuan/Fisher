@@ -93,10 +93,9 @@ export class ProductImageService {
     }
 
     for (const key of new Set(product.image_keys)) {
-      try {
-        // Missing work-bucket objects are skipped so one stale key cannot block activation.
-        await this.storage.readObject(key, 'working');
-      } catch {
+      // Missing work-bucket objects are skipped so one stale key cannot block activation.
+      // Any other storage failure propagates so activation fails loudly and can be retried.
+      if (!(await this.storage.objectExists(key, 'working'))) {
         this.logger.warn(
           `product=${product.product_id} skipped missing working image ${key}`,
         );
