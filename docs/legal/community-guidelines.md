@@ -54,4 +54,4 @@
 ## 7. 联系我们
 
 - 公司：深圳市环与瑞创新科技有限公司
-- 邮箱：support@unihuan.com（待确认）
+- 邮箱：huanyurui_innovation@outlook.com
