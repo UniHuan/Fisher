@@ -53,6 +53,13 @@ export type AdminAbusePage = components['schemas']['AdminAbusePageDto'];
 export type AdminAbuseHandleResult = components['schemas']['AdminAbuseHandleResponseDto'];
 export type AdminUserRestrictResult = components['schemas']['AdminUserRestrictResponseDto'];
 export type AdminUserBanResult = components['schemas']['AdminUserBanResponseDto'];
+export type AdminProductListItem = components['schemas']['AdminProductListItemDto'];
+export type AdminProductPage = components['schemas']['AdminProductPageDto'];
+export type AdminProductDetail = components['schemas']['AdminProductDetailDto'];
+export type AdminProductChannel = components['schemas']['AdminProductChannelDto'];
+export type CreateProductBody = components['schemas']['CreateProductDto'];
+export type UpdateProductBody = components['schemas']['UpdateProductDto'];
+export type ProductImageUpload = components['schemas']['ProductImageResponseDto'];
 export type LoginResponse =
   | components['schemas']['AdminSessionDto']
   | components['schemas']['LoginMfaRequiredDto']
@@ -116,6 +123,14 @@ export interface FeedbackListQuery {
   category?: string;
   cursor?: string;
   limit?: number;
+}
+
+export interface ProductListQuery {
+  status?: string;
+  category?: string;
+  keyword?: string;
+  page?: number;
+  page_size?: number;
 }
 
 function querySuffix(query: object): string {
@@ -501,6 +516,49 @@ export const api = {
     return request<AdminUserBanResult>(`/admin/users/${id}/ban`, {
       method: 'POST',
       body: { reason },
+      csrf,
+    });
+  },
+  listProducts(query: ProductListQuery): Promise<AdminProductPage> {
+    return request<AdminProductPage>(`/admin/products${querySuffix(query)}`);
+  },
+  getProduct(id: string): Promise<AdminProductDetail> {
+    return request<AdminProductDetail>(`/admin/products/${id}`);
+  },
+  createProduct(body: CreateProductBody, csrf: string): Promise<AdminProductDetail> {
+    return request<AdminProductDetail>('/admin/products', {
+      method: 'POST',
+      body,
+      csrf,
+    });
+  },
+  updateProduct(
+    id: string,
+    body: UpdateProductBody,
+    csrf: string,
+  ): Promise<AdminProductDetail> {
+    return request<AdminProductDetail>(`/admin/products/${id}`, {
+      method: 'PUT',
+      body,
+      csrf,
+    });
+  },
+  archiveProduct(id: string, csrf: string): Promise<AdminProductDetail> {
+    return request<AdminProductDetail>(`/admin/products/${id}/archive`, {
+      method: 'POST',
+      csrf,
+    });
+  },
+  uploadProductImage(
+    id: string,
+    file: File,
+    csrf: string,
+  ): Promise<ProductImageUpload> {
+    const formData = new FormData();
+    formData.set('file', file);
+    return request<ProductImageUpload>(`/admin/products/${id}/images`, {
+      method: 'POST',
+      formData,
       csrf,
     });
   },
