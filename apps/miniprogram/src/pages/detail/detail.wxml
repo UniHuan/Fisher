@@ -106,6 +106,25 @@
 
     <view class="verified-line">{{verifiedText}}</view>
 
+    <view wx:if="{{products.length > 0}}" class="section card product-section">
+      <view class="product-head">
+        <text class="section-title">此钓点常用装备</text>
+        <text class="product-more" bindtap="openShop">查看全部 ›</text>
+      </view>
+      <scroll-view scroll-x class="product-rail" enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{products}}"
+          wx:key="product_id"
+          class="product-rail-item"
+          data-id="{{item.product_id}}"
+          bindtap="openProduct"
+        >
+          <product-card product="{{item}}" />
+        </view>
+      </scroll-view>
+      <text class="product-note">价格和售后以微店页面为准</text>
+    </view>
+
     <view wx:if="{{ugcVisible}}" class="section card ugc-section">
       <view class="ugc-head">
         <view class="ugc-title-wrap">

@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "钓点详情"
+  "navigationBarTitleText": "钓点详情",
+  "usingComponents": {
+    "product-card": "/components/product-card/index"
+  }
 }

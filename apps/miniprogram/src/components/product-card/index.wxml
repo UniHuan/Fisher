@@ -1,0 +1,23 @@
+<view class="product-card">
+  <image
+    wx:if="{{product.image_url}}"
+    class="product-card-cover"
+    src="{{product.image_url}}"
+    mode="aspectFill"
+    lazy-load
+  />
+  <view wx:else class="product-card-cover product-card-cover-empty">
+    <text class="product-card-mark">UniHuan</text>
+  </view>
+  <view class="product-card-body">
+    <text class="product-card-title">{{product.title}}</text>
+    <text wx:if="{{product.subtitle}}" class="product-card-subtitle">{{product.subtitle}}</text>
+    <view class="product-card-foot">
+      <view class="product-card-price">
+        <text class="product-card-price-label">参考价</text>
+        <text class="product-card-price-value">{{product.priceText}}</text>
+      </view>
+      <text wx:if="{{product.channelLabel}}" class="product-card-channel">{{product.channelLabel}}</text>
+    </view>
+  </view>
+</view>

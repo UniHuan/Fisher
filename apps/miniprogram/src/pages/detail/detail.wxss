@@ -253,6 +253,47 @@
   margin-top: 24rpx;
 }
 
+.product-section {
+  padding-top: 26rpx;
+}
+
+.product-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.product-more {
+  flex-shrink: 0;
+  color: #1E6B57;
+  font-size: 24rpx;
+}
+
+.product-rail {
+  margin-top: 18rpx;
+  white-space: nowrap;
+}
+
+.product-rail-item {
+  display: inline-block;
+  width: 280rpx;
+  margin-right: 16rpx;
+  vertical-align: top;
+  white-space: normal;
+}
+
+.product-rail-item:last-child {
+  margin-right: 0;
+}
+
+.product-note {
+  display: block;
+  margin-top: 14rpx;
+  color: #6B7772;
+  font-size: 22rpx;
+}
+
 .ugc-section {
   padding-top: 26rpx;
 }
