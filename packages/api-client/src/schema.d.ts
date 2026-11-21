@@ -916,6 +916,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload and compress a product image */
+        post: operations["AdminProductImageController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spots": {
         parameters: {
             query?: never;
@@ -2529,6 +2546,20 @@ export interface components {
         };
         ProductCardListDto: {
             items: components["schemas"]["ProductCardDto"][];
+        };
+        ProductImageResponseDto: {
+            /** @example products/01HX0000000000000000000000/01HX0000000000000000000001.webp */
+            key: string;
+            /** @example /api/v1/uploads/preview?key=...&area=working&expires=...&signature=... */
+            preview_url: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @example 900 */
+            width: number;
+            /** @example 600 */
+            height: number;
+            /** @example 122880 */
+            size_bytes: number;
         };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
@@ -7752,6 +7783,116 @@ export interface operations {
             };
             /** @description Internal server error (50001) */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+        };
+    };
+    AdminProductImageController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client platform; the request is rejected when missing or unknown */
+                "X-Client-Type": "miniprogram" | "ios" | "admin";
+                /** @description Client build version; required on every /api/v1 request */
+                "X-Client-Version": string;
+                /** @description Synchronizer CSRF token issued by login or refresh */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Compressed WebP image and short-lived preview URL */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiEnvelopeBaseDto"] & {
+                        data: components["schemas"]["ProductImageResponseDto"];
+                    };
+                };
+            };
+            /** @description Bad request (40001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Authentication required (40101, 40102) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Forbidden (40301) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product does not exist (40401) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Product is archived (40901) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Image exceeds 10 MB (41301) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Internal server error (50001) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelopeDto"];
+                };
+            };
+            /** @description Storage unavailable (50301) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

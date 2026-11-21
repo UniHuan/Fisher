@@ -3579,6 +3579,117 @@ paths:
       summary: List public product cards for a surface
       tags:
         - public products
+  /api/v1/admin/products/{id}/images:
+    post:
+      operationId: AdminProductImageController_create
+      parameters:
+        - name: X-Client-Type
+          in: header
+          description: Client platform; the request is rejected when missing or unknown
+          required: true
+          schema:
+            type: string
+            enum:
+              - miniprogram
+              - ios
+              - admin
+            example: admin
+        - name: X-Client-Version
+          in: header
+          description: Client build version; required on every /api/v1 request
+          required: true
+          schema:
+            type: string
+            example: 1.0.0
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          description: Synchronizer CSRF token issued by login or refresh
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Compressed WebP image and short-lived preview URL
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiEnvelopeBaseDto"
+                  - required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProductImageResponseDto"
+        "400":
+          description: Bad request (40001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "401":
+          description: Authentication required (40101, 40102)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "403":
+          description: Forbidden (40301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "404":
+          description: Product does not exist (40401)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "409":
+          description: Product is archived (40901)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "413":
+          description: Image exceeds 10 MB (41301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "500":
+          description: Internal server error (50001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+        "503":
+          description: Storage unavailable (50301)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelopeDto"
+      security:
+        - admin-cookie: []
+      summary: Upload and compress a product image
+      tags:
+        - admin products
   /api/v1/spots:
     get:
       operationId: PublicSpotsController_list
@@ -7174,6 +7285,34 @@ components:
             $ref: "#/components/schemas/ProductCardDto"
       required:
         - items
+    ProductImageResponseDto:
+      type: object
+      properties:
+        key:
+          type: string
+          example: products/01HX0000000000000000000000/01HX0000000000000000000001.webp
+        preview_url:
+          type: string
+          example: /api/v1/uploads/preview?key=...&area=working&expires=...&signature=...
+        expires_at:
+          type: string
+          format: date-time
+        width:
+          type: integer
+          example: 900
+        height:
+          type: integer
+          example: 600
+        size_bytes:
+          type: integer
+          example: 122880
+      required:
+        - key
+        - preview_url
+        - expires_at
+        - width
+        - height
+        - size_bytes
     PublicSpotListItemDto:
       type: object
       properties:

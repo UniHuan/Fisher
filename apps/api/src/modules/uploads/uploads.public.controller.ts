@@ -4,6 +4,7 @@ import {
   ERROR_CODES,
   MODERATION_STATUS,
   OPEN_STATUS,
+  PRODUCT_STATUS,
   SPOT_STATUS,
 } from '@szfisher/shared';
 import type { Response } from 'express';
@@ -15,7 +16,7 @@ import type { StorageArea } from '../storage/storage.types';
 import { PreviewSignerService } from './preview-signer.service';
 
 const ULID_PATTERN = /^[A-Za-z0-9]{26}$/;
-const UGC_FILE_PATTERN = /^[A-Za-z0-9]{26}\.webp$/;
+const IMAGE_FILE_PATTERN = /^[A-Za-z0-9]{26}\.webp$/;
 const PUBLIC_REPORT_STATUSES = [
   MODERATION_STATUS.PUBLISHED,
   MODERATION_STATUS.HUMAN_APPROVED,
@@ -87,13 +88,49 @@ export class UploadsPublicController {
     }
   }
 
+  @Get('public/products/:productId/:file')
+  async publicProductImage(
+    @Param('productId') productId: string,
+    @Param('file') file: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    if (!ULID_PATTERN.test(productId) || !IMAGE_FILE_PATTERN.test(file)) {
+      throw notFound();
+    }
+    const key = `products/${productId}/${file}`;
+    const product = await this.prisma.product.findFirst({
+      where: {
+        product_id: productId,
+        status: PRODUCT_STATUS.ACTIVE,
+        deleted_at: null,
+        image_keys: { has: key },
+      },
+      select: { product_id: true },
+    });
+    if (product === null) {
+      throw notFound();
+    }
+
+    try {
+      const body = await this.storage.readObject(key, 'published');
+      response.setHeader('Content-Type', 'image/webp');
+      response.setHeader('Content-Disposition', 'inline');
+      response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      response.send(body);
+    } catch {
+      throw notFound();
+    }
+  }
+
   @Get('public/ugc/:reportId/:file')
   async publicUgcImage(
     @Param('reportId') reportId: string,
     @Param('file') file: string,
     @Res() response: Response,
   ): Promise<void> {
-    if (!ULID_PATTERN.test(reportId) || !UGC_FILE_PATTERN.test(file)) {
+    if (!ULID_PATTERN.test(reportId) || !IMAGE_FILE_PATTERN.test(file)) {
       throw notFound();
     }
     const config = await this.clientConfig.getClientConfig();
