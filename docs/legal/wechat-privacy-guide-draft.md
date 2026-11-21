@@ -40,7 +40,7 @@
 - 查看、删除自己发布的内容。
 - 撤回定位授权。
 - 注销账号（后续版本）。
-- 通过 privacy@unihuan.com 联系。
+- 通过 huanyurui_tech@outlook.com 联系。
 
 ## 6. 未成年人
 
@@ -49,4 +49,4 @@
 ## 7. 联系方式
 
 - 公司：深圳市环与瑞创新科技有限公司
-- 邮箱：privacy@unihuan.com（待确认）
+- 邮箱：huanyurui_tech@outlook.com
