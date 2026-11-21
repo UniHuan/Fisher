@@ -7786,7 +7786,8 @@ components:
           example: weidian
           description: V1 accepts only weidian.
         external_product_id:
-          type: object
+          type: string
+          nullable: true
           maxLength: 64
           example: wd-item-10001
         purchase_action:
@@ -7807,7 +7808,8 @@ components:
           description: Action parameters. The type is supplied by purchase_action, not
             this object.
         price_display:
-          type: object
+          type: string
+          nullable: true
           maxLength: 32
           example: ¥299 起
         status:

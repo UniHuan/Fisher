@@ -2708,7 +2708,7 @@ export interface components {
              */
             channel: "weidian" | "jd";
             /** @example wd-item-10001 */
-            external_product_id?: Record<string, never>;
+            external_product_id?: string | null;
             /**
              * @description Action type the client executes. V1 accepts mini_program, h5 and copy_link.
              * @example mini_program
@@ -2726,7 +2726,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** @example ¥299 起 */
-            price_display?: Record<string, never>;
+            price_display?: string | null;
             /**
              * @example active
              * @enum {string}

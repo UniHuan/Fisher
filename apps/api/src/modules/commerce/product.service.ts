@@ -169,6 +169,17 @@ export class ProductService {
     const channels =
       input.channels === undefined ? undefined : this.channelWrites(input.channels);
     const nextStatus = input.status ?? existing.status;
+    const becomingActive =
+      nextStatus === PRODUCT_STATUS.ACTIVE && existing.status !== PRODUCT_STATUS.ACTIVE;
+    const activeImagesChanged =
+      nextStatus === PRODUCT_STATUS.ACTIVE &&
+      existing.status === PRODUCT_STATUS.ACTIVE &&
+      input.image_keys !== undefined;
+    const willPublish = becomingActive || activeImagesChanged;
+    if (willPublish) {
+      // Design 9.2: validate the final state before anything is written.
+      this.assertPublishable(imageKeys, channels ?? existing.channels);
+    }
 
     // R13: fields and image_keys land before any image is published.
     await this.products.updateAdminFields(productId, {
@@ -185,13 +196,7 @@ export class ProductService {
       await this.products.replaceAdminChannels(productId, channels);
     }
 
-    const becomingActive =
-      nextStatus === PRODUCT_STATUS.ACTIVE && existing.status !== PRODUCT_STATUS.ACTIVE;
-    const activeImagesChanged =
-      nextStatus === PRODUCT_STATUS.ACTIVE &&
-      existing.status === PRODUCT_STATUS.ACTIVE &&
-      input.image_keys !== undefined;
-    if (becomingActive || activeImagesChanged) {
+    if (willPublish) {
       // Never mark active before images reach the published bucket.
       await this.productImages.publishForProduct(productId);
     }
@@ -273,6 +278,27 @@ export class ProductService {
         ERROR_CODES.VALIDATION,
         HttpStatus.BAD_REQUEST,
         'cover_image_key must be one of image_keys',
+      );
+    }
+  }
+
+  /** Design 9.2: publishing requires at least one image and one active channel. */
+  private assertPublishable(
+    imageKeys: string[],
+    channels: Array<{ status: string }>,
+  ): void {
+    if (imageKeys.length === 0) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION,
+        HttpStatus.BAD_REQUEST,
+        'Publishing requires at least one image',
+      );
+    }
+    if (!channels.some((channel) => channel.status === CHANNEL_STATUS_ACTIVE)) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION,
+        HttpStatus.BAD_REQUEST,
+        'Publishing requires at least one active channel',
       );
     }
   }

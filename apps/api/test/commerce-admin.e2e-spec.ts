@@ -119,6 +119,10 @@ function adminWrite(
     .send(body as object);
 }
 
+function fakeImageKey(): string {
+  return `products/${ulid()}/${ulid()}.webp`;
+}
+
 function draftPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   titleSequence += 1;
   return {
@@ -127,6 +131,7 @@ function draftPayload(overrides: Record<string, unknown> = {}): Record<string, u
     description: DESCRIPTION_TEXT,
     category: PRODUCT_CATEGORY.ROD,
     sort_weight: 10,
+    image_keys: [fakeImageKey()],
     channels: [
       {
         channel: COMMERCE_CHANNEL.WEIDIAN,
@@ -337,6 +342,62 @@ describe('admin products (e2e)', () => {
 
     const ids = await publicProductIds(PRODUCT_CATEGORY.HAT);
     expect(ids).toContain(product.product_id);
+  });
+
+  it('rejects activation without images', async () => {
+    const product = await createProduct({ image_keys: [] });
+
+    const response = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { status: PRODUCT_STATUS.ACTIVE },
+    ).expect(400);
+    expect((response.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const detail = await adminRead(
+      operator,
+      `/api/v1/admin/products/${product.product_id}`,
+    ).expect(200);
+    expect((detail.body as Envelope<AdminProductDetail>).data.status).toBe(
+      PRODUCT_STATUS.DRAFT,
+    );
+  });
+
+  it('rejects activation with no active channel', async () => {
+    const disabledChannel = {
+      channel: COMMERCE_CHANNEL.WEIDIAN,
+      purchase_action: PURCHASE_ACTION_TYPE.COPY_LINK,
+      action_payload: { url: 'https://weidian.com/item.html?itemID=1' },
+      status: 'disabled',
+    };
+
+    const createdDisabled = await createProduct({ channels: [disabledChannel] });
+    const fromDraft = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${createdDisabled.product_id}`,
+      { status: PRODUCT_STATUS.ACTIVE },
+    ).expect(400);
+    expect((fromDraft.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const disabledOnUpdate = await createProduct();
+    const update = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${disabledOnUpdate.product_id}`,
+      { status: PRODUCT_STATUS.ACTIVE, channels: [disabledChannel] },
+    ).expect(400);
+    expect((update.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    // The rejected update must not persist the disabled channel or the status.
+    const detail = await adminRead(
+      operator,
+      `/api/v1/admin/products/${disabledOnUpdate.product_id}`,
+    ).expect(200);
+    const saved = (detail.body as Envelope<AdminProductDetail>).data;
+    expect(saved.status).toBe(PRODUCT_STATUS.DRAFT);
+    expect(saved.channels[0]?.status).toBe('active');
   });
 
   it('archives a product and hides it from the public endpoint', async () => {

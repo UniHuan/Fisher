@@ -43,7 +43,7 @@ export class ProductChannelInputDto {
   @IsIn(CHANNELS)
   channel!: string;
 
-  @ApiPropertyOptional({ maxLength: 64, example: 'wd-item-10001' })
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 64, example: 'wd-item-10001' })
   @IsOptional()
   @IsString()
   @MaxLength(64)
@@ -67,7 +67,7 @@ export class ProductChannelInputDto {
   @IsObject()
   action_payload!: Record<string, unknown>;
 
-  @ApiPropertyOptional({ maxLength: 32, example: '¥299 起' })
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 32, example: '¥299 起' })
   @IsOptional()
   @IsString()
   @MaxLength(32)
