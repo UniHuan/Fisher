@@ -1,0 +1,45 @@
+<view class="page shop-page">
+  <view wx:if="{{!initialized}}" class="empty">正在加载…</view>
+
+  <view wx:elif="{{configError}}" class="card empty">
+    <text>{{configError}}</text>
+    <button class="primary-button retry-button" bindtap="retryConfig">重试</button>
+  </view>
+
+  <view wx:elif="{{!shopEnabled}}" class="card empty">暂未开放</view>
+
+  <block wx:else>
+    <view class="shop-hero">
+      <text class="shop-title">UniHuan 钓具</text>
+      <text class="shop-intro">从深圳湾岸钓出发，挑选顺手的竿、轮、线、饵。</text>
+    </view>
+
+    <scroll-view scroll-x class="shop-filters" enhanced show-scrollbar="{{false}}">
+      <view
+        wx:for="{{categories}}"
+        wx:key="key"
+        class="filter-chip {{category === item.key ? 'filter-chip-active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="selectCategory"
+      >{{item.label}}</view>
+    </scroll-view>
+
+    <view wx:if="{{loading}}" class="empty">正在加载商品…</view>
+
+    <view wx:elif="{{products.length === 0}}" class="card empty">暂无相关商品</view>
+
+    <view wx:else class="shop-grid">
+      <view
+        wx:for="{{products}}"
+        wx:key="product_id"
+        class="shop-grid-item"
+        data-id="{{item.product_id}}"
+        bindtap="openProduct"
+      >
+        <product-card product="{{item}}" />
+      </view>
+    </view>
+
+    <text class="shop-footnote">商品由 UniHuan 微店提供，价格和售后以微店页面为准</text>
+  </block>
+</view>

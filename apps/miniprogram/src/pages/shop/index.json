@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "UniHuan 钓具",
+  "usingComponents": {
+    "product-card": "/components/product-card/index"
+  }
+}

@@ -45,6 +45,7 @@ interface ProfileData {
   configError: string;
   ugcEnabled: boolean;
   feedbackEnabled: boolean;
+  shopEnabled: boolean;
   sessionReady: boolean;
   loggingIn: boolean;
   nickname: string;
@@ -90,6 +91,7 @@ interface FeedbackTapEvent {
 
 interface ProfileMethods {
   openFeedback(event: FeedbackTapEvent): void;
+  openShop(): void;
   init(): Promise<void>;
   retryConfig(): void;
   login(): Promise<void>;
@@ -143,6 +145,7 @@ Page<ProfileData, ProfileMethods>({
     configError: '',
     ugcEnabled: false,
     feedbackEnabled: false,
+    shopEnabled: false,
     sessionReady: false,
     loggingIn: false,
     nickname: '',
@@ -193,6 +196,7 @@ Page<ProfileData, ProfileMethods>({
     const config = await getClientConfig().catch(() => null);
     const ugcEnabled = config?.features.ugc === true;
     const feedbackEnabled = config?.features.feedback === true;
+    const shopEnabled = config?.features.shop === true;
     const legal = config?.legal ?? null;
     const termsUrl = legal?.terms_url ?? '';
     const privacyUrl = legal?.privacy_url ?? '';
@@ -202,6 +206,7 @@ Page<ProfileData, ProfileMethods>({
       configError: config === null ? '配置加载失败，请重试' : '',
       ugcEnabled,
       feedbackEnabled,
+      shopEnabled,
       sessionReady: getSession() !== null,
       termsUrl,
       privacyUrl,
@@ -404,6 +409,10 @@ Page<ProfileData, ProfileMethods>({
     wx.navigateTo({
       url: `/pages/feedback/index?category=${encodeURIComponent(category)}&page=profile`,
     });
+  },
+
+  openShop(): void {
+    wx.navigateTo({ url: '/pages/shop/index' });
   },
 
   confirmDelete(event: ReportTapEvent): void {

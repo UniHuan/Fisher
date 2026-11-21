@@ -183,6 +183,25 @@ describe('commerce.openPurchaseAction', () => {
   });
 });
 
+describe('commerce.productCategoryLabel', () => {
+  it.each([
+    ['rod', '竿'],
+    ['reel', '轮'],
+    ['line', '线'],
+    ['bait', '饵'],
+    ['hat', '帽子'],
+    ['sun_protection', '防晒'],
+    ['accessory', '配件'],
+    ['other', '其他'],
+  ])('maps %s to %s', (category, label) => {
+    expect(commerce.productCategoryLabel(category)).toBe(label);
+  });
+
+  it('falls back to 其他 for an unknown category', () => {
+    expect(commerce.productCategoryLabel('unknown')).toBe('其他');
+  });
+});
+
 describe('commerce.fishKeysForDetail', () => {
   it('returns an empty string when the spot has no fish types', () => {
     expect(commerce.fishKeysForDetail([])).toBe('');
