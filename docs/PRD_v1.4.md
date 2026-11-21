@@ -6,14 +6,15 @@
 
 产品形态：微信小程序（V1.0）/ 独立 App（V2.0）
 
-文档版本：v1.4 · 开发冻结稿
+文档版本：v1.5 · 商城增补稿
 
 编制日期：2026-11-13
-修订：2026-11-19 数据库版本标准由 PostgreSQL 15 升级为 PostgreSQL 18（ADR-011），其余不变
+修订：2026-11-19 数据库版本标准由 PostgreSQL 15 升级为 PostgreSQL 18（ADR-011）
+修订：2026-11-21 增补 M7 UniHuan 自有品牌商城模块（V1.1 范围），修正 1.5 反目标中「不做电商」口径
 
 适用范围：产品、设计、前端、后端、测试、运营、安全、合规
 
-本版目标：在 v1.3 基础上完成开发前审校与决策回填，落地 unihuan.com 二级域名与阿里云部署方案，修正数据模型、会话与可用性口径，形成可直接进入开发的冻结基线。
+本版目标：在 v1.4 冻结基线之上，增补 M7「UniHuan 品牌商城」模块（完整电商闭环 + 钓点↔商品智能联动），并同步修正 1.5 产品边界、2.1 模块总表、3.1 实体关系与版本范围，形成 v1.5 商城增补稿。
 
 ---
 
@@ -27,6 +28,7 @@
 | v1.2 | 2026-11-13 | 导航方案收敛、V1.0 范围修正、数据模型重构、新增 M0 运营后台、页面状态、接口契约、埋点、验收与上线清单；开发评审后补充核心钓点字段、核实规则、M0 的 P0 与 P1 边界、禁钓点口径、区域范围、POI 条款与资源假设 | 开发基线 |
 | v1.3 | 2026-11-13 | 前后端分离架构定稿：独立 API 服务 + 运营后台纯前端；补充多端账号、安全基线、iOS 兼容、云与数据库选型、部署运维、可观测性、扩展路线与验收清单                                      | 开发基线 |
 | v1.4 | 2026-11-13 | 开发冻结审校：回填决策状态；运营后台落地 unihuan.com 二级域名；复用阿里云深圳与现有备案；补充域名、证书、DNS、Cookie 与安全隔离；修正 CSRF 口径、数据表命名、封面字段、幂等键与可用性方案 | 开发冻结 |
+| v1.5 | 2026-11-21 | 增补 M7 UniHuan 自有品牌商城：商品/订单/库存/购物车/售后数据模型、页面流程、API、后台管理、埋点；修正 1.5 反目标「不做电商」为「仅做自有品牌电商」；2.1 模块总表与 3.1 实体关系同步 | 商城增补 |
 
 
 ---
@@ -143,7 +145,7 @@ V1.0 的产品承诺应收敛为「查得到、看得清、导得走」；不要
 以下内容明确不做，避免开发中途扩张范围：
 
 - 不做内容信息流、关注、私信、评论楼中楼。
-- 不做电商、交易、钓场预订、钓具销售。
+- 不做第三方平台化电商、第三方商家入驻、钓场预订；**V1.1 起仅做自有品牌 UniHuan 的钓具销售（见 M7 模块）**。
 - 不做自建地图或自建导航引擎。
 - V1.0 不做多城市、天气、潮汐、评分体系、用户账号体系。
 - 不推荐明确禁钓的水域；禁钓点只做风险提示，不提供导航去钓鱼的入口。
@@ -171,6 +173,7 @@ V1.0 的产品承诺应收敛为「查得到、看得清、导得走」；不要
 | M4   | 周边休闲场所  | 餐饮、停车、厕所、补给、娱乐、住宿                        | P0  | V1.0 |
 | M5   | 用户内容与情报 | 上报、评论、鱼获、点赞、举报                           | P1  | V1.1 |
 | M6   | 个人中心与工具 | 登录、收藏、足迹、天气、潮汐                           | P1  | V1.1 |
+| M7   | UniHuan 品牌商城 | 商品展示、钓点↔商品推荐、下单支付、订单、库存、售后             | P1  | V1.1 |
 
 
 ### 2.2 V1.0 交付清单
@@ -206,7 +209,7 @@ V1.0 的产品承诺应收敛为「查得到、看得清、导得走」；不要
 | 版本   | 阶段目标          | 覆盖内容                                 |
 | ---- | ------------- | ------------------------------------ |
 | V1.0 | 跑通查、看、导航闭环    | M0 至 M4 的 P0 功能、名称搜索、数据初始化           |
-| V1.1 | 激活用户参与，补齐现场信息 | M5 上报与情报、M6 登录与收藏、足迹、分享卡片、三地图小程序跳转预研 |
+| V1.1 | 激活用户参与，补齐现场信息 | M5 上报与情报、M6 登录与收藏、足迹、分享卡片、三地图小程序跳转预研、M7 UniHuan 品牌商城（商品/下单/订单/库存/售后） |
 | V1.2 | 打磨体验与数据质量     | 评分体系、审核工作流优化、天气与潮汐、POI 质量提升          |
 | V2.0 | 拓展形态与商业化      | 独立 App、多城市、数据开放、增值服务                 |
 
@@ -242,6 +245,13 @@ report 1 --- N report_like N --- 1 app_user   （V1.1）
 report 1 --- N report_abuse N --- 1 app_user  （V1.1）
 admin_user 1 --- N audit_log
 spot 1 --- N import_job                    （导入任务关联）
+product 1 --- N product_sku                （V1.1 商城）
+product 1 --- N product_recommendation N --- 1 spot   （V1.1 商品↔钓点推荐）
+product 1 --- N product_fish_map N --- 1 fish_dict    （V1.1 商品↔鱼种适配）
+app_user 1 --- N order N --- 1 app_user    （V1.1 订单）
+order 1 --- N order_item                   （V1.1 订单明细）
+app_user 1 --- N cart_item N --- 1 product_sku        （V1.1 购物车）
+order 1 --- N refund                       （V1.1 售后）
 ```
 
 数据模型原则：
@@ -1092,6 +1102,301 @@ V2.0 独立 App 可以使用 URL Scheme 唤起高德、百度、腾讯地图 App
 5. 名称搜索降级为区域加鱼种筛选。
 
 任何缩减需产品、技术、运营三方确认并记录在案。
+
+---
+
+## 7A. UniHuan 品牌商城（M7，V1.1）
+
+> 本章为 v1.5 增补，对应模块 M7。定位：工具型 App 内嵌自有品牌商城，不做第三方平台化电商。核心差异化是「钓点 / 鱼种 → 装备智能联动」，复用钓点 `fish_types`、`fishing_method`、`water_type`、`venue_type` 字段做场景化推荐。
+
+### 7A.1 模块边界
+
+| 允许 | 不允许 |
+| --- | --- |
+| 自有品牌 UniHuan 商品上架、下单、售后 | 第三方品牌/商家入驻（不做平台化） |
+| 钓点→商品推荐、鱼种→装备映射 | 大而全的独立搜索电商类目 |
+| 套装 + 高复购耗材 | 高价专业装备（V1.1 不碰禧玛诺/达亿瓦价格带） |
+
+### 7A.2 数据模型
+
+沿用 3.1 数据模型原则：ULID 主键、snake_case、软删除、`created_at/updated_at/deleted_at`、金额用 decimal 字符串、状态机对外只展示已发布。新增表如下：
+
+**商品 product**
+
+| 字段 | 说明 | 类型 | 必填 | 展示 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| product_id | 商品唯一标识 | string(26) | 是 | 否 | ULID，主键 |
+| product_name | 商品名称 | string(80) | 是 | 是 | 例如「UniHuan 台钓入门套装 5.4m」 |
+| brand_code | 品牌标识 | enum | 是 | 是 | 默认 `unihuan`，预留多品牌 |
+| category | 商品类目 | enum | 是 | 是 | 见类目字典 |
+| subtitle | 副标题/卖点 | string(120) | 否 | 是 | |
+| price | 售价（元） | decimal(10,2) | 是 | 是 | decimal 字符串 |
+| market_price | 划线价（元） | decimal(10,2) | 否 | 是 | |
+| cost_price | 成本价（元） | decimal(10,2) | 否 | 否 | 仅后台可见 |
+| images | 商品图 | array | 是 | 是 | 最多 9 张，规则同钓点图 |
+| cover_image_key | 封面图 key | string(255) | 是 | 是 | 规则同钓点 |
+| detail_html | 详情富文本 | text | 否 | 是 | 内容安全审核后展示 |
+| stock_total | 总库存 | int | 是 | 是 | 展示库存状态，不展示精确值 |
+| sales_count | 累计销量 | int | 否 | 是 | 后台可校准 |
+| tags | 标签 | array | 否 | 是 | 例如「爆款」「新手」「鲈鱼专用」 |
+| is_recommend | 首页推荐 | boolean | 是 | 否 | 默认 false |
+| sort_weight | 排序权重 | int | 否 | 否 | 越大越靠前 |
+| status | 商品状态 | enum | 是 | 否 | 草稿、已上架、已下架 |
+| created_at / updated_at / deleted_at | 时间 | datetime | 是/是/否 | 否 | 软删除 |
+
+**规格 product_sku**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| sku_id | SKU ID | string(26) | 是 | ULID，主键 |
+| product_id | 关联商品 | string(26) | 是 | 外键，索引 |
+| sku_name | 规格名 | string(60) | 是 | 例如「5.4m」「3.9m」 |
+| sku_code | 规格编码 | string(40) | 是 | 与 product_id 联合唯一 |
+| price | 售价（元） | decimal(10,2) | 是 | 可覆盖商品价 |
+| stock | 规格库存 | int | 是 | 下单扣减的原子单位 |
+| status | 状态 | enum | 是 | 有效、停用 |
+
+**商品↔钓点推荐 product_recommendation**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| rec_id | 推荐关系 ID | string(26) | 是 | ULID，主键 |
+| product_id | 商品 ID | string(26) | 是 | 外键 |
+| spot_id | 钓点 ID | string(26) | 是 | 外键，空表示全站通用 |
+| rec_type | 推荐类型 | enum | 是 | 鱼种适配、钓法适配、水域适配、手动运营 |
+| priority | 优先级 | int | 否 | 越大越靠前 |
+| created_at | 创建时间 | datetime | 是 | |
+
+约束：`(product_id, spot_id, rec_type)` 联合唯一。推荐结果 = 规则引擎（product_fish_map 自动推导）+ 手动覆盖合并。
+
+**商品↔鱼种适配 product_fish_map**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| map_id | 映射 ID | string(26) | 是 | ULID，主键 |
+| product_id | 商品 ID | string(26) | 是 | 外键 |
+| fish_code | 鱼种代码 | string(40) | 是 | 来自鱼种字典（如 `luyu`） |
+| fishing_method | 适配钓法 | enum | 否 | 台钓/路亚/海竿/手竿 |
+| water_type | 适配水域 | enum | 否 | 复用 water_type |
+
+约束：`(product_id, fish_code)` 联合唯一。这是「鱼种→装备」联动的数据底座。
+
+**订单 order**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| order_id | 订单 ID | string(26) | 是 | ULID，主键 |
+| order_no | 订单号 | string(32) | 是 | 展示用，唯一 |
+| user_id | 下单用户 | string(26) | 是 | 外键，索引 |
+| status | 订单状态 | enum | 是 | 待支付、待发货、待收货、已完成、已取消、售后中 |
+| total_amount | 商品总额（元） | decimal(10,2) | 是 | |
+| discount_amount | 优惠金额（元） | decimal(10,2) | 是 | 默认 0 |
+| freight_amount | 运费（元） | decimal(10,2) | 是 | 默认 0，深圳同城包邮 |
+| pay_amount | 实付金额（元） | decimal(10,2) | 是 | = total - discount + freight |
+| pay_channel | 支付渠道 | enum | 是 | 默认 wechat_mini |
+| prepay_id | 微信预支付单号 | string(64) | 否 | |
+| transaction_id | 微信支付流水号 | string(64) | 否 | |
+| receiver_name / receiver_phone / receiver_address | 收货信息 | string | 是 | 电话脱敏存储 |
+| remark | 买家备注 | string(200) | 否 | |
+| paid_at / shipped_at / completed_at / canceled_at | 各环节时间 | datetime | 否 | |
+| created_at / updated_at / deleted_at | 时间 | datetime | 是/是/否 | 软删除 |
+
+**订单明细 order_item**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| order_item_id | 明细 ID | string(26) | 是 | ULID，主键 |
+| order_id | 订单 ID | string(26) | 是 | 外键，索引 |
+| product_id / sku_id | 商品/规格 | string(26) | 是 | 外键 |
+| product_name / sku_name | 名称快照 | string | 是 | 下单时快照，防改名 |
+| cover_image_key | 图片快照 | string(255) | 否 | |
+| unit_price | 成交单价（元） | decimal(10,2) | 是 | |
+| quantity | 数量 | int | 是 | 默认 1 |
+| amount | 小计（元） | decimal(10,2) | 是 | unit_price × quantity |
+
+**购物车 cart_item**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| cart_id | 购物车项 ID | string(26) | 是 | ULID，主键 |
+| user_id | 用户 ID | string(26) | 是 | 外键 |
+| sku_id | SKU ID | string(26) | 是 | 外键 |
+| quantity | 数量 | int | 是 | 上限 99 |
+| selected | 是否勾选 | boolean | 是 | 默认 true |
+| created_at | 加入时间 | datetime | 是 | |
+
+约束：`(user_id, sku_id)` 联合唯一，重复加购累加数量。
+
+**售后 refund**
+
+| 字段 | 说明 | 类型 | 必填 | 备注 |
+| --- | --- | --- | --- | --- |
+| refund_id | 售后单 ID | string(26) | 是 | ULID，主键 |
+| order_id | 订单 ID | string(26) | 是 | 外键 |
+| user_id | 用户 ID | string(26) | 是 | 外键 |
+| refund_type | 售后类型 | enum | 是 | 仅退款、退货退款 |
+| refund_amount | 退款金额（元） | decimal(10,2) | 是 | |
+| reason | 退款原因 | enum | 是 | |
+| description | 补充说明 | string(500) | 否 | |
+| images | 凭证图 | array | 否 | 最多 6 张 |
+| status | 售后状态 | enum | 是 | 待审核、同意、拒绝、已退款、已关闭 |
+| handled_by / handled_at | 处理信息 | string/datetime | 否 | |
+| refund_no | 退款流水号 | string(64) | 否 | |
+| created_at | 创建时间 | datetime | 是 | |
+
+### 7A.3 枚举与字典追加
+
+| 枚举 | 取值 | 说明 |
+| --- | --- | --- |
+| product_category | 套装、鱼竿、渔轮、渔线、浮漂、鱼钩、饵料、配件、其他 | 类目字典 |
+| product_status | 草稿、已上架、已下架 | 对外只展示已上架 |
+| brand_code | unihuan、其他 | 预留多品牌 |
+| order_status | 待支付、待发货、待收货、已完成、已取消、售后中 | 订单状态机 |
+| refund_type | 仅退款、退货退款 | |
+| refund_status | 待审核、同意、拒绝、已退款、已关闭 | |
+| refund_reason | 质量问题、与描述不符、拍错、不想要了、其他 | |
+
+API 代码与标签映射（沿用 3.9 约定：小写英文代码 + 客户端字典映射）：
+
+| 字典 | 代码 | 标签 |
+| --- | --- | --- |
+| product_category | bundle / rod / reel / line / float / hook / bait / accessory / other | 套装/鱼竿/渔轮/渔线/浮漂/鱼钩/饵料/配件/其他 |
+| product_status | draft / on_sale / off_shelf | 草稿/已上架/已下架 |
+| order_status | pending_pay / pending_ship / pending_receive / completed / canceled / refunding | 待支付/待发货/待收货/已完成/已取消/售后中 |
+| refund_type | refund_only / return_refund | 仅退款/退货退款 |
+| refund_status | pending / approved / rejected / refunded / closed | 待审核/同意/拒绝/已退款/已关闭 |
+
+### 7A.4 校验规则追加
+
+- 商品上架时 `product_name`、`category`、`price`、`cover_image_key`、至少 1 个有效 SKU 必填。
+- `price > 0`；`market_price >= price`；`cost_price` 仅后台填写。
+- 下单时校验：商品已上架、SKU 库存充足、金额以服务端实时价为准（防改价）。
+- 库存扣减用行级锁 + 事务：`UPDATE ... SET stock = stock - N WHERE sku_id = ? AND stock >= N`，影响行数为 0 则库存不足。
+- 支付回调与主动查询双重确认，幂等入账；同一 `transaction_id` 只入账一次；30 分钟未支付自动关单并回补库存。
+
+### 7A.5 页面与流程
+
+**页面清单追加**
+
+| 页面或组件 | 路由 | V1.1 | 说明 |
+| --- | --- | --- | --- |
+| 商城首页 | /pages/shop/index | 是 | Tab「商城」，品牌区 + 套装推荐 + 分类 |
+| 商品详情 | /pages/shop/product?product_id= | 是 | 含「适配钓点/鱼种」联动区 |
+| 购物车 | /pages/shop/cart | 是 | 勾选结算 |
+| 订单确认 | /pages/shop/checkout | 是 | 地址 + 金额 + 提交 |
+| 订单列表 | /pages/order/list | 是 | 分状态 Tab |
+| 订单详情 | /pages/order/detail?order_id= | 是 | 物流、售后入口 |
+| 售后申请 | /pages/order/refund?order_id= | 是 | 退款表单 |
+
+**流程四：钓点→装备推荐→下单（核心联动）**
+
+```text
+钓点详情页 -> 「推荐装备」区 -> 按 fish_types/fishing_method 匹配 UniHuan 商品
+-> 商品详情（适配说明 + 规格选择）-> 加购/立即购买
+-> 订单确认（地址 + 金额）-> 微信支付 -> 订单中心
+```
+
+**流程五：商城直达**
+
+```text
+商城 Tab -> 品牌区/套装推荐/分类 -> 商品详情 -> 加购/立即购买 -> 下单支付 -> 订单中心
+```
+
+### 7A.6 API 增补
+
+沿用 10.4 约定：`/api/v1`、统一响应结构、snake_case、幂等键 `Idempotency-Key`、金额 decimal 字符串。下单、支付、退款必须带 `Idempotency-Key`。
+
+**公开接口（C 端）追加**
+
+| 方法 | 路径 | 用途 | 鉴权 |
+| --- | --- | --- | --- |
+| GET | /api/v1/products | 商品列表 | 否 |
+| GET | /api/v1/products/{product_id} | 商品详情 | 否 |
+| GET | /api/v1/spots/{spot_id}/products | 钓点推荐装备（联动核心） | 否 |
+| GET | /api/v1/cart | 购物车 | 是 |
+| POST | /api/v1/cart | 加入购物车 | 是 |
+| PUT | /api/v1/cart/{cart_id} | 修改数量/勾选 | 是 |
+| DELETE | /api/v1/cart/{cart_id} | 删除购物车项 | 是 |
+| POST | /api/v1/orders | 创建订单 | 是 |
+| GET | /api/v1/orders | 订单列表 | 是 |
+| GET | /api/v1/orders/{order_id} | 订单详情 | 是 |
+| POST | /api/v1/orders/{order_id}/pay | 发起支付 | 是 |
+| POST | /api/v1/orders/{order_id}/cancel | 取消订单 | 是 |
+| POST | /api/v1/orders/{order_id}/confirm | 确认收货 | 是 |
+| POST | /api/v1/orders/{order_id}/refund | 申请售后 | 是 |
+| GET | /api/v1/refunds | 售后列表 | 是 |
+| GET | /api/v1/refunds/{refund_id} | 售后详情 | 是 |
+| POST | /api/v1/callbacks/wechat/pay | 微信支付回调 | 验签 |
+
+**后台接口追加（`/api/v1/admin`）**
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| GET/POST/PUT/DELETE | /api/v1/admin/products | 商品管理 |
+| POST | /api/v1/admin/products/{id}/on-shelf | 上架 |
+| POST | /api/v1/admin/products/{id}/off-shelf | 下架 |
+| GET/POST | /api/v1/admin/products/{id}/stock | 库存查询/调整 |
+| GET | /api/v1/admin/orders | 订单管理 |
+| POST | /api/v1/admin/orders/{id}/ship | 发货 |
+| GET | /api/v1/admin/refunds | 售后审核队列 |
+| POST | /api/v1/admin/refunds/{id}/approve | 同意退款 |
+| POST | /api/v1/admin/refunds/{id}/reject | 拒绝退款 |
+
+**业务码追加**
+
+| 业务码 | HTTP | 含义 |
+| --- | --- | --- |
+| 42210 | 422 | 库存不足 |
+| 42211 | 422 | 商品已下架/售罄 |
+| 40910 | 409 | 订单状态冲突 |
+| 40911 | 409 | 支付幂等冲突 |
+
+### 7A.7 运营后台扩展（M0）
+
+在现有后台新增「商城」一级菜单，复用 RBAC、审计、登录安全体系。
+
+| 功能 | 超级管理员 | 运营 | 审核员 |
+| --- | --- | --- | --- |
+| 商品管理（增删改查/上下架） | 是 | 是 | 否 |
+| 库存管理 | 是 | 是 | 否 |
+| 订单管理（发货） | 是 | 是 | 否 |
+| 售后审核 | 是 | 是 | 是 |
+| 推荐规则配置 | 是 | 是 | 否 |
+
+后台功能：商品管理、库存管理（含库存流水进 audit_log）、订单管理（发货）、售后审核（微信原路退回）、推荐规则配置（product_fish_map + product_recommendation）、数据看板追加（GMV、订单量、客单价、转化率、库存预警）。
+
+### 7A.8 非功能与合规
+
+- 支付安全：微信支付回调验签 + 金额核对 + 幂等入账。
+- 并发安全：库存扣减行级锁，不超卖；订单状态机 + 条件更新。
+- 性能：商品列表首屏 ≤ 1.5s；推荐接口 ≤ 300ms，可缓存 60s。
+- 合规：电商经营需营业执照 + 微信支付商户号；详情富文本与图片走内容安全审核；地址/电话加密存储，日志脱敏。
+
+### 7A.9 埋点与指标追加
+
+| 事件 | 触发点 | 关键参数 |
+| --- | --- | --- |
+| shop_view | 商城首页曝光 | source |
+| product_view | 商品详情曝光 | product_id、category、entry_source |
+| product_recommend_click | 点击推荐商品 | product_id、spot_id、rec_type |
+| cart_add | 加入购物车 | product_id、sku_id、quantity |
+| order_create | 创建订单 | order_no、amount |
+| pay_success | 支付成功 | order_no、pay_amount |
+| order_confirm | 确认收货 | order_no |
+| refund_apply | 申请售后 | order_no、refund_type、reason |
+
+新增指标：商城转化率（下单/商品曝光）≥ 3%、钓点→推荐点击率 ≥ 5%、售后率 ≤ 3%、月 GMV（待业务方定）。
+
+### 7A.10 供应链参考（运营落地，非开发需求）
+
+- OEM 贴牌：首批「台钓入门套装」+ 3 类高复购耗材，SKU ≤ 20。
+- 货源产业带：鱼竿→威海、渔线→东阳、浮漂→临湘/固安、渔轮→宁波慈溪、鱼钩→鄱阳、饵料→湖北。
+- 仓储：深圳本地备货，次日达。
+- 品牌：UniHuan（优环）商标尽早注册（第 28 类）。
+
+### 7A.11 V1.1 商城范围缩减顺序
+
+若 V1.1 资源紧张，按序缩减：① 先砍购物车，只留「立即购买」；② 再砍售后自助入口，改为后台人工退款；③ 保留「钓点→推荐」与「下单支付」两个核心。
 
 ---
 
@@ -2805,6 +3110,11 @@ Web 安全：
 | RDS      | 阿里云关系型数据库托管服务              |
 | 回源       | CDN 或 WAF 回源站获取内容的过程         |
 | 悬空 CNAME | 解析仍指向已释放的第三方资源，可能被接管     |
+| UniHuan  | 深圳钓鱼助手自有渔具品牌（中文名「优环」待商标注册），域名 unihuan.com |
+| GMV      | 成交总额（Gross Merchandise Volume） |
+| SKU      | 库存量单位（Stock Keeping Unit），商品的规格维度 |
+| OEM      | 贴牌代工（Original Equipment Manufacturer） |
+| 场景联动     | 基于钓点/鱼种数据驱动的商品推荐能力（M7 核心差异化） |
 
 
 ### 附录 B：接口响应示例
