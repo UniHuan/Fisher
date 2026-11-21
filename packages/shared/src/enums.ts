@@ -168,12 +168,22 @@ export const PLACEMENT_SCOPE = {
 
 export type PlacementScope = (typeof PLACEMENT_SCOPE)[keyof typeof PLACEMENT_SCOPE];
 
-/** V1 only surfaces `spot_detail` and `brand_page`; `home` and `report_detail` are reserved. */
+/** Placement rows only target content surfaces; V1 writes `spot_detail` only. */
 export const PLACEMENT_SURFACE = {
+  SPOT_DETAIL: 'spot_detail',
+  HOME: 'home',
+  REPORT_DETAIL: 'report_detail',
+} as const;
+
+export type PlacementSurface = (typeof PLACEMENT_SURFACE)[keyof typeof PLACEMENT_SURFACE];
+
+/** Public product queries accept `brand_page` in addition to the placement surfaces. */
+export const PRODUCT_QUERY_SURFACE = {
   SPOT_DETAIL: 'spot_detail',
   BRAND_PAGE: 'brand_page',
   HOME: 'home',
   REPORT_DETAIL: 'report_detail',
 } as const;
 
-export type PlacementSurface = (typeof PLACEMENT_SURFACE)[keyof typeof PLACEMENT_SURFACE];
+export type ProductQuerySurface =
+  (typeof PRODUCT_QUERY_SURFACE)[keyof typeof PRODUCT_QUERY_SURFACE];

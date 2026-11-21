@@ -13,6 +13,7 @@ import {
   PLACEMENT_SURFACE,
   POI_TYPE,
   PRODUCT_CATEGORY,
+  PRODUCT_QUERY_SURFACE,
   PRODUCT_STATUS,
   PURCHASE_ACTION_TYPE,
   REPORT_CONTENT_TYPE,
@@ -39,6 +40,7 @@ import type {
   PlacementSurface,
   PoiType,
   ProductCategory,
+  ProductQuerySurface,
   ProductStatus,
   PurchaseActionType,
   SpotStatus,
@@ -180,6 +182,11 @@ describe('shared contract', () => {
     expect(PLACEMENT_SCOPE).toEqual({ SPOT: 'spot', FISH: 'fish' });
     expect(PLACEMENT_SURFACE).toEqual({
       SPOT_DETAIL: 'spot_detail',
+      HOME: 'home',
+      REPORT_DETAIL: 'report_detail',
+    });
+    expect(PRODUCT_QUERY_SURFACE).toEqual({
+      SPOT_DETAIL: 'spot_detail',
       BRAND_PAGE: 'brand_page',
       HOME: 'home',
       REPORT_DETAIL: 'report_detail',
@@ -192,14 +199,24 @@ describe('shared contract', () => {
     const channel: CommerceChannel = COMMERCE_CHANNEL.WEIDIAN;
     const purchaseAction: PurchaseActionType = PURCHASE_ACTION_TYPE.MINI_PROGRAM;
     const scope: PlacementScope = PLACEMENT_SCOPE.FISH;
-    const surface: PlacementSurface = PLACEMENT_SURFACE.BRAND_PAGE;
+    const placementSurface: PlacementSurface = PLACEMENT_SURFACE.SPOT_DETAIL;
+    const querySurface: ProductQuerySurface = PRODUCT_QUERY_SURFACE.BRAND_PAGE;
 
-    expect([productStatus, productCategory, channel, purchaseAction, scope, surface]).toEqual([
+    expect([
+      productStatus,
+      productCategory,
+      channel,
+      purchaseAction,
+      scope,
+      placementSurface,
+      querySurface,
+    ]).toEqual([
       'active',
       'sun_protection',
       'weidian',
       'mini_program',
       'fish',
+      'spot_detail',
       'brand_page',
     ]);
   });
