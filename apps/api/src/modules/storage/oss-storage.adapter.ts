@@ -1,16 +1,16 @@
 import OSS from 'ali-oss';
 import type { StorageAdapter, StorageArea } from './storage.types';
 
+/**
+ * ali-oss reports a missing object as NoSuchKey. A bare 404 is not enough:
+ * NoSuchBucket, permission-masked 404s and proxy errors also use that status.
+ */
 function isNotFoundError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) {
     return false;
   }
-  const candidate = error as { status?: unknown; code?: unknown; name?: unknown };
-  return (
-    candidate.status === 404 ||
-    candidate.code === 'NoSuchKey' ||
-    candidate.name === 'NoSuchKey'
-  );
+  const candidate = error as { code?: unknown; name?: unknown };
+  return candidate.code === 'NoSuchKey' || candidate.name === 'NoSuchKey';
 }
 
 export interface OssStorageOptions {

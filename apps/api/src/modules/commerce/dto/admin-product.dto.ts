@@ -160,10 +160,12 @@ export class AdminProductDetailDto {
   image_keys!: string[];
 
   @ApiProperty({
-    type: [String],
-    description: 'Signed working previews while draft; public URLs once active or archived',
+    type: 'array',
+    items: { type: 'string', nullable: true },
+    description:
+      'Index-aligned with image_keys. Signed working previews unless active, and null when a stored key is malformed.',
   })
-  image_urls!: string[];
+  image_urls!: Array<string | null>;
 
   @ApiProperty({ type: String, nullable: true })
   cover_image_key!: string | null;

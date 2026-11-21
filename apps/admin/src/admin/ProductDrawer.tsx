@@ -30,7 +30,6 @@ import {
   type AdminProductDetail,
   type AdminProductListItem,
   type AdminProductPage,
-  type AdminSpotListItem,
   type CreatePlacementBody,
   type CreateProductBody,
   type Session,
@@ -49,6 +48,27 @@ interface ProductDrawerProps {
 interface EditorImage {
   key: string;
   url: string | undefined;
+}
+
+interface KeywordOption {
+  value: string;
+  label: string;
+}
+
+const SEARCH_DEBOUNCE_MS = 300;
+const PRODUCT_OPTIONS_INITIAL_SIZE = 50;
+const SPOT_OPTIONS_INITIAL_SIZE = 100;
+const SEARCH_OPTIONS_SIZE = 20;
+const MAX_PLACEMENT_FISH_KEYS = 5;
+
+function mergeSelectedOption(
+  options: KeywordOption[],
+  selected: KeywordOption | null,
+): KeywordOption[] {
+  if (selected === null || options.some((option) => option.value === selected.value)) {
+    return options;
+  }
+  return [selected, ...options];
 }
 
 interface ProductFormValues {
@@ -806,10 +826,13 @@ interface PlacementFormValues {
 interface PlacementEditorDrawerProps {
   open: boolean;
   placement: AdminPlacementItem | null;
-  products: AdminProductListItem[];
-  spots: AdminSpotListItem[];
-  fishOptions: Array<{ value: string; label: string }>;
-  optionsLoading: boolean;
+  products: KeywordOption[];
+  spots: KeywordOption[];
+  fishOptions: KeywordOption[];
+  productsLoading: boolean;
+  spotsLoading: boolean;
+  onProductSearch: (keyword: string) => void;
+  onSpotSearch: (keyword: string) => void;
   session: Session;
   onClose: () => void;
   onSaved: () => void;
@@ -822,7 +845,10 @@ function PlacementEditorDrawer({
   products,
   spots,
   fishOptions,
-  optionsLoading,
+  productsLoading,
+  spotsLoading,
+  onProductSearch,
+  onSpotSearch,
   session,
   onClose,
   onSaved,
@@ -831,6 +857,8 @@ function PlacementEditorDrawer({
   const { message } = App.useApp();
   const [form] = Form.useForm<PlacementFormValues>();
   const [saving, setSaving] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<KeywordOption | null>(null);
+  const [selectedSpot, setSelectedSpot] = useState<KeywordOption | null>(null);
   const scope = Form.useWatch('scope', form) ?? 'spot';
 
   useEffect(() => {
@@ -860,6 +888,53 @@ function PlacementEditorDrawer({
       status: placement.status,
     });
   }, [open, placement, form]);
+
+  // Resolve the stored ids even when the current keyword page does not include them.
+  useEffect(() => {
+    if (!open || placement === null) {
+      setSelectedProduct(null);
+      setSelectedSpot(null);
+      return undefined;
+    }
+    let active = true;
+    setSelectedProduct({ value: placement.product_id, label: placement.product_id });
+    api
+      .getProduct(placement.product_id)
+      .then((product) => {
+        if (active) {
+          setSelectedProduct({ value: product.product_id, label: product.title });
+        }
+      })
+      .catch((cause: unknown) => {
+        if (active && isAuthError(cause)) {
+          onExpired();
+        }
+      });
+    if (placement.target_id === null) {
+      setSelectedSpot(null);
+    } else {
+      const targetId = placement.target_id;
+      setSelectedSpot({ value: targetId, label: targetId });
+      api
+        .getSpot(targetId)
+        .then((spot) => {
+          if (active) {
+            setSelectedSpot({ value: spot.spot_id, label: spot.spot_name });
+          }
+        })
+        .catch((cause: unknown) => {
+          if (active && isAuthError(cause)) {
+            onExpired();
+          }
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [open, placement, onExpired]);
+
+  const productSelectOptions = mergeSelectedOption(products, selectedProduct);
+  const spotSelectOptions = mergeSelectedOption(spots, selectedSpot);
 
   const handleSave = async (): Promise<void> => {
     let values: PlacementFormValues;
@@ -929,13 +1004,19 @@ function PlacementEditorDrawer({
             >
               <Select
                 showSearch
-                optionFilterProp="label"
-                loading={optionsLoading}
-                placeholder="选择商品"
-                options={products.map((product) => ({
-                  value: product.product_id,
-                  label: product.title,
-                }))}
+                filterOption={false}
+                onSearch={onProductSearch}
+                loading={productsLoading}
+                placeholder="输入商品名称搜索"
+                options={productSelectOptions}
+                onChange={(value: string) => {
+                  setSelectedProduct(
+                    products.find((option) => option.value === value) ?? {
+                      value,
+                      label: value,
+                    },
+                  );
+                }}
               />
             </Form.Item>
           </Col>
@@ -986,13 +1067,19 @@ function PlacementEditorDrawer({
               >
                 <Select
                   showSearch
-                  optionFilterProp="label"
-                  loading={optionsLoading}
-                  placeholder="选择钓点"
-                  options={spots.map((spot) => ({
-                    value: spot.spot_id,
-                    label: spot.spot_name,
-                  }))}
+                  filterOption={false}
+                  onSearch={onSpotSearch}
+                  loading={spotsLoading}
+                  placeholder="输入钓点名称搜索"
+                  options={spotSelectOptions}
+                  onChange={(value: string) => {
+                    setSelectedSpot(
+                      spots.find((option) => option.value === value) ?? {
+                        value,
+                        label: value,
+                      },
+                    );
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -1008,7 +1095,7 @@ function PlacementEditorDrawer({
                   mode="multiple"
                   showSearch
                   optionFilterProp="label"
-                  loading={optionsLoading}
+                  maxCount={MAX_PLACEMENT_FISH_KEYS}
                   placeholder="最多选择 5 个鱼种"
                   options={fishOptions}
                 />
@@ -1033,42 +1120,138 @@ function PlacementEditorDrawer({
 
 interface PlacementPanelProps {
   session: Session;
+  active: boolean;
   onExpired: () => void;
 }
 
-function PlacementPanel({ session, onExpired }: PlacementPanelProps) {
+function PlacementPanel({ session, active, onExpired }: PlacementPanelProps) {
   const { message, modal } = App.useApp();
   const [rows, setRows] = useState<AdminPlacementItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [products, setProducts] = useState<AdminProductListItem[]>([]);
-  const [spots, setSpots] = useState<AdminSpotListItem[]>([]);
-  const [fishOptions, setFishOptions] = useState<
-    Array<{ value: string; label: string }>
-  >([]);
-  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [products, setProducts] = useState<KeywordOption[]>([]);
+  const [spots, setSpots] = useState<KeywordOption[]>([]);
+  const [fishOptions, setFishOptions] = useState<KeywordOption[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [spotSearch, setSpotSearch] = useState('');
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [spotsLoading, setSpotsLoading] = useState(false);
+  const [optionsReloadKey, setOptionsReloadKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<AdminPlacementItem | null>(null);
 
+  // The tab stays mounted, so re-run this search whenever the tab becomes active.
   useEffect(() => {
-    let active = true;
-    setOptionsLoading(true);
-    Promise.all([
-      api.listProducts({ page: 1, page_size: 50 }),
-      api.listSpots({ page: 1, page_size: 100 }),
-      api.dictionaries(),
-    ])
-      .then(([productPage, spotPage, dictionaries]) => {
-        if (!active) {
+    if (!active) {
+      return undefined;
+    }
+    let cancelled = false;
+    setProductsLoading(true);
+    const keyword = productSearch.trim();
+    const timer = setTimeout(() => {
+      api
+        .listProducts({
+          keyword: keyword === '' ? undefined : keyword,
+          page: 1,
+          page_size:
+            keyword === '' ? PRODUCT_OPTIONS_INITIAL_SIZE : SEARCH_OPTIONS_SIZE,
+        })
+        .then((result) => {
+          if (cancelled) {
+            return;
+          }
+          setProducts(
+            result.items.map((item) => ({
+              value: item.product_id,
+              label: item.title,
+            })),
+          );
+        })
+        .catch((cause: unknown) => {
+          if (cancelled) {
+            return;
+          }
+          if (isAuthError(cause)) {
+            onExpired();
+            return;
+          }
+          message.error(errorText(cause));
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setProductsLoading(false);
+          }
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [active, productSearch, optionsReloadKey, message, onExpired]);
+
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+    let cancelled = false;
+    setSpotsLoading(true);
+    const keyword = spotSearch.trim();
+    const timer = setTimeout(() => {
+      api
+        .listSpots({
+          keyword: keyword === '' ? undefined : keyword,
+          page: 1,
+          page_size: keyword === '' ? SPOT_OPTIONS_INITIAL_SIZE : SEARCH_OPTIONS_SIZE,
+        })
+        .then((result) => {
+          if (cancelled) {
+            return;
+          }
+          setSpots(
+            result.items.map((item) => ({
+              value: item.spot_id,
+              label: item.spot_name,
+            })),
+          );
+        })
+        .catch((cause: unknown) => {
+          if (cancelled) {
+            return;
+          }
+          if (isAuthError(cause)) {
+            onExpired();
+            return;
+          }
+          message.error(errorText(cause));
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setSpotsLoading(false);
+          }
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [active, spotSearch, optionsReloadKey, message, onExpired]);
+
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+    let cancelled = false;
+    api
+      .dictionaries()
+      .then((dictionaries) => {
+        if (cancelled) {
           return;
         }
-        setProducts(productPage.items);
-        setSpots(spotPage.items);
         setFishOptions(
           dictionaries.fish_types.map((item) => ({
             value: item.key,
@@ -1077,7 +1260,7 @@ function PlacementPanel({ session, onExpired }: PlacementPanelProps) {
         );
       })
       .catch((cause: unknown) => {
-        if (!active) {
+        if (cancelled) {
           return;
         }
         if (isAuthError(cause)) {
@@ -1085,16 +1268,11 @@ function PlacementPanel({ session, onExpired }: PlacementPanelProps) {
           return;
         }
         message.error(errorText(cause));
-      })
-      .finally(() => {
-        if (active) {
-          setOptionsLoading(false);
-        }
       });
     return () => {
-      active = false;
+      cancelled = true;
     };
-  }, [message, onExpired]);
+  }, [active, optionsReloadKey, message, onExpired]);
 
   useEffect(() => {
     let active = true;
@@ -1135,16 +1313,17 @@ function PlacementPanel({ session, onExpired }: PlacementPanelProps) {
 
   const refresh = (): void => {
     setReloadKey((value) => value + 1);
+    setOptionsReloadKey((value) => value + 1);
   };
 
   const productTitle = (productId: string): string =>
-    products.find((product) => product.product_id === productId)?.title ?? productId;
+    products.find((product) => product.value === productId)?.label ?? productId;
 
   const spotName = (spotId: string | null): string => {
     if (spotId === null) {
       return '';
     }
-    return spots.find((spot) => spot.spot_id === spotId)?.spot_name ?? spotId;
+    return spots.find((spot) => spot.value === spotId)?.label ?? spotId;
   };
 
   const fishLabel = (key: string): string =>
@@ -1324,7 +1503,10 @@ function PlacementPanel({ session, onExpired }: PlacementPanelProps) {
         products={products}
         spots={spots}
         fishOptions={fishOptions}
-        optionsLoading={optionsLoading}
+        productsLoading={productsLoading}
+        spotsLoading={spotsLoading}
+        onProductSearch={setProductSearch}
+        onSpotSearch={setSpotSearch}
         session={session}
         onClose={() => {
           setEditorOpen(false);
@@ -1633,7 +1815,13 @@ export function ProductDrawer({
           {
             key: 'placements',
             label: '展示位置',
-            children: <PlacementPanel session={session} onExpired={onExpired} />,
+            children: (
+              <PlacementPanel
+                session={session}
+                active={activeTab === 'placements'}
+                onExpired={onExpired}
+              />
+            ),
           },
         ]}
       />

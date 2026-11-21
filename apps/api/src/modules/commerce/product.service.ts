@@ -21,7 +21,11 @@ import type {
   AdminProductListQueryDto,
   AdminProductPageDto,
 } from './dto/admin-product.dto';
-import type { CreateProductDto, ProductChannelInputDto } from './dto/create-product.dto';
+import {
+  PRODUCT_IMAGE_KEY_PATTERN,
+  type CreateProductDto,
+  type ProductChannelInputDto,
+} from './dto/create-product.dto';
 import type { PublicProductQueryDto } from './dto/public-product-query.dto';
 import type { ProductCardDto, ProductCardListDto } from './dto/product-card.dto';
 import type { PurchaseActionDto, PurchaseActionInputDto } from './dto/purchase-action.dto';
@@ -124,12 +128,15 @@ export class ProductService {
     request: RequestWithContext,
   ): Promise<AdminProductDetailDto> {
     const channels = this.channelWrites(input.channels);
+    // The id exists before validation so create cannot attach another product's images.
+    const productId = ulid();
     const imageKeys = input.image_keys ?? [];
     const coverImageKey = input.cover_image_key ?? null;
+    this.assertImageKeysOwned(productId, imageKeys, coverImageKey);
     this.assertCoverInImageKeys(coverImageKey, imageKeys);
 
     const data: AdminProductWriteData = {
-      product_id: ulid(),
+      product_id: productId,
       title: input.title,
       subtitle: input.subtitle ?? null,
       description: input.description ?? null,
@@ -152,6 +159,12 @@ export class ProductService {
     request: RequestWithContext,
   ): Promise<AdminProductDetailDto> {
     const existing = await this.findAdminRow(productId);
+    if (input.image_keys !== undefined) {
+      this.assertImageKeysOwned(productId, input.image_keys);
+    }
+    if (input.cover_image_key !== undefined) {
+      this.assertImageKeysOwned(productId, [], input.cover_image_key);
+    }
     const imageKeys = input.image_keys ?? existing.image_keys;
     let coverImageKey: string | null;
     if (input.cover_image_key !== undefined) {
@@ -181,7 +194,13 @@ export class ProductService {
       this.assertPublishable(imageKeys, channels ?? existing.channels);
     }
 
-    // R13: fields and image_keys land before any image is published.
+    if (activeImagesChanged) {
+      // The product is already active, so publish the submitted set before the
+      // persisted keys change. A failure leaves the previous image set in place.
+      await this.productImages.publishKeys(productId, imageKeys);
+    }
+
+    // R13: for draft activation, fields and image_keys land before any image is published.
     await this.products.updateAdminFields(productId, {
       title: input.title ?? existing.title,
       subtitle: input.subtitle !== undefined ? input.subtitle : existing.subtitle,
@@ -196,7 +215,7 @@ export class ProductService {
       await this.products.replaceAdminChannels(productId, channels);
     }
 
-    if (willPublish) {
+    if (becomingActive) {
       // Never mark active before images reach the published bucket.
       await this.productImages.publishForProduct(productId);
     }
@@ -272,6 +291,26 @@ export class ProductService {
     });
   }
 
+  /** Every submitted key must be a server-shaped key owned by this product. */
+  private assertImageKeysOwned(
+    productId: string,
+    imageKeys: string[],
+    coverImageKey: string | null = null,
+  ): void {
+    const ownerPrefix = `products/${productId}/`;
+    const keys = coverImageKey === null ? imageKeys : [...imageKeys, coverImageKey];
+    const invalid = keys.some(
+      (key) => !key.startsWith(ownerPrefix) || !PRODUCT_IMAGE_KEY_PATTERN.test(key),
+    );
+    if (invalid) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION,
+        HttpStatus.BAD_REQUEST,
+        'Image keys must belong to this product',
+      );
+    }
+  }
+
   private assertCoverInImageKeys(coverImageKey: string | null, imageKeys: string[]): void {
     if (coverImageKey !== null && !imageKeys.includes(coverImageKey)) {
       throw new AppError(
@@ -341,7 +380,7 @@ export class ProductService {
   }
 
   private toAdminListItem(row: AdminProductRow): AdminProductListItemDto {
-    const published = row.status !== PRODUCT_STATUS.DRAFT;
+    const published = row.status === PRODUCT_STATUS.ACTIVE;
     return {
       product_id: row.product_id,
       title: row.title,
@@ -360,14 +399,9 @@ export class ProductService {
   }
 
   private toAdminDetail(row: AdminProductRow): AdminProductDetailDto {
-    const published = row.status !== PRODUCT_STATUS.DRAFT;
-    const imageUrls: string[] = [];
-    for (const key of row.image_keys) {
-      const url = this.adminImageUrl(key, published);
-      if (url !== null) {
-        imageUrls.push(url);
-      }
-    }
+    const published = row.status === PRODUCT_STATUS.ACTIVE;
+    // Keep image_urls index-aligned with image_keys; a malformed key yields null.
+    const imageUrls = row.image_keys.map((key) => this.adminImageUrl(key, published));
     return {
       product_id: row.product_id,
       title: row.title,
@@ -404,11 +438,14 @@ export class ProductService {
   }
 
   /**
-   * Draft images live in the private work bucket, so they require a signed preview.
-   * Active and archived products serve published images through the public route.
+   * Only active products read the published bucket. Draft and archived products
+   * use signed working previews, because an archived draft never published images.
    */
   private adminImageUrl(key: string, published: boolean): string | null {
     try {
+      if (!PRODUCT_IMAGE_KEY_PATTERN.test(key)) {
+        return null;
+      }
       return published
         ? this.storage.getPublicUrl(key)
         : this.previewSigner.sign(key, 'working', PREVIEW_URL_TTL_SECONDS).url;

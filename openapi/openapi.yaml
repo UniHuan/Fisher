@@ -8001,11 +8001,12 @@ components:
           items:
             type: string
         image_urls:
-          description: Signed working previews while draft; public URLs once active or
-            archived
           type: array
           items:
             type: string
+            nullable: true
+          description: Index-aligned with image_keys. Signed working previews unless
+            active, and null when a stored key is malformed.
         cover_image_key:
           type: string
           nullable: true
@@ -8123,14 +8124,15 @@ components:
           maxItems: 9
           example: &a111
             - products/01HX0000000000000000000000/01HX0000000000000000000001.webp
+          description: Keys uploaded for this product. Create listens on a generated id,
+            so images are attached after the draft exists.
           type: array
           items:
             type: string
         cover_image_key:
           type: string
           nullable: true
-          maxLength: 255
-          description: Must be one of image_keys when set.
+          description: Must belong to this product and be one of image_keys when set.
         channels:
           minItems: 1
           maxItems: 2
@@ -8172,14 +8174,15 @@ components:
         image_keys:
           maxItems: 9
           example: *a111
+          description: Keys uploaded for this product. Create listens on a generated id,
+            so images are attached after the draft exists.
           type: array
           items:
             type: string
         cover_image_key:
           type: string
           nullable: true
-          maxLength: 255
-          description: Must be one of image_keys when set.
+          description: Must belong to this product and be one of image_keys when set.
         channels:
           minItems: 1
           maxItems: 2

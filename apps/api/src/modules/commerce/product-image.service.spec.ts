@@ -62,6 +62,32 @@ describe('ProductImageService.publishForProduct', () => {
     expect(copyObject).toHaveBeenCalledWith(PRESENT_KEY, PRESENT_KEY);
   });
 
+  it('rejects activation when every working image is missing', async () => {
+    const copyObject = jest.fn().mockResolvedValue(undefined);
+    const adapter = fakeAdapter({
+      objectExists: jest.fn().mockResolvedValue(false),
+      copyObject,
+    });
+    const service = buildService(adapter, [MISSING_KEY]);
+
+    await expect(service.publishForProduct(PRODUCT_ID)).rejects.toThrow(
+      'Image publishing failed',
+    );
+    expect(copyObject).not.toHaveBeenCalled();
+  });
+
+  it('publishes an explicit key set before it is persisted', async () => {
+    const objectExists = jest.fn().mockResolvedValue(true);
+    const copyObject = jest.fn().mockResolvedValue(undefined);
+    const adapter = fakeAdapter({ objectExists, copyObject });
+    const service = buildService(adapter, [MISSING_KEY]);
+
+    await expect(service.publishKeys(PRODUCT_ID, [PRESENT_KEY])).resolves.toBeUndefined();
+
+    expect(objectExists).toHaveBeenCalledWith(PRESENT_KEY, 'working');
+    expect(copyObject).toHaveBeenCalledWith(PRESENT_KEY, PRESENT_KEY);
+  });
+
   it('rejects instead of skipping when the existence check fails for another reason', async () => {
     const copyObject = jest.fn().mockResolvedValue(undefined);
     const adapter = fakeAdapter({

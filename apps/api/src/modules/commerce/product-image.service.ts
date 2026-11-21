@@ -92,16 +92,31 @@ export class ProductImageService {
       return;
     }
 
-    for (const key of new Set(product.image_keys)) {
+    await this.publishKeys(productId, product.image_keys);
+  }
+
+  /**
+   * Copies the submitted key set to the published bucket. At least one copy must
+   * succeed so a product never becomes active with image URLs that do not exist.
+   */
+  async publishKeys(productId: string, imageKeys: string[]): Promise<void> {
+    let published = 0;
+    for (const key of new Set(imageKeys)) {
       // Missing work-bucket objects are skipped so one stale key cannot block activation.
       // Any other storage failure propagates so activation fails loudly and can be retried.
       if (!(await this.storage.objectExists(key, 'working'))) {
-        this.logger.warn(
-          `product=${product.product_id} skipped missing working image ${key}`,
-        );
+        this.logger.warn(`product=${productId} skipped missing working image ${key}`);
         continue;
       }
       await this.storage.copyToPublished(key, key);
+      published += 1;
+    }
+    if (published === 0) {
+      throw new AppError(
+        ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'Image publishing failed',
+      );
     }
   }
 

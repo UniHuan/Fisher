@@ -101,6 +101,22 @@ async function selectOption(
     .click();
 }
 
+async function searchAndSelectOption(
+  page: Page,
+  label: string,
+  query: string,
+  option: string,
+): Promise<void> {
+  const field = page.getByLabel(label, { exact: true });
+  await field.click();
+  await page.keyboard.type(query);
+  await page
+    .locator('.ant-select-dropdown:visible')
+    .getByText(option, { exact: true })
+    .last()
+    .click();
+}
+
 async function selectMultipleOption(
   page: Page,
   label: string,
@@ -385,7 +401,7 @@ test('super admin manages placements and public products follow them', async ({
   ): Promise<void> => {
     await page.getByRole('button', { name: '新增展示位置' }).click();
     await expect(page.getByLabel('关联商品')).toBeVisible();
-    await selectOption(page, '关联商品', PLACEMENT_PRODUCT_TITLE);
+    await searchAndSelectOption(page, '关联商品', PLACEMENT_PRODUCT_TITLE, PLACEMENT_PRODUCT_TITLE);
     await selectOption(page, '范围', '按鱼种');
     await selectMultipleOption(page, '鱼种', '罗非');
     await selectOption(page, '状态', status);
@@ -423,9 +439,9 @@ test('super admin manages placements and public products follow them', async ({
   // Spot placement on the jiyu spot surfaces there and nowhere else.
   await page.getByRole('button', { name: '新增展示位置' }).click();
   await expect(page.getByLabel('关联商品')).toBeVisible();
-  await selectOption(page, '关联商品', PLACEMENT_PRODUCT_TITLE);
+  await searchAndSelectOption(page, '关联商品', PLACEMENT_PRODUCT_TITLE, PLACEMENT_PRODUCT_TITLE);
   await selectOption(page, '范围', '单个钓点');
-  await selectOption(page, '钓点', JIYU_SPOT_NAME);
+  await searchAndSelectOption(page, '钓点', JIYU_SPOT_NAME, JIYU_SPOT_NAME);
   await page.getByRole('button', { name: /^保\s*存$/ }).click();
   await expectSuccessMessage(page, '展示位置已创建');
 

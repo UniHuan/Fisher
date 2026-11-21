@@ -13,6 +13,7 @@ import {
 } from '@szfisher/shared';
 import request from 'supertest';
 import { ulid } from 'ulid';
+import { StorageService } from '../src/modules/storage/storage.service';
 import { createTestApp } from './create-test-app';
 import {
   cleanupAuthTestData,
@@ -65,7 +66,7 @@ interface AdminProductDetail {
   sort_weight: number;
   status: string;
   image_keys: string[];
-  image_urls: string[];
+  image_urls: Array<string | null>;
   cover_image_url: string | null;
   channels: AdminChannel[];
   created_at: string;
@@ -163,7 +164,39 @@ async function seedSpot(fishTypes: string[]): Promise<string> {
   return spotId;
 }
 
+async function attachImages(
+  productId: string,
+  count = 1,
+): Promise<{ keys: string[]; product: AdminProductDetail }> {
+  const storage = app.get(StorageService);
+  const keys = Array.from(
+    { length: count },
+    () => `products/${productId}/${ulid()}.webp`,
+  );
+  for (const key of keys) {
+    await storage.putObject(key, Buffer.from('webp'), 'image/webp');
+  }
+  const response = await adminWrite(
+    operator,
+    'put',
+    `/api/v1/admin/products/${productId}`,
+    { image_keys: keys, cover_image_key: keys[0] },
+  ).expect(200);
+  return {
+    keys,
+    product: (response.body as Envelope<AdminProductDetail>).data,
+  };
+}
+
 async function activateProduct(productId: string): Promise<void> {
+  const detailResponse = await adminRead(
+    operator,
+    `/api/v1/admin/products/${productId}`,
+  ).expect(200);
+  const detail = (detailResponse.body as Envelope<AdminProductDetail>).data;
+  if (detail.image_keys.length === 0) {
+    await attachImages(productId);
+  }
   await adminWrite(operator, 'put', `/api/v1/admin/products/${productId}`, {
     status: PRODUCT_STATUS.ACTIVE,
   }).expect(200);
@@ -218,10 +251,6 @@ async function publicSpotProductIds(
   );
 }
 
-function fakeImageKey(): string {
-  return `products/${ulid()}/${ulid()}.webp`;
-}
-
 function draftPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   titleSequence += 1;
   return {
@@ -230,7 +259,8 @@ function draftPayload(overrides: Record<string, unknown> = {}): Record<string, u
     description: DESCRIPTION_TEXT,
     category: PRODUCT_CATEGORY.ROD,
     sort_weight: 10,
-    image_keys: [fakeImageKey()],
+    // Create runs on a generated id, so images are attached after the draft exists.
+    image_keys: [],
     channels: [
       {
         channel: COMMERCE_CHANNEL.WEIDIAN,
@@ -436,6 +466,7 @@ describe('admin products (e2e)', () => {
 
   it('activates a draft and exposes it on the public endpoint', async () => {
     const product = await createProduct({ category: PRODUCT_CATEGORY.HAT });
+    await attachImages(product.product_id);
 
     const response = await adminWrite(
       operator,
@@ -480,6 +511,7 @@ describe('admin products (e2e)', () => {
     };
 
     const createdDisabled = await createProduct({ channels: [disabledChannel] });
+    await attachImages(createdDisabled.product_id);
     const fromDraft = await adminWrite(
       operator,
       'put',
@@ -489,6 +521,7 @@ describe('admin products (e2e)', () => {
     expect((fromDraft.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
 
     const disabledOnUpdate = await createProduct();
+    await attachImages(disabledOnUpdate.product_id);
     const update = await adminWrite(
       operator,
       'put',
@@ -509,6 +542,7 @@ describe('admin products (e2e)', () => {
 
   it('archives a product and hides it from the public endpoint', async () => {
     const product = await createProduct({ category: PRODUCT_CATEGORY.BAIT });
+    await attachImages(product.product_id);
     await adminWrite(operator, 'put', `/api/v1/admin/products/${product.product_id}`, {
       status: PRODUCT_STATUS.ACTIVE,
     }).expect(200);
@@ -524,24 +558,23 @@ describe('admin products (e2e)', () => {
   });
 
   it('returns signed preview urls for drafts and public urls once active', async () => {
-    const coverKey = `products/${ulid()}/${ulid()}.webp`;
-    const secondKey = `products/${ulid()}/${ulid()}.webp`;
-    const product = await createProduct({
-      image_keys: [coverKey, secondKey],
-      cover_image_key: coverKey,
-    });
+    const created = await createProduct();
+    const { keys, product } = await attachImages(created.product_id, 2);
+    const [coverKey, secondKey] = keys;
 
     expect(product.image_keys).toEqual([coverKey, secondKey]);
     expect(product.image_urls).toHaveLength(2);
     expect(
-      product.image_urls.every((url) => url.startsWith('/api/v1/uploads/preview?')),
+      product.image_urls.every(
+        (url) => url !== null && url.startsWith('/api/v1/uploads/preview?'),
+      ),
     ).toBe(true);
     expect(decodeURIComponent(product.cover_image_url ?? '')).toContain(coverKey);
 
     const response = await adminWrite(
       operator,
       'put',
-      `/api/v1/admin/products/${product.product_id}`,
+      `/api/v1/admin/products/${created.product_id}`,
       { status: PRODUCT_STATUS.ACTIVE },
     ).expect(200);
     const active = (response.body as Envelope<AdminProductDetail>).data;
@@ -558,6 +591,7 @@ describe('admin products (e2e)', () => {
       title: `UniHuan ${keyword}`,
       category: PRODUCT_CATEGORY.SUN_PROTECTION,
     });
+    await attachImages(product.product_id);
     await adminWrite(operator, 'put', `/api/v1/admin/products/${product.product_id}`, {
       status: PRODUCT_STATUS.ACTIVE,
     }).expect(200);
@@ -598,6 +632,92 @@ describe('admin products (e2e)', () => {
     ).expect(200);
     const keywordBody = (keywordSearch.body as Envelope<AdminProductPage>).data;
     expect(keywordBody.items.map((item) => item.product_id)).toEqual([product.product_id]);
+  });
+
+  it('finds placement targets beyond the first page by keyword', async () => {
+    const productKeyword = `深页商品${ulid().slice(-6)}`;
+    const targetProductId = ulid();
+    await prisma.product.create({
+      data: {
+        product_id: targetProductId,
+        title: `UniHuan ${productKeyword}`,
+        category: PRODUCT_CATEGORY.OTHER,
+        status: PRODUCT_STATUS.DRAFT,
+      },
+    });
+    const noiseProducts = Array.from({ length: 55 }, () => ulid());
+    await prisma.product.createMany({
+      data: noiseProducts.map((productId, index) => ({
+        product_id: productId,
+        title: `UniHuan 深页噪声商品 ${index + 1}`,
+        category: PRODUCT_CATEGORY.OTHER,
+        status: PRODUCT_STATUS.DRAFT,
+      })),
+    });
+    trackedProductIds.push(targetProductId, ...noiseProducts);
+
+    const productPage = await adminRead(
+      operator,
+      '/api/v1/admin/products?page=1&page_size=50',
+    ).expect(200);
+    expect(
+      (productPage.body as Envelope<AdminProductPage>).data.items.map(
+        (item) => item.product_id,
+      ),
+    ).not.toContain(targetProductId);
+
+    const productSearch = await adminRead(
+      operator,
+      `/api/v1/admin/products?keyword=${encodeURIComponent(productKeyword)}&page_size=50`,
+    ).expect(200);
+    expect(
+      (productSearch.body as Envelope<AdminProductPage>).data.items.map(
+        (item) => item.product_id,
+      ),
+    ).toEqual([targetProductId]);
+
+    const spotKeyword = `深页钓点${ulid().slice(-6)}`;
+    const targetSpotId = ulid();
+    await prisma.spot.create({
+      data: {
+        spot_id: targetSpotId,
+        spot_name: `UniHuan ${spotKeyword}`,
+        status: SPOT_STATUS.PUBLISHED,
+      },
+    });
+    const noiseSpots = Array.from({ length: 105 }, () => ulid());
+    await prisma.spot.createMany({
+      data: noiseSpots.map((spotId, index) => ({
+        spot_id: spotId,
+        spot_name: `UniHuan 深页噪声钓点 ${index + 1}`,
+        status: SPOT_STATUS.PUBLISHED,
+      })),
+    });
+    trackedSpotIds.push(targetSpotId, ...noiseSpots);
+
+    interface AdminSpotPageBody {
+      items: Array<{ spot_id: string; spot_name: string }>;
+    }
+
+    const spotPage = await adminRead(
+      operator,
+      '/api/v1/admin/spots?page=1&page_size=100',
+    ).expect(200);
+    expect(
+      (spotPage.body as Envelope<AdminSpotPageBody>).data.items.map(
+        (item) => item.spot_id,
+      ),
+    ).not.toContain(targetSpotId);
+
+    const spotSearch = await adminRead(
+      operator,
+      `/api/v1/admin/spots?keyword=${encodeURIComponent(spotKeyword)}&page_size=100`,
+    ).expect(200);
+    expect(
+      (spotSearch.body as Envelope<AdminSpotPageBody>).data.items.map(
+        (item) => item.spot_id,
+      ),
+    ).toEqual([targetSpotId]);
   });
 
   it('rejects invalid channels, actions, payloads and empty channel sets', async () => {
@@ -779,6 +899,149 @@ describe('admin products (e2e)', () => {
     await adminRead(operator, '/api/v1/admin/products?page_size=51').expect(400);
     await adminRead(operator, '/api/v1/admin/products?page=0').expect(400);
     await adminRead(operator, '/api/v1/admin/products?status=unknown').expect(400);
+  });
+
+  it('rejects image keys that do not belong to the product', async () => {
+    const product = await createProduct();
+    const ownedKey = `products/${product.product_id}/${ulid()}.webp`;
+    const otherProductKey = `products/${ulid()}/${ulid()}.webp`;
+
+    const foreign = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { image_keys: [otherProductKey] },
+    ).expect(400);
+    expect((foreign.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    for (const key of [
+      `ugc/${ulid()}/${ulid()}.webp`,
+      `feedback/${ulid()}/${ulid()}.webp`,
+      `spots/${ulid()}/${ulid()}.webp`,
+      `products/${product.product_id}/not-a-ulid.webp`,
+    ]) {
+      const response = await adminWrite(
+        operator,
+        'put',
+        `/api/v1/admin/products/${product.product_id}`,
+        { image_keys: [key] },
+      ).expect(400);
+      expect((response.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+    }
+
+    const foreignCover = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { image_keys: [ownedKey], cover_image_key: otherProductKey },
+    ).expect(400);
+    expect((foreignCover.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const foreignOnCreate = await adminWrite(
+      operator,
+      'post',
+      '/api/v1/admin/products',
+      draftPayload({ image_keys: [otherProductKey], cover_image_key: otherProductKey }),
+    ).expect(400);
+    expect((foreignOnCreate.body as Envelope<null>).code).toBe(ERROR_CODES.VALIDATION);
+
+    const owned = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { image_keys: [ownedKey], cover_image_key: ownedKey },
+    ).expect(200);
+    expect((owned.body as Envelope<AdminProductDetail>).data.image_keys).toEqual([
+      ownedKey,
+    ]);
+  });
+
+  it('fails activation when no working image can be published and keeps the draft', async () => {
+    const product = await createProduct();
+    const key = `products/${product.product_id}/${ulid()}.webp`;
+    await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { image_keys: [key], cover_image_key: key },
+    ).expect(200);
+
+    const response = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { status: PRODUCT_STATUS.ACTIVE },
+    ).expect(503);
+    expect((response.body as Envelope<null>).code).toBe(
+      ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+    );
+
+    const detail = await adminRead(
+      operator,
+      `/api/v1/admin/products/${product.product_id}`,
+    ).expect(200);
+    const saved = (detail.body as Envelope<AdminProductDetail>).data;
+    expect(saved.status).toBe(PRODUCT_STATUS.DRAFT);
+    expect(saved.image_keys).toEqual([key]);
+  });
+
+  it('keeps an active product image set when publishing a replacement fails', async () => {
+    const product = await createProduct();
+    const { keys: previousKeys } = await attachImages(product.product_id);
+    await adminWrite(operator, 'put', `/api/v1/admin/products/${product.product_id}`, {
+      status: PRODUCT_STATUS.ACTIVE,
+    }).expect(200);
+
+    const unpublishedKey = `products/${product.product_id}/${ulid()}.webp`;
+    const response = await adminWrite(
+      operator,
+      'put',
+      `/api/v1/admin/products/${product.product_id}`,
+      { image_keys: [unpublishedKey], cover_image_key: unpublishedKey },
+    ).expect(503);
+    expect((response.body as Envelope<null>).code).toBe(
+      ERROR_CODES.DEPENDENCY_UNAVAILABLE,
+    );
+
+    const detail = await adminRead(
+      operator,
+      `/api/v1/admin/products/${product.product_id}`,
+    ).expect(200);
+    const saved = (detail.body as Envelope<AdminProductDetail>).data;
+    expect(saved.status).toBe(PRODUCT_STATUS.ACTIVE);
+    expect(saved.image_keys).toEqual(previousKeys);
+  });
+
+  it('keeps image_urls aligned with image_keys and signs archived draft images', async () => {
+    const productId = ulid();
+    const malformedKey = `products/${productId}/not-a-ulid.webp`;
+    const validKey = `products/${productId}/${ulid()}.webp`;
+    await prisma.product.create({
+      data: {
+        product_id: productId,
+        title: 'UniHuan 图片对齐测试',
+        category: PRODUCT_CATEGORY.OTHER,
+        status: PRODUCT_STATUS.DRAFT,
+        image_keys: [malformedKey, validKey],
+      },
+    });
+    trackedProductIds.push(productId);
+
+    const detail = await adminRead(
+      operator,
+      `/api/v1/admin/products/${productId}`,
+    ).expect(200);
+    const draft = (detail.body as Envelope<AdminProductDetail>).data;
+    expect(draft.image_keys).toEqual([malformedKey, validKey]);
+    expect(draft.image_urls).toHaveLength(2);
+    expect(draft.image_urls[0]).toBeNull();
+    expect(draft.image_urls[1]).toContain('/api/v1/uploads/preview?');
+
+    const archived = await archiveProduct(productId);
+    expect(archived.image_urls).toHaveLength(2);
+    expect(archived.image_urls[0]).toBeNull();
+    expect(archived.image_urls[1]).toContain('/api/v1/uploads/preview?');
+    expect(archived.image_urls[1]).not.toContain('/uploads/public/');
   });
 
   it('writes compact audit rows without description text', async () => {

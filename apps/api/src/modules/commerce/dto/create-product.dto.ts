@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   Length,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -32,6 +33,11 @@ const PURCHASE_ACTIONS: string[] = [
 export const MAX_PRODUCT_IMAGES = 9;
 export const MAX_PRODUCT_CHANNELS = 2;
 export const CHANNEL_STATUSES: string[] = ['active', 'disabled'];
+/** Server-generated product images always use this shape; ownership is checked in the service. */
+export const PRODUCT_IMAGE_KEY_PATTERN =
+  /^products\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp$/;
+const PRODUCT_IMAGE_KEY_MESSAGE =
+  'Image keys must match products/<productId>/<ULID>.webp';
 
 export class ProductChannelInputDto {
   @ApiProperty({
@@ -121,23 +127,24 @@ export class CreateProductDto {
     type: [String],
     maxItems: MAX_PRODUCT_IMAGES,
     example: ['products/01HX0000000000000000000000/01HX0000000000000000000001.webp'],
+    description:
+      'Keys uploaded for this product. Create listens on a generated id, so images are attached after the draft exists.',
   })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(MAX_PRODUCT_IMAGES)
   @IsString({ each: true })
-  @MaxLength(255, { each: true })
+  @Matches(PRODUCT_IMAGE_KEY_PATTERN, { each: true, message: PRODUCT_IMAGE_KEY_MESSAGE })
   image_keys?: string[];
 
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    maxLength: 255,
-    description: 'Must be one of image_keys when set.',
+    description: 'Must belong to this product and be one of image_keys when set.',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(255)
+  @Matches(PRODUCT_IMAGE_KEY_PATTERN, { message: PRODUCT_IMAGE_KEY_MESSAGE })
   cover_image_key?: string | null;
 
   @ApiProperty({

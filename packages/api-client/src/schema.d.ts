@@ -2726,8 +2726,8 @@ export interface components {
              */
             status: "draft" | "active" | "archived";
             image_keys: string[];
-            /** @description Signed working previews while draft; public URLs once active or archived */
-            image_urls: string[];
+            /** @description Index-aligned with image_keys. Signed working previews unless active, and null when a stored key is malformed. */
+            image_urls: (string | null)[];
             cover_image_key: string | null;
             cover_image_url: string | null;
             channels: components["schemas"]["AdminProductChannelDto"][];
@@ -2786,12 +2786,13 @@ export interface components {
              */
             sort_weight: number;
             /**
+             * @description Keys uploaded for this product. Create listens on a generated id, so images are attached after the draft exists.
              * @example [
              *       "products/01HX0000000000000000000000/01HX0000000000000000000001.webp"
              *     ]
              */
             image_keys?: string[];
-            /** @description Must be one of image_keys when set. */
+            /** @description Must belong to this product and be one of image_keys when set. */
             cover_image_key?: string | null;
             /** @description V1 accepts exactly one weidian channel. */
             channels: components["schemas"]["ProductChannelInputDto"][];
@@ -2813,12 +2814,13 @@ export interface components {
              */
             sort_weight: number;
             /**
+             * @description Keys uploaded for this product. Create listens on a generated id, so images are attached after the draft exists.
              * @example [
              *       "products/01HX0000000000000000000000/01HX0000000000000000000001.webp"
              *     ]
              */
             image_keys?: string[];
-            /** @description Must be one of image_keys when set. */
+            /** @description Must belong to this product and be one of image_keys when set. */
             cover_image_key?: string | null;
             /** @description V1 accepts exactly one weidian channel. */
             channels?: components["schemas"]["ProductChannelInputDto"][];

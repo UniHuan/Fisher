@@ -58,6 +58,30 @@ describe('OssStorageAdapter', () => {
     await expect(adapter.objectExists('products/a.webp', 'working')).resolves.toBe(false);
   });
 
+  it('rethrows NoSuchBucket and generic 404 responses instead of reporting a missing object', async () => {
+    const adapter = new OssStorageAdapter({
+      region: 'oss-cn-shenzhen',
+      accessKeyId: 'test-id',
+      accessKeySecret: 'test-secret',
+      workBucket: 'work-bucket',
+      publicBucket: 'public-bucket',
+      publicBaseUrl: 'https://static.example.com/',
+    });
+    const workClient = OSSMock.mock.results[0]?.value;
+
+    const noSuchBucket = { status: 404, code: 'NoSuchBucket', name: 'NoSuchBucket' };
+    workClient.head.mockRejectedValueOnce(noSuchBucket);
+    await expect(adapter.objectExists('products/a.webp', 'working')).rejects.toEqual(
+      noSuchBucket,
+    );
+
+    const maskedNotFound = { status: 404, code: 'AccessDenied' };
+    workClient.head.mockRejectedValueOnce(maskedNotFound);
+    await expect(adapter.objectExists('products/a.webp', 'working')).rejects.toEqual(
+      maskedNotFound,
+    );
+  });
+
   it('rethrows a storage failure that is not a not-found response', async () => {
     const adapter = new OssStorageAdapter({
       region: 'oss-cn-shenzhen',
