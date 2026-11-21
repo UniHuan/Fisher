@@ -25,15 +25,21 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "找钓点"
+        "text": "找钓点",
+        "iconPath": "assets/tabbar/spot.png",
+        "selectedIconPath": "assets/tabbar/spot-active.png"
       },
       {
         "pagePath": "pages/map/map",
-        "text": "地图"
+        "text": "地图",
+        "iconPath": "assets/tabbar/map.png",
+        "selectedIconPath": "assets/tabbar/map-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
       }
     ]
   },
