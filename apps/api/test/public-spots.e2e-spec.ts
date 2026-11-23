@@ -24,6 +24,9 @@ const DRAFT_ID = ulid();
 const OFFLINE_ID = ulid();
 const DELETED_ID = ulid();
 const POI_ID = ulid();
+const CONDITION_USER_ID = ulid();
+const CONDITION_REPORT_ID = ulid();
+const OLD_CONDITION_REPORT_ID = ulid();
 
 describe('public spots (e2e)', () => {
   let app: INestApplication;
@@ -144,9 +147,44 @@ describe('public spots (e2e)', () => {
     await prisma.spotPoi.create({
       data: { spot_id: OPEN_ID, poi_id: POI_ID, distance_m: 120 },
     });
+
+    await prisma.appUser.create({
+      data: { user_id: CONDITION_USER_ID, nickname: '条件测试钓友' },
+    });
+    await prisma.report.create({
+      data: {
+        report_id: CONDITION_REPORT_ID,
+        spot_id: OPEN_ID,
+        user_id: CONDITION_USER_ID,
+        content_type: 'condition',
+        content: '',
+        condition_open_status: 'open',
+        condition_fee_status: 'free',
+        condition_crowd_level: 'low',
+        condition_facilities: ['toilet', 'parking'],
+        observed_at: new Date(),
+        moderation_status: 'published',
+      },
+    });
+    await prisma.report.create({
+      data: {
+        report_id: OLD_CONDITION_REPORT_ID,
+        spot_id: PAUSED_ID,
+        user_id: CONDITION_USER_ID,
+        content_type: 'condition',
+        content: '',
+        condition_crowd_level: 'high',
+        observed_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        moderation_status: 'published',
+      },
+    });
   });
 
   afterAll(async () => {
+    await prisma.report.deleteMany({
+      where: { report_id: { in: [CONDITION_REPORT_ID, OLD_CONDITION_REPORT_ID] } },
+    });
+    await prisma.appUser.deleteMany({ where: { user_id: CONDITION_USER_ID } });
     await prisma.spotPoi.deleteMany({ where: { spot_id: OPEN_ID } });
     await prisma.poi.deleteMany({ where: { poi_id: POI_ID } });
     await cleanupAdminSpotTestData();
@@ -256,6 +294,45 @@ describe('public spots (e2e)', () => {
     expect(detail.poi_summary).toEqual([
       expect.objectContaining({ poi_type: 'parking', count: 1 }),
     ]);
+  });
+
+  it('returns the latest condition on spot detail', async () => {
+    const response = await request(server)
+      .get(`/api/v1/spots/${OPEN_ID}`)
+      .set(HEADERS)
+      .expect(200);
+    expect(response.body.data.latest_condition).toMatchObject({
+      open_status: 'open',
+      fee_status: 'free',
+      crowd_level: 'low',
+      facilities: ['toilet', 'parking'],
+      freshness: 'today',
+      report_count_7d: 1,
+    });
+    expect(response.body.data.latest_condition.observed_at).toEqual(expect.any(String));
+  });
+
+  it('omits a condition older than seven days', async () => {
+    const response = await request(server)
+      .get(`/api/v1/spots/${PAUSED_ID}`)
+      .set(HEADERS)
+      .expect(200);
+    expect(response.body.data.latest_condition).toBeNull();
+  });
+
+  it('returns condition summaries on the spot list', async () => {
+    const response = await request(server)
+      .get('/api/v1/spots')
+      .set(HEADERS)
+      .expect(200);
+    const item = response.body.data.items.find(
+      (row: { spot_id: string }) => row.spot_id === OPEN_ID,
+    );
+    expect(item.latest_condition).toMatchObject({
+      crowd_level: 'low',
+      freshness: 'today',
+    });
+    expect(item.latest_condition.report_count_7d).toBeUndefined();
   });
 
   it('allows banned detail by id but removes navigation', async () => {

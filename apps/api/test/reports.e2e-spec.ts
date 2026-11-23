@@ -1038,4 +1038,27 @@ describe('Reports (e2e)', () => {
       })
       .expect(400);
   });
+
+  it('excludes condition reports from the public UGC feed', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition');
+
+    await createReport(user, spot.spot_id, { content: '普通评论' });
+    await createReport(user, spot.spot_id, {
+      content_type: 'condition',
+      content: '',
+      condition: { crowd_level: 'low' },
+    });
+
+    const feed = await request(server)
+      .get(`/api/v1/spots/${spot.spot_id}/reports`)
+      .set(HEADERS)
+      .expect(200);
+    expect(feed.body.data.total).toBe(1);
+    expect(
+      feed.body.data.items.every(
+        (item: { content_type: string }) => item.content_type !== 'condition',
+      ),
+    ).toBe(true);
+  });
 });

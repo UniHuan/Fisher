@@ -2,8 +2,10 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, type Poi, type Spot, type SpotPoi } from '@prisma/client';
 import {
   ERROR_CODES,
+  MODERATION_STATUS,
   OPEN_STATUS,
   POI_TYPE,
+  REPORT_CONTENT_TYPE,
   normalizeKeyword,
   splitCsv,
 } from '@szfisher/shared';
@@ -21,6 +23,7 @@ import {
 } from './public-spot.constants';
 import type {
   Freshness,
+  PublicCondition,
   PublicMapCluster,
   PublicMapItem,
   PublicMapResult,
@@ -35,6 +38,11 @@ import type { PublicPoiQueryDto } from './dto/public-poi-query.dto';
 import type { PublicSpotListQueryDto } from './dto/public-spot-list-query.dto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const CONDITION_WINDOW_MS = 7 * DAY_MS;
+const CONDITION_STATUSES: readonly string[] = [
+  MODERATION_STATUS.PUBLISHED,
+  MODERATION_STATUS.HUMAN_APPROVED,
+];
 const OPEN_STATUS_VALUES = new Set<string>(Object.values(OPEN_STATUS));
 const POI_TYPE_VALUES = Object.values(POI_TYPE);
 const POI_TYPE_ORDER = new Map<string, number>(
@@ -141,8 +149,16 @@ export class PublicSpotsService {
     const pageSize = Math.min(query.page_size ?? PUBLIC_PAGE_SIZE, PUBLIC_MAX_PAGE_SIZE);
     const total = items.length;
     const start = (page - 1) * pageSize;
+    const pageItems = items.slice(start, start + pageSize);
+    const conditionBySpot = await this.latestConditions(
+      pageItems.map((item) => item.spot_id),
+      new Date(),
+    );
     return {
-      items: items.slice(start, start + pageSize),
+      items: pageItems.map((item) => ({
+        ...item,
+        latest_condition: conditionBySpot.get(item.spot_id) ?? null,
+      })),
       page,
       page_size: pageSize,
       total,
@@ -193,6 +209,20 @@ export class PublicSpotsService {
       this.throwNotFound();
     }
     const base = this.toListItem(row);
+    const now = new Date();
+    const conditionBySpot = await this.latestConditions([row.spot_id], now);
+    const latestCondition = conditionBySpot.get(row.spot_id) ?? null;
+    if (latestCondition !== null) {
+      latestCondition.report_count_7d = await this.prisma.report.count({
+        where: {
+          spot_id: row.spot_id,
+          content_type: REPORT_CONTENT_TYPE.CONDITION,
+          moderation_status: { in: [...CONDITION_STATUSES] },
+          deleted_at: null,
+          observed_at: { gte: new Date(now.getTime() - CONDITION_WINDOW_MS) },
+        },
+      });
+    }
     const images = row.images
       .map((key) => this.safePublicUrl(key))
       .filter((url): url is string => url !== null);
@@ -227,6 +257,7 @@ export class PublicSpotsService {
       is_banned: banned,
       verified_days_ago: ageDays(row.verified_at),
       poi_summary: poiSummary,
+      latest_condition: latestCondition,
     };
   }
 
@@ -312,6 +343,70 @@ export class PublicSpotsService {
     return row;
   }
 
+  private async latestConditions(
+    spotIds: string[],
+    now: Date,
+  ): Promise<Map<string, PublicCondition>> {
+    if (spotIds.length === 0) {
+      return new Map();
+    }
+    const since = new Date(now.getTime() - CONDITION_WINDOW_MS);
+    const rows = await this.prisma.report.findMany({
+      where: {
+        spot_id: { in: spotIds },
+        content_type: REPORT_CONTENT_TYPE.CONDITION,
+        moderation_status: { in: [...CONDITION_STATUSES] },
+        deleted_at: null,
+        observed_at: { gte: since },
+      },
+      orderBy: [{ observed_at: 'desc' }, { report_id: 'desc' }],
+      select: {
+        spot_id: true,
+        condition_open_status: true,
+        condition_fee_status: true,
+        condition_crowd_level: true,
+        condition_facilities: true,
+        observed_at: true,
+        created_at: true,
+      },
+    });
+    const latest = new Map<string, PublicCondition>();
+    for (const row of rows) {
+      if (latest.has(row.spot_id) || row.observed_at === null) {
+        continue;
+      }
+      latest.set(row.spot_id, this.toPublicCondition(row, row.observed_at, now));
+    }
+    return latest;
+  }
+
+  private toPublicCondition(
+    row: {
+      condition_open_status: string | null;
+      condition_fee_status: string | null;
+      condition_crowd_level: string | null;
+      condition_facilities: string[];
+      created_at: Date;
+    },
+    observedAt: Date,
+    now: Date,
+  ): PublicCondition {
+    const ageHours = Math.max(
+      0,
+      Math.floor((now.getTime() - observedAt.getTime()) / (60 * 60 * 1000)),
+    );
+    return {
+      open_status: row.condition_open_status,
+      fee_status: row.condition_fee_status,
+      crowd_level: row.condition_crowd_level,
+      facilities: row.condition_facilities,
+      observed_at: observedAt.toISOString(),
+      reported_at: row.created_at.toISOString(),
+      age_hours: ageHours,
+      freshness: ageHours <= 24 ? 'today' : ageHours <= 72 ? 'recent' : 'stale',
+    };
+  }
+
   private toListItem(
     row: Spot,
     latitude?: number,
@@ -346,6 +441,7 @@ export class PublicSpotsService {
       verified_at: row.verified_at?.toISOString() ?? null,
       updated_at: row.updated_at.toISOString(),
       freshness: freshnessFor(row.verified_at, row.is_core),
+      latest_condition: null,
       ...(distance === undefined ? {} : { distance_m: distance }),
     };
   }
