@@ -44,7 +44,7 @@
   margin-top: 28rpx;
   padding: 0 12rpx;
   text-align: center;
-  color: #6B7772;
-  font-size: 21rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
   line-height: 1.6;
 }

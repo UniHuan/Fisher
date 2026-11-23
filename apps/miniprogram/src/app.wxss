@@ -33,7 +33,7 @@ input {
   border-radius: 6rpx;
   background: #E3EEE6;
   color: #1E6B57;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.4;
 }
 
@@ -136,13 +136,13 @@ input {
   display: block;
   margin-top: 8rpx;
   text-align: right;
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .form-hint {
-  color: #6B7772;
-  font-size: 23rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -159,8 +159,9 @@ input {
 .filter-chip {
   display: inline-flex;
   align-items: center;
+  min-height: 64rpx;
   margin-right: 12rpx;
-  padding: 10rpx 24rpx;
+  padding: 0 24rpx;
   border-radius: 999rpx;
   background: #EEF2EC;
   color: #5C6B64;
@@ -236,7 +237,7 @@ input {
   align-items: center;
   gap: 6rpx;
   padding: 6rpx 0;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -250,12 +251,12 @@ input {
 }
 
 .ugc-like-count {
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .ugc-menu {
-  padding: 6rpx 12rpx;
-  color: #6B7772;
+  padding: 14rpx 18rpx;
+  color: #5C6B64;
   font-size: 30rpx;
   line-height: 1;
   letter-spacing: 2rpx;

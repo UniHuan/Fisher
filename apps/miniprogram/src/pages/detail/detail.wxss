@@ -52,7 +52,7 @@
 
 .gallery-placeholder-hint {
   color: #1E6B57;
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .detail-body {
@@ -147,7 +147,7 @@
 
 .info-label {
   flex: 0 0 110rpx;
-  color: #6B7772;
+  color: #5C6B64;
 }
 
 .info-value {
@@ -168,8 +168,8 @@
 
 .verified-line {
   padding: 6rpx 8rpx 22rpx;
-  color: #6B7772;
-  font-size: 23rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .poi-groups {
@@ -202,15 +202,15 @@
 }
 
 .poi-more {
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .poi-names {
   display: block;
   margin-top: 6rpx;
   color: #5C6B64;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.55;
   word-break: break-word;
 }
@@ -290,8 +290,8 @@
 .product-note {
   display: block;
   margin-top: 14rpx;
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .ugc-section {
@@ -312,8 +312,8 @@
 }
 
 .ugc-total {
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .ugc-write {
@@ -434,8 +434,8 @@
 }
 
 .ugc-time {
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .ugc-content {
@@ -451,7 +451,7 @@
   display: block;
   margin-top: 8rpx;
   color: #1E6B57;
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .ugc-card-foot {
@@ -466,7 +466,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14rpx 4rpx 0;
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .ugc-retry-link {
@@ -481,8 +481,8 @@
 .ugc-end {
   padding: 18rpx 0 4rpx;
   text-align: center;
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
 }
 
 .ugc-mask {

@@ -12,7 +12,7 @@
 
 .hero-kicker {
   color: #8FB8A6;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.4;
 }
 
@@ -61,23 +61,23 @@
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 44rpx;
+  height: 52rpx;
   color: #1B2420;
   font-size: 28rpx;
 }
 
 .search-placeholder {
-  color: #6B7772;
+  color: #5C6B64;
 }
 
 .search-clear {
   flex: 0 0 auto;
-  width: 40rpx;
-  height: 40rpx;
+  width: 56rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 30rpx;
   line-height: 1;
 }
@@ -93,7 +93,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
-  padding: 12rpx 22rpx;
+  min-height: 64rpx;
+  padding: 0 24rpx;
   border: 1rpx solid #D8DFD8;
   border-radius: 999rpx;
   background: #F5F4EE;
@@ -103,7 +104,7 @@
 }
 
 .pill-caret {
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 18rpx;
 }
 
@@ -145,7 +146,7 @@
 }
 
 .result-sort {
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 23rpx;
 }
 
@@ -225,7 +226,7 @@
   border-radius: 4rpx;
   background: #FAE7E2;
   color: #A93226;
-  font-size: 20rpx;
+  font-size: 22rpx;
   line-height: 1.4;
 }
 
@@ -259,7 +260,7 @@
   align-items: center;
   gap: 8rpx;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .freshness-dot {
@@ -291,7 +292,7 @@
 .load-more {
   padding: 28rpx;
   text-align: center;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -449,7 +450,10 @@
 }
 
 .filter-chip {
-  padding: 12rpx 24rpx;
+  display: inline-flex;
+  align-items: center;
+  min-height: 64rpx;
+  padding: 0 26rpx;
   border: 1rpx solid #D8DFD8;
   border-radius: 999rpx;
   background: #ffffff;
@@ -486,14 +490,14 @@
 .filter-switch-hint {
   display: block;
   margin-top: 4rpx;
-  color: #6B7772;
-  font-size: 22rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
 .filter-empty {
   padding: 30rpx 0;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
