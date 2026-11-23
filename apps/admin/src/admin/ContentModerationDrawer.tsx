@@ -65,6 +65,34 @@ const CONTENT_TYPE_LABEL: Record<string, string> = {
   comment: '评论',
   catch: '鱼获',
   intel: '情报',
+  condition: '现场',
+};
+
+const CONDITION_OPEN_LABEL: Record<string, string> = {
+  open: '开放',
+  paused: '暂停',
+  banned: '禁钓',
+};
+
+const CONDITION_FEE_LABEL: Record<string, string> = {
+  free: '免费',
+  paid: '收费',
+  member: '需会员',
+};
+
+const CONDITION_CROWD_LABEL: Record<string, string> = {
+  low: '人少',
+  medium: '一般',
+  high: '人多',
+};
+
+const CONDITION_FACILITY_LABEL: Record<string, string> = {
+  toilet: '厕所',
+  parking: '停车',
+  food: '餐饮',
+  water: '补水',
+  shade: '遮阴',
+  rental: '租赁',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -641,6 +669,30 @@ function ReportDetailDrawer({
               <Descriptions.Item label="鱼种">{item.fish_key ?? '未填'}</Descriptions.Item>
               <Descriptions.Item label="重量">
                 {item.catch_weight_kg === null ? '未填' : `${item.catch_weight_kg} kg`}
+              </Descriptions.Item>
+            </Descriptions>
+          )}
+          {item.content_type === 'condition' && (
+            <Descriptions column={2} size="small" bordered title="现场情况">
+              <Descriptions.Item label="开放状态">
+                {CONDITION_OPEN_LABEL[item.condition_open_status ?? ''] ?? '未填'}
+              </Descriptions.Item>
+              <Descriptions.Item label="收费">
+                {CONDITION_FEE_LABEL[item.condition_fee_status ?? ''] ?? '未填'}
+              </Descriptions.Item>
+              <Descriptions.Item label="人流">
+                {CONDITION_CROWD_LABEL[item.condition_crowd_level ?? ''] ?? '未填'}
+              </Descriptions.Item>
+              <Descriptions.Item label="观察时间">
+                {item.observed_at === null ? '未填' : formatDateTime(item.observed_at)}
+              </Descriptions.Item>
+              <Descriptions.Item label="设施">
+                {item.condition_facilities
+                  .map((key) => CONDITION_FACILITY_LABEL[key] ?? key)
+                  .join('、') || '未填'}
+              </Descriptions.Item>
+              <Descriptions.Item label="正文">
+                {item.content === '' ? '仅结构化上报' : item.content}
               </Descriptions.Item>
             </Descriptions>
           )}
@@ -1305,6 +1357,7 @@ export function ContentModerationDrawer({
                 { value: 'comment', label: '评论' },
                 { value: 'catch', label: '鱼获' },
                 { value: 'intel', label: '情报' },
+                { value: 'condition', label: '现场' },
               ]}
               style={{ width: '100%' }}
             />
