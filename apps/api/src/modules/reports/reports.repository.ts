@@ -36,6 +36,11 @@ export interface CreateReportRowInput {
   content: string;
   fishKey: string | null;
   catchWeightKg: number | null;
+  conditionOpenStatus: string | null;
+  conditionFeeStatus: string | null;
+  conditionCrowdLevel: string | null;
+  conditionFacilities: string[];
+  observedAt: Date | null;
   /** Millisecond-precision write time; keeps the pagination cursor exact. */
   createdAt: Date;
   terms: { version: string; acceptedAt: Date } | null;
@@ -172,6 +177,11 @@ export class ReportsRepository {
           images: input.imageKeys,
           fish_key: input.fishKey,
           catch_weight_kg: input.catchWeightKg,
+          condition_open_status: input.conditionOpenStatus,
+          condition_fee_status: input.conditionFeeStatus,
+          condition_crowd_level: input.conditionCrowdLevel,
+          condition_facilities: input.conditionFacilities,
+          observed_at: input.observedAt,
           // Explicit ms-precision value instead of the microsecond-precision
           // database default, so the cursors can use exact timestamp equality.
           created_at: input.createdAt,

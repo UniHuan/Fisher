@@ -76,6 +76,14 @@ const CREATE_MESSAGES: Record<string, string> = {
   [MODERATION_STATUS.REMOVED]: '内容不可发布',
 };
 
+export interface CreateReportConditionInput {
+  open_status?: string;
+  fee_status?: string;
+  crowd_level?: string;
+  facilities?: string[];
+  observed_at?: string;
+}
+
 export interface CreateReportInput {
   spot_id: string;
   content_type: string;
@@ -83,6 +91,7 @@ export interface CreateReportInput {
   image_keys?: string[];
   fish_key?: string;
   catch_weight_kg?: number;
+  condition?: CreateReportConditionInput;
   terms_version?: string;
 }
 
@@ -98,9 +107,18 @@ export interface MyReportPage {
   total: number;
 }
 
+interface ResolvedCondition {
+  openStatus: string | null;
+  feeStatus: string | null;
+  crowdLevel: string | null;
+  facilities: string[];
+  observedAt: Date;
+}
+
 interface ContentShape {
   fishKey: string | null;
   catchWeightKg: number | null;
+  condition: ResolvedCondition | null;
 }
 
 function validationError(field: string, message: string): AppError {
@@ -208,10 +226,20 @@ export class ReportsService {
 
     const content = input.content.trim();
     const codePoints = Array.from(content).length;
-    if (codePoints < 1 || codePoints > MAX_CONTENT_CODE_POINTS) {
+    if (input.content_type === REPORT_CONTENT_TYPE.CONDITION) {
+      if (codePoints > MAX_CONTENT_CODE_POINTS) {
+        throw validationError(
+          'content',
+          `Content must be at most ${MAX_CONTENT_CODE_POINTS} characters`,
+        );
+      }
+      if ((input.image_keys?.length ?? 0) > 3) {
+        throw validationError('image_keys', 'Condition reports allow at most 3 images');
+      }
+    } else if (codePoints < 1 || codePoints > MAX_CONTENT_CODE_POINTS) {
       throw validationError('content', 'Content must be 1 to 500 characters');
     }
-    const shape = await this.resolveContentShape(input);
+    const shape = await this.resolveContentShape(input, now);
     const imageKeys = await this.resolveImageKeys(input.image_keys, user.user_id);
 
     const termsVersion = this.config.get<string>('UGC_TERMS_VERSION')?.trim() ?? '';
@@ -244,29 +272,38 @@ export class ReportsService {
       imageKeys,
       fishKey: shape.fishKey,
       catchWeightKg: shape.catchWeightKg,
+      conditionOpenStatus: shape.condition?.openStatus ?? null,
+      conditionFeeStatus: shape.condition?.feeStatus ?? null,
+      conditionCrowdLevel: shape.condition?.crowdLevel ?? null,
+      conditionFacilities: shape.condition?.facilities ?? [],
+      observedAt: shape.condition?.observedAt ?? null,
       createdAt: now,
       usedAt: now,
       terms: needsAcceptance ? { version: termsVersion, acceptedAt: now } : null,
     });
 
-    const result = await this.checkText(content, appUser.openid);
+    const result = content === '' ? null : await this.checkText(content, appUser.openid);
     let moderationStatus =
-      result.suggest === 'pass' && imageKeys.length > 0
-        ? MODERATION_STATUS.MACHINE_PENDING
-        : moderationStatusFor(result.suggest);
+      result === null
+        ? imageKeys.length > 0
+          ? MODERATION_STATUS.MACHINE_PENDING
+          : MODERATION_STATUS.PUBLISHED
+        : result.suggest === 'pass' && imageKeys.length > 0
+          ? MODERATION_STATUS.MACHINE_PENDING
+          : moderationStatusFor(result.suggest);
     // The write is conditional: a concurrent ban or human decision wins, and
     // the returned status is the row's real current status.
     moderationStatus = await this.repository.updateModeration(
       reportId,
       moderationStatus,
-      toMachineResult(result),
+      result === null ? { skipped: 'structured_only' } : toMachineResult(result),
       now,
     );
 
     // Text `pass` and `review` both submit images; only `risky` rejects without
     // checking them. A review report still cannot publish: recompute requires a
     // stored text `pass`, so it waits for a human even if every image passes.
-    if (result.suggest !== 'risky' && imageKeys.length > 0) {
+    if ((result === null || result.suggest !== 'risky') && imageKeys.length > 0) {
       try {
         await this.moderation.submitImages(reportId, imageKeys, appUser.openid);
       } catch {
@@ -529,7 +566,10 @@ export class ReportsService {
     return unique;
   }
 
-  private async resolveContentShape(input: CreateReportInput): Promise<ContentShape> {
+  private async resolveContentShape(
+    input: CreateReportInput,
+    now: Date,
+  ): Promise<ContentShape> {
     switch (input.content_type) {
       case REPORT_CONTENT_TYPE.COMMENT:
       case REPORT_CONTENT_TYPE.INTEL:
@@ -539,7 +579,10 @@ export class ReportsService {
             'Only catch content may include fish_key or catch_weight_kg',
           );
         }
-        return { fishKey: null, catchWeightKg: null };
+        if (input.condition !== undefined) {
+          throw validationError('condition', 'Only condition content may include condition fields');
+        }
+        return { fishKey: null, catchWeightKg: null, condition: null };
       case REPORT_CONTENT_TYPE.CATCH: {
         const fishKey = input.fish_key?.trim() ?? '';
         if (fishKey === '') {
@@ -549,11 +592,59 @@ export class ReportsService {
         if (fish === null || !fish.enabled) {
           throw validationError('fish_key', 'Unknown or disabled fish_key');
         }
-        return { fishKey, catchWeightKg: input.catch_weight_kg ?? null };
+        return { fishKey, catchWeightKg: input.catch_weight_kg ?? null, condition: null };
       }
+      case REPORT_CONTENT_TYPE.CONDITION:
+        if (input.fish_key !== undefined || input.catch_weight_kg !== undefined) {
+          throw validationError(
+            'content_type',
+            'Condition content cannot include fish_key or catch_weight_kg',
+          );
+        }
+        return {
+          fishKey: null,
+          catchWeightKg: null,
+          condition: this.resolveCondition(input, now),
+        };
       default:
         throw validationError('content_type', 'Unsupported content type');
     }
+  }
+
+  private resolveCondition(input: CreateReportInput, now: Date): ResolvedCondition {
+    if (input.condition === undefined) {
+      throw validationError('condition', 'Condition content requires condition fields');
+    }
+    const facilities = [...new Set(input.condition.facilities ?? [])];
+    if (facilities.length > 6) {
+      throw validationError('facilities', 'At most 6 facilities are allowed');
+    }
+    const hasAny =
+      input.condition.open_status !== undefined ||
+      input.condition.fee_status !== undefined ||
+      input.condition.crowd_level !== undefined ||
+      facilities.length > 0;
+    if (!hasAny) {
+      throw validationError('condition', 'At least one condition field is required');
+    }
+    let observedAt = now;
+    if (input.condition.observed_at !== undefined) {
+      observedAt = new Date(input.condition.observed_at);
+      if (Number.isNaN(observedAt.getTime())) {
+        throw validationError('observed_at', 'Invalid observation time');
+      }
+      const delta = now.getTime() - observedAt.getTime();
+      if (delta < -5 * 60 * 1000 || delta > 24 * 60 * 60 * 1000) {
+        throw validationError('observed_at', 'Observation time must be within 24 hours');
+      }
+    }
+    return {
+      openStatus: input.condition.open_status ?? null,
+      feeStatus: input.condition.fee_status ?? null,
+      crowdLevel: input.condition.crowd_level ?? null,
+      facilities,
+      observedAt,
+    };
   }
 
   private async enforceDailyLimit(userId: string, createdAt: Date, now: Date): Promise<void> {

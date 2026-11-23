@@ -23,11 +23,13 @@ import { verifyWechatMediaCallback } from '../../src/modules/content-security/we
 @Injectable()
 export class FakeContentSecurityProvider implements ContentSecurityProvider {
   failNextMediaCheck = false;
+  textCalls = 0;
   private mediaSequence = 0;
 
   constructor(private readonly config: ConfigService) {}
 
   async checkText(input: ContentSecurityTextInput): Promise<ContentSecurityTextResult> {
+    this.textCalls += 1;
     if (input.content.includes('THROW')) {
       throw new Error('fake moderation outage');
     }

@@ -40,12 +40,19 @@ const TEST_OPENIDS = [
   'openid-shape',
   'openid-error',
   'openid-page-order',
+  'openid-condition',
+  'openid-condition-empty',
+  'openid-condition-time',
+  'openid-condition-images',
+  'openid-condition-other',
+  'openid-condition-text',
 ] as const;
 
 describe('Reports (e2e)', () => {
   let app: INestApplication;
   let server: ReturnType<INestApplication['getHttpServer']>;
   let prisma: PrismaService;
+  let contentSecurity: FakeContentSecurityProvider;
 
   async function setUgcFeature(enabled: boolean): Promise<void> {
     await prisma.config.upsert({
@@ -100,6 +107,7 @@ describe('Reports (e2e)', () => {
     });
     server = app.getHttpServer();
     prisma = app.get(PrismaService);
+    contentSecurity = app.get(CONTENT_SECURITY_PROVIDER);
     // Clear rows a previously interrupted run may have left behind.
     await cleanupAppAuthTestData([...TEST_OPENIDS]);
     // The seed keeps features.ugc=false; normal report cases need it on.
@@ -888,5 +896,146 @@ describe('Reports (e2e)', () => {
       })
       .expect(401);
     expect(anonymous.body.code).toBe(ERROR_CODES.UNAUTHENTICATED);
+  });
+
+  it('creates a structured condition report without content', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition');
+    contentSecurity.textCalls = 0;
+
+    const report = await createReport(user, spot.spot_id, {
+      content_type: 'condition',
+      content: '',
+      condition: {
+        open_status: 'open',
+        fee_status: 'free',
+        crowd_level: 'low',
+        facilities: ['toilet', 'parking'],
+      },
+    });
+
+    expect(report.moderation_status).toBe('published');
+    expect(contentSecurity.textCalls).toBe(0);
+    const row = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id as string },
+    });
+    expect(row.content).toBe('');
+    expect(row.condition_open_status).toBe('open');
+    expect(row.condition_fee_status).toBe('free');
+    expect(row.condition_crowd_level).toBe('low');
+    expect(row.condition_facilities).toEqual(['toilet', 'parking']);
+    expect(row.observed_at).not.toBeNull();
+    expect(row.machine_result).toEqual({ skipped: 'structured_only' });
+  });
+
+  it('runs text moderation when a condition report has content', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition-text');
+    contentSecurity.textCalls = 0;
+
+    const report = await createReport(user, spot.spot_id, {
+      content_type: 'condition',
+      content: '现场补充：东岸风大',
+      condition: { crowd_level: 'medium' },
+    });
+
+    expect(report.moderation_status).toBe('published');
+    expect(contentSecurity.textCalls).toBe(1);
+    const row = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id as string },
+    });
+    expect(row.machine_result).toMatchObject({ suggest: 'pass' });
+  });
+
+  it('rejects a condition report without structured fields', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition-empty');
+
+    await request(server)
+      .post('/api/v1/reports')
+      .set(appAuthHeaders(user.access_token))
+      .send({
+        spot_id: spot.spot_id,
+        content_type: 'condition',
+        content: '',
+        terms_version: TERMS_VERSION,
+      })
+      .expect(400);
+  });
+
+  it('rejects a future or stale observed_at', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition-time');
+
+    await request(server)
+      .post('/api/v1/reports')
+      .set(appAuthHeaders(user.access_token))
+      .send({
+        spot_id: spot.spot_id,
+        content_type: 'condition',
+        content: '',
+        terms_version: TERMS_VERSION,
+        condition: {
+          crowd_level: 'low',
+          observed_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        },
+      })
+      .expect(400);
+
+    await request(server)
+      .post('/api/v1/reports')
+      .set(appAuthHeaders(user.access_token))
+      .send({
+        spot_id: spot.spot_id,
+        content_type: 'condition',
+        content: '',
+        terms_version: TERMS_VERSION,
+        condition: {
+          crowd_level: 'low',
+          observed_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+        },
+      })
+      .expect(400);
+  });
+
+  it('limits condition reports to three images', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition-images');
+
+    const response = await request(server)
+      .post('/api/v1/reports')
+      .set(appAuthHeaders(user.access_token))
+      .send({
+        spot_id: spot.spot_id,
+        content_type: 'condition',
+        content: '',
+        terms_version: TERMS_VERSION,
+        condition: { crowd_level: 'low' },
+        image_keys: [
+          'ugc/01HX0000000000000000000000/01HX0000000000000000000001.webp',
+          'ugc/01HX0000000000000000000000/01HX0000000000000000000002.webp',
+          'ugc/01HX0000000000000000000000/01HX0000000000000000000003.webp',
+          'ugc/01HX0000000000000000000000/01HX0000000000000000000004.webp',
+        ],
+      })
+      .expect(400);
+    expect(response.body.message).toContain('3 images');
+  });
+
+  it('rejects condition fields on other content types', async () => {
+    const spot = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-condition-other');
+
+    await request(server)
+      .post('/api/v1/reports')
+      .set(appAuthHeaders(user.access_token))
+      .send({
+        spot_id: spot.spot_id,
+        content_type: 'comment',
+        content: '普通评论',
+        terms_version: TERMS_VERSION,
+        condition: { crowd_level: 'low' },
+      })
+      .expect(400);
   });
 });

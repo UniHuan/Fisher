@@ -249,7 +249,7 @@ it('rejects a future or stale observed_at', async () => {
     .set(appAuthHeaders(session))
     .send({
       ...base,
-      condition: { crowd_level: 'low', observed_at: new Date(Date.now() + 60_000).toISOString() },
+      condition: { crowd_level: 'low', observed_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() },
     })
     .expect(400);
   await request(server)
