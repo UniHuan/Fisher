@@ -47,6 +47,66 @@
       </view>
     </view>
 
+    <view wx:if="{{contentType === 'condition'}}" class="create-section">
+      <text class="section-label">现场情况</text>
+      <text class="section-hint">至少选择一项，现场时间需在 24 小时内。</text>
+
+      <text class="condition-label">开放状态</text>
+      <view class="condition-row">
+        <view
+          wx:for="{{conditionOpenOptions}}"
+          wx:key="key"
+          class="condition-chip {{conditionOpen === item.key ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="selectConditionOpen"
+        >{{item.label}}</view>
+      </view>
+
+      <text class="condition-label">收费</text>
+      <view class="condition-row">
+        <view
+          wx:for="{{conditionFeeOptions}}"
+          wx:key="key"
+          class="condition-chip {{conditionFee === item.key ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="selectConditionFee"
+        >{{item.label}}</view>
+      </view>
+
+      <text class="condition-label">人流</text>
+      <view class="condition-row">
+        <view
+          wx:for="{{conditionCrowdOptions}}"
+          wx:key="key"
+          class="condition-chip {{conditionCrowd === item.key ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="selectConditionCrowd"
+        >{{item.label}}</view>
+      </view>
+
+      <text class="condition-label">设施</text>
+      <view class="condition-row">
+        <view
+          wx:for="{{conditionFacilityOptions}}"
+          wx:key="key"
+          class="condition-chip {{item.selected ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="toggleConditionFacility"
+        >{{item.label}}</view>
+      </view>
+
+      <text class="condition-label">观察时间</text>
+      <view class="condition-row">
+        <view
+          wx:for="{{conditionObservedOptions}}"
+          wx:key="key"
+          class="condition-chip {{conditionObserved === item.key ? 'is-active' : ''}}"
+          data-type="{{item.key}}"
+          bindtap="selectConditionObserved"
+        >{{item.label}}</view>
+      </view>
+    </view>
+
     <view class="create-section">
       <view class="section-head">
         <text class="section-label">正文</text>
@@ -55,11 +115,11 @@
       <textarea
         class="content-textarea"
         value="{{content}}"
-        placeholder="说说这次的情况..."
+        placeholder="{{contentType === 'condition' ? '补充说明（选填）' : '说说这次的情况...'}}"
         maxlength="500"
         bindinput="onContentInput"
       />
-      <text class="section-hint">写清楚时间、鱼情和注意事项，1 到 500 字。</text>
+      <text class="section-hint">{{contentType === 'condition' ? '补充说明选填，0 到 500 字。' : '写清楚时间、鱼情和注意事项，1 到 500 字。'}}</text>
     </view>
 
     <view class="create-section">
@@ -85,7 +145,7 @@
           <text class="image-add-icon">＋</text>
         </view>
       </view>
-      <text class="section-hint">选填，最多 6 张，发布前会逐张上传并审核。</text>
+      <text class="section-hint">选填，最多 {{maxImages}} 张，发布前会逐张上传并审核。</text>
       <text wx:if="{{submitting && images.length > 0}}" class="section-hint upload-hint">
         正在逐张上传图片，全部成功后才会发布
       </text>
