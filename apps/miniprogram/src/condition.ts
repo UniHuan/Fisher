@@ -59,25 +59,38 @@ function optionLabel(options: ConditionOption[], key: string | null | undefined)
   return options.find((option) => option.key === key)?.label ?? key;
 }
 
+export interface ConditionLabels {
+  openLabel: string;
+  feeLabel: string;
+  crowdLabel: string;
+  facilityLabels: string[];
+}
+
+export function conditionLabels(value: ConditionLike): ConditionLabels {
+  return {
+    openLabel: optionLabel(CONDITION_OPEN_OPTIONS, value.open_status),
+    feeLabel: optionLabel(CONDITION_FEE_OPTIONS, value.fee_status),
+    crowdLabel: optionLabel(CONDITION_CROWD_OPTIONS, value.crowd_level),
+    facilityLabels: (value.facilities ?? [])
+      .map((key) => optionLabel(CONDITION_FACILITY_OPTIONS, key))
+      .filter((label) => label !== ''),
+  };
+}
+
 export function conditionSummary(value: ConditionLike): string {
+  const labels = conditionLabels(value);
   const parts: string[] = [];
-  const open = optionLabel(CONDITION_OPEN_OPTIONS, value.open_status);
-  const fee = optionLabel(CONDITION_FEE_OPTIONS, value.fee_status);
-  const crowd = optionLabel(CONDITION_CROWD_OPTIONS, value.crowd_level);
-  if (open !== '') {
-    parts.push(open);
+  if (labels.openLabel !== '') {
+    parts.push(labels.openLabel);
   }
-  if (fee !== '') {
-    parts.push(fee);
+  if (labels.feeLabel !== '') {
+    parts.push(labels.feeLabel);
   }
-  if (crowd !== '') {
-    parts.push(crowd);
+  if (labels.crowdLabel !== '') {
+    parts.push(labels.crowdLabel);
   }
-  const facilities = (value.facilities ?? [])
-    .map((key) => optionLabel(CONDITION_FACILITY_OPTIONS, key))
-    .filter((label) => label !== '');
-  if (facilities.length > 0) {
-    parts.push(`有${facilities.join('/')}`);
+  if (labels.facilityLabels.length > 0) {
+    parts.push(`有${labels.facilityLabels.join('/')}`);
   }
   return parts.join(' · ');
 }
