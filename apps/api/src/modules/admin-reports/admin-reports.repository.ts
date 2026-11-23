@@ -25,6 +25,11 @@ export interface AdminReportRow {
   images: string[];
   fish_key: string | null;
   catch_weight_kg: Prisma.Decimal | null;
+  condition_open_status: string | null;
+  condition_fee_status: string | null;
+  condition_crowd_level: string | null;
+  condition_facilities: string[];
+  observed_at: Date | null;
   moderation_status: string;
   machine_result: Prisma.JsonValue | null;
   reject_reason: string | null;
@@ -177,6 +182,11 @@ const ADMIN_REPORT_SELECT = {
   images: true,
   fish_key: true,
   catch_weight_kg: true,
+  condition_open_status: true,
+  condition_fee_status: true,
+  condition_crowd_level: true,
+  condition_facilities: true,
+  observed_at: true,
   moderation_status: true,
   machine_result: true,
   reject_reason: true,
