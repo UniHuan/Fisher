@@ -146,7 +146,7 @@
 }
 
 .report-delete {
-  padding: 4rpx 8rpx;
+  padding: 12rpx 14rpx;
   color: #A93226;
   font-size: 24rpx;
 }

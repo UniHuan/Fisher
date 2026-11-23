@@ -159,8 +159,9 @@ input {
 .filter-chip {
   display: inline-flex;
   align-items: center;
+  min-height: 64rpx;
   margin-right: 12rpx;
-  padding: 10rpx 24rpx;
+  padding: 0 24rpx;
   border-radius: 999rpx;
   background: #EEF2EC;
   color: #5C6B64;
@@ -254,7 +255,7 @@ input {
 }
 
 .ugc-menu {
-  padding: 6rpx 12rpx;
+  padding: 14rpx 18rpx;
   color: #6B7772;
   font-size: 30rpx;
   line-height: 1;

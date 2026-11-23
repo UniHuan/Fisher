@@ -93,7 +93,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
-  padding: 12rpx 22rpx;
+  min-height: 64rpx;
+  padding: 0 24rpx;
   border: 1rpx solid #D8DFD8;
   border-radius: 999rpx;
   background: #F5F4EE;
@@ -449,7 +450,10 @@
 }
 
 .filter-chip {
-  padding: 12rpx 24rpx;
+  display: inline-flex;
+  align-items: center;
+  min-height: 64rpx;
+  padding: 0 26rpx;
   border: 1rpx solid #D8DFD8;
   border-radius: 999rpx;
   background: #ffffff;

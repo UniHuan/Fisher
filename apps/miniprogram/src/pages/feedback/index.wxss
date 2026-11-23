@@ -151,13 +151,13 @@
   position: absolute;
   top: -10rpx;
   right: -10rpx;
-  width: 36rpx;
-  height: 36rpx;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
   background: #123B32;
   color: #ffffff;
-  font-size: 26rpx;
-  line-height: 36rpx;
+  font-size: 30rpx;
+  line-height: 56rpx;
   text-align: center;
 }
 
