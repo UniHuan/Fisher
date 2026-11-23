@@ -72,6 +72,55 @@ describe('validateReportDraft', () => {
     expect(validateReportDraft({ ...baseDraft, image_count: 7 }).ok).toBe(false);
   });
 
+  it('accepts a structured-only condition draft', () => {
+    expect(
+      validateReportDraft({
+        content_type: 'condition',
+        content: '',
+        condition: { crowd_level: 'low' },
+        image_count: 0,
+        terms_accepted: true,
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it('rejects a condition draft without structured fields', () => {
+    const result = validateReportDraft({
+      content_type: 'condition',
+      content: '',
+      condition: {},
+      image_count: 0,
+      terms_accepted: true,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain('现场情况');
+    }
+  });
+
+  it('allows three condition images but rejects four', () => {
+    const draft = {
+      content_type: 'condition' as const,
+      content: '',
+      condition: { crowd_level: 'low' },
+      terms_accepted: true,
+    };
+    expect(validateReportDraft({ ...draft, image_count: 3 })).toEqual({ ok: true });
+    expect(validateReportDraft({ ...draft, image_count: 4 }).ok).toBe(false);
+  });
+
+  it('still requires content for non-condition drafts', () => {
+    expect(
+      validateReportDraft({
+        content_type: 'comment',
+        content: '',
+        condition: { crowd_level: 'low' },
+        image_count: 0,
+        terms_accepted: true,
+      }).ok,
+    ).toBe(false);
+  });
+
   it('rejects a draft without terms acceptance', () => {
     const result = validateReportDraft({ ...baseDraft, terms_accepted: false });
     expect(result.ok).toBe(false);

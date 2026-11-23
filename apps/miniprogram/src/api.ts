@@ -60,7 +60,7 @@ export type ProductChannelCard = components['schemas']['ProductChannelCardDto'];
 export type PurchaseAction = components['schemas']['PurchaseActionDto'];
 export type ProductCategory = ProductCard['category'];
 export type ProductQuerySurface = 'spot_detail' | 'brand_page' | 'home' | 'report_detail';
-export type ReportContentType = 'comment' | 'catch' | 'intel';
+export type ReportContentType = 'comment' | 'catch' | 'intel' | 'condition';
 export type MyReportStatusFilter = 'all' | 'pending' | 'published' | 'rejected' | 'removed';
 export type AbuseReason = 'ad' | 'abuse' | 'false_info' | 'privacy' | 'other';
 
@@ -539,6 +539,9 @@ export function contentTypeLabel(contentType: string): string {
   }
   if (contentType === 'intel') {
     return '情报';
+  }
+  if (contentType === 'condition') {
+    return '现场';
   }
   return '评论';
 }
