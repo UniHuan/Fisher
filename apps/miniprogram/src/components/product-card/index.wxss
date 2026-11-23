@@ -46,7 +46,7 @@
   overflow: hidden;
   margin-top: 6rpx;
   color: #5C6B64;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.45;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -70,7 +70,7 @@
 .product-card-price-label {
   flex-shrink: 0;
   color: #6B7772;
-  font-size: 20rpx;
+  font-size: 22rpx;
 }
 
 .product-card-price-value {
@@ -88,6 +88,6 @@
   border-radius: 6rpx;
   background: #E3EEE6;
   color: #1E6B57;
-  font-size: 20rpx;
+  font-size: 22rpx;
   white-space: nowrap;
 }

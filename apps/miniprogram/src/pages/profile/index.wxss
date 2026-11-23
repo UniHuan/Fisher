@@ -39,7 +39,7 @@
   display: block;
   margin-top: 6rpx;
   color: #6B7772;
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .content-head {
@@ -79,13 +79,13 @@
   display: block;
   margin-top: 10rpx;
   color: #6B7772;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.65;
 }
 
 .content-total {
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .filter-scroll {
@@ -124,7 +124,7 @@
 .report-time {
   flex: 0 0 auto;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .report-content {
@@ -148,14 +148,14 @@
 .report-delete {
   padding: 4rpx 8rpx;
   color: #A93226;
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .report-reject {
   display: block;
   margin-top: 8rpx;
   color: #A93226;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -164,7 +164,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14rpx 4rpx 0;
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .retry-link {
@@ -180,7 +180,7 @@
   padding: 18rpx 0 4rpx;
   text-align: center;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .settings-card {
@@ -214,7 +214,7 @@
 
 .settings-row-desc {
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -240,7 +240,7 @@
   margin-top: 14rpx;
   text-align: center;
   color: #6B7772;
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .logout-button {
@@ -264,7 +264,7 @@
   display: block;
   margin-top: 30rpx;
   text-align: center;
-  color: #96A09B;
-  font-size: 20rpx;
+  color: #6B7772;
+  font-size: 24rpx;
   letter-spacing: 0.04em;
 }

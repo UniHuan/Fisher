@@ -33,7 +33,7 @@ input {
   border-radius: 6rpx;
   background: #E3EEE6;
   color: #1E6B57;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.4;
 }
 
@@ -137,12 +137,12 @@ input {
   margin-top: 8rpx;
   text-align: right;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .form-hint {
   color: #6B7772;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -250,7 +250,7 @@ input {
 }
 
 .ugc-like-count {
-  font-size: 23rpx;
+  font-size: 24rpx;
 }
 
 .ugc-menu {

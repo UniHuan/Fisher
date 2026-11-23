@@ -9,7 +9,7 @@
 .create-kicker {
   display: block;
   color: #1E6B57;
-  font-size: 22rpx;
+  font-size: 24rpx;
   letter-spacing: 0.14em;
 }
 
@@ -34,7 +34,7 @@
 
 .spot-chip-label {
   color: #1E6B57;
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .spot-chip-name {
@@ -66,14 +66,14 @@
 
 .section-meta {
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .section-hint {
   display: block;
   margin-top: 12rpx;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.6;
 }
 
@@ -126,7 +126,7 @@
 
 .type-desc {
   color: #6B7772;
-  font-size: 20rpx;
+  font-size: 24rpx;
   line-height: 1.4;
 }
 
@@ -160,7 +160,7 @@
 
 .field-label {
   color: #5C6B64;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .field-control {
@@ -233,7 +233,7 @@
 
 .image-progress-text {
   color: #ffffff;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .image-add {
@@ -297,7 +297,7 @@
 
 .terms-aux {
   color: #6B7772;
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .terms-dot {
@@ -309,8 +309,8 @@
   display: block;
   margin-top: 8rpx;
   padding-left: 44rpx;
-  color: #96A09B;
-  font-size: 20rpx;
+  color: #6B7772;
+  font-size: 24rpx;
 }
 
 .feedback-link {
@@ -342,7 +342,7 @@
   margin-bottom: 12rpx;
   text-align: center;
   color: #6B7772;
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .action-row {

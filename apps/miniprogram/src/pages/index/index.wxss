@@ -12,7 +12,7 @@
 
 .hero-kicker {
   color: #8FB8A6;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.4;
 }
 
@@ -61,7 +61,7 @@
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 44rpx;
+  height: 52rpx;
   color: #1B2420;
   font-size: 28rpx;
 }
@@ -72,8 +72,8 @@
 
 .search-clear {
   flex: 0 0 auto;
-  width: 40rpx;
-  height: 40rpx;
+  width: 56rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -225,7 +225,7 @@
   border-radius: 4rpx;
   background: #FAE7E2;
   color: #A93226;
-  font-size: 20rpx;
+  font-size: 22rpx;
   line-height: 1.4;
 }
 
@@ -259,7 +259,7 @@
   align-items: center;
   gap: 8rpx;
   margin-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .freshness-dot {
@@ -487,7 +487,7 @@
   display: block;
   margin-top: 4rpx;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 

@@ -9,7 +9,7 @@
 .feedback-kicker {
   display: block;
   color: #1E6B57;
-  font-size: 22rpx;
+  font-size: 24rpx;
   letter-spacing: 0.14em;
 }
 
@@ -34,7 +34,7 @@
 
 .spot-chip-label {
   color: #1E6B57;
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .spot-chip-name {
@@ -66,14 +66,14 @@
 
 .section-meta {
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .section-hint {
   display: block;
   margin-top: 12rpx;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.6;
 }
 
@@ -85,8 +85,9 @@
 .category-chip {
   display: inline-flex;
   align-items: center;
+  min-height: 72rpx;
   margin-right: 12rpx;
-  padding: 14rpx 30rpx;
+  padding: 0 32rpx;
   border: 2rpx solid #E1E6DE;
   border-radius: 999rpx;
   background: #F8FAF5;
@@ -110,7 +111,7 @@
   display: block;
   margin-top: 12rpx;
   color: #6B7772;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -175,7 +176,7 @@
 
 .image-progress-text {
   color: #ffffff;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
 .image-add {
@@ -230,7 +231,7 @@
   margin-top: 8rpx;
   padding-left: 44rpx;
   color: #5C6B64;
-  font-size: 21rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -266,7 +267,7 @@
   margin-bottom: 12rpx;
   text-align: center;
   color: #6B7772;
-  font-size: 21rpx;
+  font-size: 24rpx;
 }
 
 .submit-button {
