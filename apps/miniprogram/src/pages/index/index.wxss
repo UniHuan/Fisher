@@ -255,6 +255,21 @@
   margin-top: 4rpx;
 }
 
+.spot-condition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 6rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.spot-condition-time {
+  color: #1E6B57;
+  font-weight: 600;
+}
+
 .freshness {
   display: flex;
   align-items: center;
