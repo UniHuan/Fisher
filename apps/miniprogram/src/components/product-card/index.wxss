@@ -69,7 +69,7 @@
 
 .product-card-price-label {
   flex-shrink: 0;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 22rpx;
 }
 

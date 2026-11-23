@@ -147,7 +147,7 @@
 
 .info-label {
   flex: 0 0 110rpx;
-  color: #6B7772;
+  color: #5C6B64;
 }
 
 .info-value {
@@ -168,7 +168,7 @@
 
 .verified-line {
   padding: 6rpx 8rpx 22rpx;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -202,7 +202,7 @@
 }
 
 .poi-more {
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -290,7 +290,7 @@
 .product-note {
   display: block;
   margin-top: 14rpx;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -312,7 +312,7 @@
 }
 
 .ugc-total {
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -434,7 +434,7 @@
 }
 
 .ugc-time {
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -481,7 +481,7 @@
 .ugc-end {
   padding: 18rpx 0 4rpx;
   text-align: center;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 

@@ -136,12 +136,12 @@ input {
   display: block;
   margin-top: 8rpx;
   text-align: right;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
 .form-hint {
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
   line-height: 1.5;
 }
@@ -237,7 +237,7 @@ input {
   align-items: center;
   gap: 6rpx;
   padding: 6rpx 0;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 24rpx;
 }
 
@@ -256,7 +256,7 @@ input {
 
 .ugc-menu {
   padding: 14rpx 18rpx;
-  color: #6B7772;
+  color: #5C6B64;
   font-size: 30rpx;
   line-height: 1;
   letter-spacing: 2rpx;

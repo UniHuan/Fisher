@@ -199,7 +199,7 @@
 
 .poi-sheet-label {
   flex: 0 0 120rpx;
-  color: #6B7772;
+  color: #5C6B64;
 }
 
 .poi-sheet-value {
