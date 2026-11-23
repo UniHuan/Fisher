@@ -50,6 +50,7 @@ const TEST_OPENIDS = [
   'openid-media-purge',
   'openid-media-purge2',
   'openid-media-banned',
+  'openid-media-condition',
 ] as const;
 
 /** Fails the test fixture loudly instead of hiding a missing row behind `undefined`. */
@@ -367,6 +368,36 @@ describe('UGC image moderation (e2e)', () => {
       await setUgcFeature(true);
     }
     await request(server).get(publicUrl).expect(200);
+  });
+
+  it('publishes a structured condition report after its image passes', async () => {
+    const spotId = await seedOpenSpot();
+    const user = await loginAppUser(server, 'openid-media-condition');
+    const image = await uploadImage(user);
+    const response = await request(server)
+      .post('/api/v1/reports')
+      .set(appAuthHeaders(user.access_token))
+      .send({
+        spot_id: spotId,
+        content_type: 'condition',
+        content: '',
+        condition: { crowd_level: 'low' },
+        image_keys: [image.key],
+        terms_version: TERMS_VERSION,
+      })
+      .expect(201);
+    const report = response.body.data as CreatedReport;
+    expect(report.moderation_status).toBe(MODERATION_STATUS.MACHINE_PENDING);
+
+    const checks = await checksFor(report.report_id);
+    expect(checks).toHaveLength(1);
+    await sendMediaCallback(server, required(checks[0]).trace_id, 'pass').expect(200);
+    expect(await reportStatus(report.report_id)).toBe(MODERATION_STATUS.PUBLISHED);
+
+    const row = await prisma.report.findUniqueOrThrow({
+      where: { report_id: report.report_id },
+    });
+    expect(row.condition_crowd_level).toBe('low');
   });
 
   it('rejects the whole report when any image is risky', async () => {

@@ -486,6 +486,17 @@ if ((result === null || result.suggest !== 'risky') && imageKeys.length > 0) {
 
 Pass `shape.condition` into `repository.createReport`.
 
+In `report-moderation.service.ts`, change `isTextPassed` so a structured-only result counts as passed:
+
+```ts
+const result = machineResult as { suggest?: unknown; skipped?: unknown };
+return result.suggest === 'pass' || result.skipped === 'structured_only';
+```
+
+Without this, a condition report with images would stay `machine_pending` forever because the media callback recompute requires a passed text result.
+
+Add `apps/api/test/media-moderation.e2e-spec.ts` coverage: upload one image, create a structured-only condition report, send the media callback as `pass`, and assert the report becomes `published` and keeps `condition_crowd_level`.
+
 In `reports.repository.ts`, add to `CreateReportRowInput`:
 
 ```ts
