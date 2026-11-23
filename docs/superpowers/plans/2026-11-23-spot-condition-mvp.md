@@ -165,10 +165,13 @@ Run:
 
 ```bash
 npx pnpm@10.0.0 --filter @szfisher/api prisma:generate
-npx pnpm@10.0.0 db:test:prepare
+DATABASE_URL='postgresql://szfisher:szfisher@localhost:5432/szfisher_test?schema=public' \
+  npx pnpm@10.0.0 --filter @szfisher/api exec prisma migrate deploy
 ```
 
-Expected: client generation succeeds and the test database migration applies without drift.
+Expected: client generation succeeds and the additive migration applies without a database reset.
+
+Do not use `pnpm db:test:prepare` in an agent session: it resets the test database and Prisma requires explicit human consent for that destructive action. CI has its own disposable database and may continue to use the prepare script.
 
 - [ ] **Step 4: Verify the columns exist**
 
@@ -1463,11 +1466,11 @@ npx pnpm@10.0.0 lint
 npx pnpm@10.0.0 typecheck
 npx pnpm@10.0.0 --filter @szfisher/miniprogram test
 npx pnpm@10.0.0 --filter @szfisher/api test
-npx pnpm@10.0.0 test:integration
+npx pnpm@10.0.0 --filter @szfisher/api test:e2e
 npx pnpm@10.0.0 openapi:check
 ```
 
-Expected: all exit 0.
+Expected: all exit 0. The focused e2e command uses the migrated test database; the root `test:integration` script resets it and therefore requires explicit human consent before running in an agent session.
 
 - [ ] **Step 2: Run the focused e2e suites**
 

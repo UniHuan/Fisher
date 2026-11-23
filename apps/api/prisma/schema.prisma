@@ -326,26 +326,31 @@ model UserSession {
 }
 
 model Report {
-  report_id         String    @id @db.Char(26)
-  spot_id           String    @db.Char(26)
-  user_id           String    @db.Char(26)
-  content_type      String    @db.VarChar(16)
-  content           String    @db.Text
-  images            String[]  @default([])
-  fish_key          String?   @db.VarChar(64)
-  catch_weight_kg   Decimal?  @db.Decimal(5, 2)
-  report_time       DateTime  @default(now()) @db.Timestamptz(6)
-  like_count        Int       @default(0)
-  moderation_status String    @default("machine_pending") @db.VarChar(32)
-  machine_result    Json?     @db.JsonB
-  auditor_id        String?   @db.Char(26)
-  audit_time        DateTime? @db.Timestamptz(6)
-  reject_reason     String?   @db.VarChar(200)
-  adopted_at        DateTime? @db.Timestamptz(6)
-  adopted_by        String?   @db.Char(26)
-  created_at        DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
-  deleted_at        DateTime? @db.Timestamptz(6)
+  report_id             String    @id @db.Char(26)
+  spot_id               String    @db.Char(26)
+  user_id               String    @db.Char(26)
+  content_type          String    @db.VarChar(16)
+  content               String    @db.Text
+  images                String[]  @default([])
+  fish_key              String?   @db.VarChar(64)
+  catch_weight_kg       Decimal?  @db.Decimal(5, 2)
+  condition_open_status String?   @db.VarChar(16)
+  condition_fee_status  String?   @db.VarChar(16)
+  condition_crowd_level String?   @db.VarChar(16)
+  condition_facilities  String[]  @default([])
+  observed_at           DateTime? @db.Timestamptz(6)
+  report_time           DateTime  @default(now()) @db.Timestamptz(6)
+  like_count            Int       @default(0)
+  moderation_status     String    @default("machine_pending") @db.VarChar(32)
+  machine_result        Json?     @db.JsonB
+  auditor_id            String?   @db.Char(26)
+  audit_time            DateTime? @db.Timestamptz(6)
+  reject_reason         String?   @db.VarChar(200)
+  adopted_at            DateTime? @db.Timestamptz(6)
+  adopted_by            String?   @db.Char(26)
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at            DateTime? @db.Timestamptz(6)
 
   spot             Spot               @relation(fields: [spot_id], references: [spot_id], onDelete: Restrict)
   user             AppUser            @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
@@ -359,6 +364,7 @@ model Report {
   @@index([user_id, created_at])
   @@index([moderation_status, created_at])
   @@index([content_type, created_at])
+  @@index([spot_id, content_type, moderation_status, observed_at(sort: Desc)])
   @@map("report")
 }
 
