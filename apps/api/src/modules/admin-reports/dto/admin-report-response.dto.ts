@@ -59,6 +59,21 @@ export class AdminReportItemDto {
   @ApiProperty({ type: String, nullable: true, example: '2.50' })
   catch_weight_kg!: string | null;
 
+  @ApiProperty({ type: String, nullable: true, example: 'open' })
+  condition_open_status!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'free' })
+  condition_fee_status!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'low' })
+  condition_crowd_level!: string | null;
+
+  @ApiProperty({ type: [String], example: ['toilet', 'parking'] })
+  condition_facilities!: string[];
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  observed_at!: string | null;
+
   @ApiProperty({ enum: MODERATION_STATUSES, example: 'published' })
   moderation_status!: string;
 

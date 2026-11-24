@@ -46,9 +46,31 @@ export const REPORT_CONTENT_TYPE = {
   COMMENT: 'comment',
   CATCH: 'catch',
   INTEL: 'intel',
+  CONDITION: 'condition',
 } as const;
 
 export type ReportContentType = (typeof REPORT_CONTENT_TYPE)[keyof typeof REPORT_CONTENT_TYPE];
+
+export const CONDITION_CROWD_LEVEL = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+} as const;
+
+export type ConditionCrowdLevel =
+  (typeof CONDITION_CROWD_LEVEL)[keyof typeof CONDITION_CROWD_LEVEL];
+
+export const CONDITION_FACILITY = {
+  TOILET: 'toilet',
+  PARKING: 'parking',
+  FOOD: 'food',
+  WATER: 'water',
+  SHADE: 'shade',
+  RENTAL: 'rental',
+} as const;
+
+export type ConditionFacility =
+  (typeof CONDITION_FACILITY)[keyof typeof CONDITION_FACILITY];
 
 export const MODERATION_STATUS = {
   MACHINE_PENDING: 'machine_pending',

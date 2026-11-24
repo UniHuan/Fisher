@@ -98,6 +98,60 @@
   font-weight: 600;
 }
 
+.condition-card {
+  margin-top: 20rpx;
+  padding: 22rpx 24rpx;
+}
+
+.condition-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.condition-title {
+  color: #1B2420;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.condition-time {
+  color: #5C6B64;
+  font-size: 24rpx;
+}
+
+.condition-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.condition-meta {
+  display: block;
+  margin-top: 12rpx;
+  color: #5C6B64;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.condition-empty {
+  display: block;
+  margin-top: 12rpx;
+  color: #5C6B64;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.condition-button {
+  margin-top: 16rpx;
+  width: 220rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  font-size: 26rpx;
+}
+
 .alert {
   margin-bottom: 16rpx;
   padding: 20rpx 22rpx;

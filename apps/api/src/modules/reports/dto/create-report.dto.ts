@@ -1,9 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MODERATION_STATUS, REPORT_CONTENT_TYPE } from '@szfisher/shared';
+import {
+  CONDITION_CROWD_LEVEL,
+  CONDITION_FACILITY,
+  MODERATION_STATUS,
+  OPEN_STATUS,
+  REPORT_CONTENT_TYPE,
+} from '@szfisher/shared';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsIn,
+  IsISO8601,
   IsNumber,
   IsOptional,
   IsString,
@@ -12,6 +20,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 
 const CONTENT_TYPES: readonly string[] = Object.values(REPORT_CONTENT_TYPE);
@@ -19,6 +28,35 @@ const CONTENT_TYPES: readonly string[] = Object.values(REPORT_CONTENT_TYPE);
 /** Work-bucket keys produced by `POST /uploads/ugc`; ownership is checked later. */
 export const REPORT_IMAGE_KEY_PATTERN =
   /^ugc\/[A-Za-z0-9]{26}\/[A-Za-z0-9]{26}\.webp$/;
+
+export class CreateReportConditionDto {
+  @ApiPropertyOptional({ enum: Object.values(OPEN_STATUS) })
+  @IsOptional()
+  @IsIn(Object.values(OPEN_STATUS))
+  open_status?: string;
+
+  @ApiPropertyOptional({ enum: ['free', 'paid', 'member'] })
+  @IsOptional()
+  @IsIn(['free', 'paid', 'member'])
+  fee_status?: string;
+
+  @ApiPropertyOptional({ enum: Object.values(CONDITION_CROWD_LEVEL) })
+  @IsOptional()
+  @IsIn(Object.values(CONDITION_CROWD_LEVEL))
+  crowd_level?: string;
+
+  @ApiPropertyOptional({ type: [String], maxItems: 6 })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsIn(Object.values(CONDITION_FACILITY), { each: true })
+  facilities?: string[];
+
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional()
+  @IsISO8601()
+  observed_at?: string;
+}
 
 export class CreateReportDto {
   @ApiProperty({ example: '01HX0000000000000000000000' })
@@ -72,6 +110,12 @@ export class CreateReportDto {
   @Min(0.01)
   @Max(999.99)
   catch_weight_kg?: number;
+
+  @ApiPropertyOptional({ type: () => CreateReportConditionDto })
+  @IsOptional()
+  @Type(() => CreateReportConditionDto)
+  @ValidateNested()
+  condition?: CreateReportConditionDto;
 
   @ApiPropertyOptional({
     description: 'Required the first time the user accepts the community terms',

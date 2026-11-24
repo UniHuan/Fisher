@@ -64,6 +64,7 @@ const TEST_OPENIDS = [
   'openid-admin-audit-target',
   'openid-admin-race-reject',
   'openid-admin-race-remove',
+  'openid-admin-condition',
 ] as const;
 
 interface CreatedReport {
@@ -95,6 +96,11 @@ interface AdminReportItem {
   content_type: string;
   content: string;
   images: string[];
+  condition_open_status: string | null;
+  condition_fee_status: string | null;
+  condition_crowd_level: string | null;
+  condition_facilities: string[];
+  observed_at: string | null;
   moderation_status: string;
   reject_reason: string | null;
   abuse_count: number;
@@ -372,6 +378,39 @@ describe('Admin moderation (e2e)', () => {
     await setUgcFeature(false);
     await app.close();
     rmSync(storageRoot, { recursive: true, force: true });
+  });
+
+  it('returns condition fields in the admin queue and filters by type', async () => {
+    const reviewer = await loginAs(app, ADMIN_ROLE.REVIEWER);
+    const owner = await loginUser('openid-admin-condition');
+    const spot = await seedOpenSpot();
+    const created = await createReport(owner, spot.spot_id, {
+      content_type: 'condition',
+      content: '',
+      condition: {
+        open_status: 'open',
+        fee_status: 'free',
+        crowd_level: 'low',
+        facilities: ['toilet', 'parking'],
+      },
+    });
+
+    const queue = await listQueue(reviewer, {
+      queue: 'spot_check',
+      spot_id: spot.spot_id,
+      content_type: 'condition',
+      limit: 50,
+    });
+    const item = queue.items.find((row) => row.report_id === created.report_id);
+    expect(item).toMatchObject({
+      content_type: 'condition',
+      content: '',
+      condition_open_status: 'open',
+      condition_fee_status: 'free',
+      condition_crowd_level: 'low',
+      condition_facilities: ['toilet', 'parking'],
+    });
+    expect(item?.observed_at).toEqual(expect.any(String));
   });
 
   it('filters queues, computes SLA and author rejected counts, and maps image URLs', async () => {

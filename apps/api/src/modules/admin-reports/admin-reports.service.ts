@@ -667,6 +667,11 @@ export class AdminReportsService {
       images: this.imageUrls(row.report_id, row.moderation_status, row.images),
       fish_key: row.fish_key,
       catch_weight_kg: row.catch_weight_kg === null ? null : row.catch_weight_kg.toFixed(2),
+      condition_open_status: row.condition_open_status,
+      condition_fee_status: row.condition_fee_status,
+      condition_crowd_level: row.condition_crowd_level,
+      condition_facilities: row.condition_facilities,
+      observed_at: row.observed_at === null ? null : row.observed_at.toISOString(),
       moderation_status: row.moderation_status,
       machine_result: row.machine_result === null
         ? null

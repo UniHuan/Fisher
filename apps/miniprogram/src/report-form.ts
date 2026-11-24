@@ -1,10 +1,18 @@
-export type ReportContentType = 'comment' | 'catch' | 'intel';
+export type ReportContentType = 'comment' | 'catch' | 'intel' | 'condition';
+
+export interface ReportConditionDraft {
+  open_status?: string | null;
+  fee_status?: string | null;
+  crowd_level?: string | null;
+  facilities?: string[];
+}
 
 export interface ReportDraft {
   content_type: ReportContentType;
   content: string;
   fish_key?: string | null;
   catch_weight_kg?: number | null;
+  condition?: ReportConditionDraft | null;
   image_count?: number;
   terms_accepted: boolean;
 }
@@ -13,6 +21,7 @@ export type ReportValidation = { ok: true } | { ok: false; message: string };
 
 export const MAX_CONTENT_CODE_POINTS = 500;
 export const MAX_REPORT_IMAGES = 6;
+export const MAX_CONDITION_IMAGES = 3;
 export const MIN_CATCH_WEIGHT_KG = 0.01;
 export const MAX_CATCH_WEIGHT_KG = 999.99;
 
@@ -77,11 +86,27 @@ export async function submitReportWithImages<TInput extends object, TResult>(
 
 export function validateReportDraft(draft: ReportDraft): ReportValidation {
   const content = typeof draft.content === 'string' ? draft.content.trim() : '';
-  if (content.length === 0) {
-    return fail('请填写内容');
-  }
-  if (contentCodePointCount(content) > MAX_CONTENT_CODE_POINTS) {
-    return fail(`内容不能超过 ${MAX_CONTENT_CODE_POINTS} 字`);
+  const isCondition = draft.content_type === 'condition';
+  if (isCondition) {
+    if (contentCodePointCount(content) > MAX_CONTENT_CODE_POINTS) {
+      return fail(`内容不能超过 ${MAX_CONTENT_CODE_POINTS} 字`);
+    }
+    const condition = draft.condition ?? {};
+    const hasCondition =
+      (typeof condition.open_status === 'string' && condition.open_status !== '') ||
+      (typeof condition.fee_status === 'string' && condition.fee_status !== '') ||
+      (typeof condition.crowd_level === 'string' && condition.crowd_level !== '') ||
+      (condition.facilities?.length ?? 0) > 0;
+    if (!hasCondition) {
+      return fail('请至少选择一项现场情况');
+    }
+  } else {
+    if (content.length === 0) {
+      return fail('请填写内容');
+    }
+    if (contentCodePointCount(content) > MAX_CONTENT_CODE_POINTS) {
+      return fail(`内容不能超过 ${MAX_CONTENT_CODE_POINTS} 字`);
+    }
   }
 
   if (draft.content_type === 'catch') {
@@ -104,8 +129,9 @@ export function validateReportDraft(draft: ReportDraft): ReportValidation {
   }
 
   const imageCount = draft.image_count ?? 0;
-  if (!Number.isInteger(imageCount) || imageCount < 0 || imageCount > MAX_REPORT_IMAGES) {
-    return fail(`图片最多 ${MAX_REPORT_IMAGES} 张`);
+  const maxImages = isCondition ? MAX_CONDITION_IMAGES : MAX_REPORT_IMAGES;
+  if (!Number.isInteger(imageCount) || imageCount < 0 || imageCount > maxImages) {
+    return fail(`图片最多 ${maxImages} 张`);
   }
 
   if (!draft.terms_accepted) {

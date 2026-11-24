@@ -10,6 +10,7 @@ import {
   type ReportContentType,
 } from '../../api';
 import {
+  MAX_CONDITION_IMAGES,
   MAX_CONTENT_CODE_POINTS,
   MAX_REPORT_IMAGES,
   contentCodePointCount,
@@ -17,11 +18,20 @@ import {
   validateReportDraft,
   type ReportDraft,
 } from '../../report-form';
+import {
+  CONDITION_CROWD_OPTIONS,
+  CONDITION_FACILITY_OPTIONS,
+  CONDITION_FEE_OPTIONS,
+  CONDITION_OBSERVED_OPTIONS,
+  CONDITION_OPEN_OPTIONS,
+  observedAtFor,
+} from '../../condition';
 import { ensureSession, getMe, getSession } from '../../session';
 
 interface LoadOptions {
   spot_id?: string;
   spot_name?: string;
+  type?: string;
 }
 
 interface ContentTypeOption {
@@ -40,6 +50,12 @@ interface DraftImage {
   path: string;
   key: string;
   progress: number;
+}
+
+interface ConditionFacilityOption {
+  key: string;
+  label: string;
+  selected: boolean;
 }
 
 interface CreateData {
@@ -64,6 +80,16 @@ interface CreateData {
   fishKey: string;
   fishLabel: string;
   weight: string;
+  conditionOpen: string;
+  conditionFee: string;
+  conditionCrowd: string;
+  conditionFacilities: string[];
+  conditionObserved: string;
+  conditionOpenOptions: typeof CONDITION_OPEN_OPTIONS;
+  conditionFeeOptions: typeof CONDITION_FEE_OPTIONS;
+  conditionCrowdOptions: typeof CONDITION_CROWD_OPTIONS;
+  conditionFacilityOptions: ConditionFacilityOption[];
+  conditionObservedOptions: typeof CONDITION_OBSERVED_OPTIONS;
   images: DraftImage[];
   maxImages: number;
   termsAccepted: boolean;
@@ -106,6 +132,11 @@ interface CreateMethods {
   login(): Promise<void>;
   loadMe(): Promise<void>;
   selectType(event: TypeTapEvent): void;
+  selectConditionOpen(event: TypeTapEvent): void;
+  selectConditionFee(event: TypeTapEvent): void;
+  selectConditionCrowd(event: TypeTapEvent): void;
+  toggleConditionFacility(event: TypeTapEvent): void;
+  selectConditionObserved(event: TypeTapEvent): void;
   onContentInput(event: InputEvent): void;
   onFishChange(event: PickerEvent): void;
   onWeightInput(event: InputEvent): void;
@@ -131,6 +162,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { key: 'comment', label: '评论', mark: '评', desc: '现场观察' },
   { key: 'catch', label: '鱼获', mark: '获', desc: '鱼种与重量' },
   { key: 'intel', label: '情报', mark: '报', desc: '收费与鱼情' },
+  { key: 'condition', label: '现场', mark: '现', desc: '开放与人流' },
 ];
 
 function decodeOption(value: string | undefined): string {
@@ -167,6 +199,19 @@ Page<CreateData, CreateMethods>({
     fishKey: '',
     fishLabel: '',
     weight: '',
+    conditionOpen: '',
+    conditionFee: '',
+    conditionCrowd: '',
+    conditionFacilities: [],
+    conditionObserved: 'now',
+    conditionOpenOptions: CONDITION_OPEN_OPTIONS,
+    conditionFeeOptions: CONDITION_FEE_OPTIONS,
+    conditionCrowdOptions: CONDITION_CROWD_OPTIONS,
+    conditionFacilityOptions: CONDITION_FACILITY_OPTIONS.map((option) => ({
+      ...option,
+      selected: false,
+    })),
+    conditionObservedOptions: CONDITION_OBSERVED_OPTIONS,
     images: [],
     maxImages: MAX_REPORT_IMAGES,
     termsAccepted: false,
@@ -180,9 +225,13 @@ Page<CreateData, CreateMethods>({
   },
 
   onLoad(options: LoadOptions) {
+    const contentType: ReportContentType =
+      options.type === 'condition' ? 'condition' : 'comment';
     this.setData({
       spotId: decodeOption(options.spot_id),
       spotName: decodeOption(options.spot_name),
+      contentType,
+      maxImages: contentType === 'condition' ? MAX_CONDITION_IMAGES : MAX_REPORT_IMAGES,
     });
     void this.init();
   },
@@ -287,11 +336,59 @@ Page<CreateData, CreateMethods>({
     }
     this.setData({
       contentType: option.key,
+      maxImages: option.key === 'condition' ? MAX_CONDITION_IMAGES : MAX_REPORT_IMAGES,
       submitError: '',
       ...(option.key === 'catch'
         ? {}
         : { fishIndex: 0, fishKey: '', fishLabel: '', weight: '' }),
     });
+    this.syncBackGuard();
+  },
+
+  selectConditionOpen(event: TypeTapEvent): void {
+    const key = event.currentTarget.dataset.type;
+    this.setData({
+      conditionOpen: this.data.conditionOpen === key ? '' : key,
+      submitError: '',
+    });
+    this.syncBackGuard();
+  },
+
+  selectConditionFee(event: TypeTapEvent): void {
+    const key = event.currentTarget.dataset.type;
+    this.setData({
+      conditionFee: this.data.conditionFee === key ? '' : key,
+      submitError: '',
+    });
+    this.syncBackGuard();
+  },
+
+  selectConditionCrowd(event: TypeTapEvent): void {
+    const key = event.currentTarget.dataset.type;
+    this.setData({
+      conditionCrowd: this.data.conditionCrowd === key ? '' : key,
+      submitError: '',
+    });
+    this.syncBackGuard();
+  },
+
+  toggleConditionFacility(event: TypeTapEvent): void {
+    const key = event.currentTarget.dataset.type;
+    const options = this.data.conditionFacilityOptions.map((option) =>
+      option.key === key ? { ...option, selected: !option.selected } : option,
+    );
+    this.setData({
+      conditionFacilityOptions: options,
+      conditionFacilities: options
+        .filter((option) => option.selected)
+        .map((option) => option.key),
+      submitError: '',
+    });
+    this.syncBackGuard();
+  },
+
+  selectConditionObserved(event: TypeTapEvent): void {
+    this.setData({ conditionObserved: event.currentTarget.dataset.type });
     this.syncBackGuard();
   },
 
@@ -473,6 +570,16 @@ Page<CreateData, CreateMethods>({
 
     const weightText = this.data.weight.trim();
     const imageCount = this.data.images.length;
+    const condition =
+      this.data.contentType === 'condition'
+        ? {
+            open_status: this.data.conditionOpen || undefined,
+            fee_status: this.data.conditionFee || undefined,
+            crowd_level: this.data.conditionCrowd || undefined,
+            facilities: this.data.conditionFacilities,
+            observed_at: observedAtFor(this.data.conditionObserved),
+          }
+        : undefined;
     const draft: ReportDraft = {
       content_type: this.data.contentType,
       content: this.data.content,
@@ -481,6 +588,7 @@ Page<CreateData, CreateMethods>({
         this.data.contentType === 'catch' && weightText !== ''
           ? Number(weightText)
           : null,
+      condition,
       image_count: imageCount,
       terms_accepted: this.data.termsAccepted,
     };
@@ -501,6 +609,9 @@ Page<CreateData, CreateMethods>({
       if (draft.catch_weight_kg !== null && draft.catch_weight_kg !== undefined) {
         input.catch_weight_kg = draft.catch_weight_kg;
       }
+    }
+    if (condition !== undefined) {
+      input.condition = condition as CreateReportInput['condition'];
     }
 
     this.setData({ submitting: true, submitError: '' });

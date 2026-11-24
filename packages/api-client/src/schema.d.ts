@@ -1462,6 +1462,17 @@ export interface components {
             /** @example 已发布 */
             message: string;
         };
+        CreateReportConditionDto: {
+            /** @enum {string} */
+            open_status?: "open" | "paused" | "banned";
+            /** @enum {string} */
+            fee_status?: "free" | "paid" | "member";
+            /** @enum {string} */
+            crowd_level?: "low" | "medium" | "high";
+            facilities?: string[];
+            /** Format: date-time */
+            observed_at?: string;
+        };
         CreateReportDto: {
             /** @example 01HX0000000000000000000000 */
             spot_id: string;
@@ -1469,7 +1480,7 @@ export interface components {
              * @example comment
              * @enum {string}
              */
-            content_type: "comment" | "catch" | "intel";
+            content_type: "comment" | "catch" | "intel" | "condition";
             /**
              * @description Plain text, 1 to 500 Unicode code points after trimming. Emoji count as one.
              * @example 今天罗非爆护，巴掌大，钓了十几条。
@@ -1492,6 +1503,7 @@ export interface components {
              * @example 2.5
              */
             catch_weight_kg?: number;
+            condition?: components["schemas"]["CreateReportConditionDto"];
             /**
              * @description Required the first time the user accepts the community terms
              * @example 2026-11-20
@@ -1543,7 +1555,7 @@ export interface components {
              * @example comment
              * @enum {string}
              */
-            content_type: "comment" | "catch" | "intel";
+            content_type: "comment" | "catch" | "intel" | "condition";
             /** @example 今天鱼口不错 */
             content: string;
             /**
@@ -1591,7 +1603,7 @@ export interface components {
              * @example comment
              * @enum {string}
              */
-            content_type: "comment" | "catch" | "intel";
+            content_type: "comment" | "catch" | "intel" | "condition";
             /** @example 今天鱼口不错 */
             content: string;
             /**
@@ -1927,7 +1939,7 @@ export interface components {
              * @example comment
              * @enum {string}
              */
-            content_type: "comment" | "catch" | "intel";
+            content_type: "comment" | "catch" | "intel" | "condition";
             /** @example 今天鱼口不错，停车位充足。 */
             content: string;
             /**
@@ -1941,6 +1953,21 @@ export interface components {
             fish_key: string | null;
             /** @example 2.50 */
             catch_weight_kg: string | null;
+            /** @example open */
+            condition_open_status: string | null;
+            /** @example free */
+            condition_fee_status: string | null;
+            /** @example low */
+            condition_crowd_level: string | null;
+            /**
+             * @example [
+             *       "toilet",
+             *       "parking"
+             *     ]
+             */
+            condition_facilities: string[];
+            /** Format: date-time */
+            observed_at: string | null;
             /**
              * @example published
              * @enum {string}
@@ -2111,7 +2138,7 @@ export interface components {
              * @example comment
              * @enum {string}
              */
-            content_type: "comment" | "catch" | "intel";
+            content_type: "comment" | "catch" | "intel" | "condition";
             /** @example 今天鱼口不错 */
             content: string;
             /**
@@ -2995,6 +3022,34 @@ export interface components {
             /** @example true */
             deleted: boolean;
         };
+        PublicConditionDto: {
+            /** @example open */
+            open_status: string | null;
+            /** @example free */
+            fee_status: string | null;
+            /** @example low */
+            crowd_level: string | null;
+            /**
+             * @example [
+             *       "toilet",
+             *       "parking"
+             *     ]
+             */
+            facilities: string[];
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            reported_at: string;
+            /** @example 3 */
+            age_hours: number;
+            /**
+             * @example today
+             * @enum {string}
+             */
+            freshness: "today" | "recent" | "stale";
+            /** @example 3 */
+            report_count_7d?: number;
+        };
         PublicSpotListItemDto: {
             /** @example 01HX0000000000000000000000 */
             spot_id: string;
@@ -3033,6 +3088,7 @@ export interface components {
              * @enum {string}
              */
             freshness: "fresh" | "stale" | "expired";
+            latest_condition: components["schemas"]["PublicConditionDto"] | null;
             /** @example 1830 */
             distance_m?: number;
         };
@@ -3177,6 +3233,7 @@ export interface components {
              * @enum {string}
              */
             freshness: "fresh" | "stale" | "expired";
+            latest_condition: components["schemas"]["PublicConditionDto"] | null;
             /** @example 1830 */
             distance_m?: number;
             /** @example 440300 */
@@ -5289,7 +5346,7 @@ export interface operations {
     ReportsController_list: {
         parameters: {
             query?: {
-                content_type?: "comment" | "catch" | "intel";
+                content_type?: "comment" | "catch" | "intel" | "condition";
                 /** @description Opaque cursor: base64(created_at|report_id) */
                 cursor?: string;
                 limit?: number;
@@ -6103,7 +6160,7 @@ export interface operations {
             query?: {
                 /** @description spot_check=published; pending=machine_pending; rejected=machine_rejected/human_rejected; removed=removed */
                 queue?: "spot_check" | "pending" | "rejected" | "removed";
-                content_type?: "comment" | "catch" | "intel";
+                content_type?: "comment" | "catch" | "intel" | "condition";
                 /** @description Spot ULID filter */
                 spot_id?: string;
                 /** @description Partial, case-insensitive spot name filter applied before pagination */

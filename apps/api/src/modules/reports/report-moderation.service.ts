@@ -29,7 +29,8 @@ function isTextPassed(machineResult: Prisma.JsonValue | null): boolean {
   if (typeof machineResult !== 'object' || machineResult === null) {
     return false;
   }
-  return (machineResult as { suggest?: unknown }).suggest === 'pass';
+  const result = machineResult as { suggest?: unknown; skipped?: unknown };
+  return result.suggest === 'pass' || result.skipped === 'structured_only';
 }
 
 function toCheckResult(event: WechatMediaEvent): Prisma.InputJsonObject {

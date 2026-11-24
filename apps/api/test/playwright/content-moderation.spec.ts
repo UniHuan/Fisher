@@ -164,6 +164,28 @@ async function seedReport(input: {
   return id;
 }
 
+async function seedConditionReport(): Promise<string> {
+  const id = ulid();
+  await prisma.report.create({
+    data: {
+      report_id: id,
+      user_id: authorId,
+      spot_id: spotId,
+      content_type: 'condition',
+      content: '',
+      condition_open_status: 'open',
+      condition_fee_status: 'free',
+      condition_crowd_level: 'low',
+      condition_facilities: ['toilet', 'parking'],
+      observed_at: new Date(),
+      moderation_status: 'published',
+      machine_result: { skipped: 'structured_only' },
+    },
+  });
+  reportIds.push(id);
+  return id;
+}
+
 test.beforeAll(async () => {
   const dictionaryCount = await prisma.dictionary.count();
   if (dictionaryCount === 0) {
@@ -378,4 +400,36 @@ test('reviewer cannot see user enforcement actions', async ({ page }) => {
 
   await expect(row.getByRole('button', { name: '封禁用户', exact: true })).toHaveCount(0);
   await expect(row.getByRole('button', { name: '限制发布', exact: true })).toHaveCount(0);
+});
+
+test('shows structured condition fields in the moderation drawer', async ({ page }) => {
+  test.setTimeout(120_000);
+  await seedConditionReport();
+  await loginWithPassword(page, reviewerAccount);
+
+  await page.getByRole('button', { name: '内容审核', exact: true }).click();
+  await expect(page.getByRole('tab', { name: /待抽查/ })).toBeVisible();
+  const spotInput = page.getByPlaceholder('钓点名称或 ID');
+  await spotInput.fill(SPOT_NAME);
+  await spotInput.press('Enter');
+
+  const typeSelect = page.locator('.moderation-filter-row .ant-select').first();
+  await typeSelect.click();
+  await page
+    .locator('.ant-select-dropdown:visible')
+    .getByText('现场', { exact: true })
+    .last()
+    .click();
+
+  const row = page.locator('.ant-table-row').filter({ hasText: '现场' }).first();
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  await row.getByRole('button', { name: '详情' }).click();
+
+  const drawer = page.locator('.ant-drawer:visible');
+  await expect(drawer.getByText('现场情况')).toBeVisible();
+  await expect(drawer.getByText('开放', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('免费', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('人少', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('厕所')).toBeVisible();
+  await expect(drawer.getByText('仅结构化上报')).toBeVisible();
 });

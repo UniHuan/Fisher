@@ -3,6 +3,8 @@ import {
   ADMIN_ROLE,
   CLIENT_TYPE,
   COMMERCE_CHANNEL,
+  CONDITION_CROWD_LEVEL,
+  CONDITION_FACILITY,
   ERROR_CODES,
   FEEDBACK_CATEGORY,
   FEEDBACK_IMAGE_STATUS,
@@ -119,7 +121,21 @@ describe('shared contract', () => {
   });
 
   it('exposes the UGC enums', () => {
-    expect(REPORT_CONTENT_TYPE).toEqual({ COMMENT: 'comment', CATCH: 'catch', INTEL: 'intel' });
+    expect(REPORT_CONTENT_TYPE).toEqual({
+      COMMENT: 'comment',
+      CATCH: 'catch',
+      INTEL: 'intel',
+      CONDITION: 'condition',
+    });
+    expect(CONDITION_CROWD_LEVEL).toEqual({ LOW: 'low', MEDIUM: 'medium', HIGH: 'high' });
+    expect(CONDITION_FACILITY).toEqual({
+      TOILET: 'toilet',
+      PARKING: 'parking',
+      FOOD: 'food',
+      WATER: 'water',
+      SHADE: 'shade',
+      RENTAL: 'rental',
+    });
     expect(MODERATION_STATUS.HUMAN_APPROVED).toBe('human_approved');
     expect(ABUSE_REASON).toEqual({
       AD: 'ad', ABUSE: 'abuse', FALSE_INFO: 'false_info', PRIVACY: 'privacy', OTHER: 'other',

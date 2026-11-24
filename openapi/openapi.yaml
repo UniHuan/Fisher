@@ -1020,6 +1020,7 @@ paths:
               - comment
               - catch
               - intel
+              - condition
         - name: cursor
           required: false
           in: query
@@ -1855,6 +1856,7 @@ paths:
               - comment
               - catch
               - intel
+              - condition
         - name: spot_id
           required: false
           in: query
@@ -5690,6 +5692,35 @@ components:
         - report_id
         - moderation_status
         - message
+    CreateReportConditionDto:
+      type: object
+      properties:
+        open_status:
+          type: string
+          enum:
+            - open
+            - paused
+            - banned
+        fee_status:
+          type: string
+          enum:
+            - free
+            - paid
+            - member
+        crowd_level:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+        facilities:
+          maxItems: 6
+          type: array
+          items:
+            type: string
+        observed_at:
+          type: string
+          format: date-time
     CreateReportDto:
       type: object
       properties:
@@ -5702,6 +5733,7 @@ components:
             - comment
             - catch
             - intel
+            - condition
           example: comment
         content:
           type: string
@@ -5729,6 +5761,8 @@ components:
           minimum: 0.01
           maximum: 999.99
           example: 2.5
+        condition:
+          $ref: "#/components/schemas/CreateReportConditionDto"
         terms_version:
           type: string
           description: Required the first time the user accepts the community terms
@@ -5816,6 +5850,7 @@ components:
             - comment
             - catch
             - intel
+            - condition
           example: comment
         content:
           type: string
@@ -5909,6 +5944,7 @@ components:
             - comment
             - catch
             - intel
+            - condition
           example: comment
         content:
           type: string
@@ -6556,6 +6592,7 @@ components:
             - comment
             - catch
             - intel
+            - condition
           example: comment
         content:
           type: string
@@ -6576,6 +6613,29 @@ components:
           type: string
           nullable: true
           example: "2.50"
+        condition_open_status:
+          type: string
+          nullable: true
+          example: open
+        condition_fee_status:
+          type: string
+          nullable: true
+          example: free
+        condition_crowd_level:
+          type: string
+          nullable: true
+          example: low
+        condition_facilities:
+          example:
+            - toilet
+            - parking
+          type: array
+          items:
+            type: string
+        observed_at:
+          type: string
+          format: date-time
+          nullable: true
         moderation_status:
           type: string
           enum: &a99
@@ -6645,6 +6705,11 @@ components:
         - images
         - fish_key
         - catch_weight_kg
+        - condition_open_status
+        - condition_fee_status
+        - condition_crowd_level
+        - condition_facilities
+        - observed_at
         - moderation_status
         - machine_result
         - reject_reason
@@ -8431,6 +8496,56 @@ components:
           example: true
       required:
         - deleted
+    PublicConditionDto:
+      type: object
+      properties:
+        open_status:
+          type: string
+          nullable: true
+          example: open
+        fee_status:
+          type: string
+          nullable: true
+          example: free
+        crowd_level:
+          type: string
+          nullable: true
+          example: low
+        facilities:
+          example:
+            - toilet
+            - parking
+          type: array
+          items:
+            type: string
+        observed_at:
+          type: string
+          format: date-time
+        reported_at:
+          type: string
+          format: date-time
+        age_hours:
+          type: integer
+          example: 3
+        freshness:
+          type: string
+          enum:
+            - today
+            - recent
+            - stale
+          example: today
+        report_count_7d:
+          type: integer
+          example: 3
+      required:
+        - open_status
+        - fee_status
+        - crowd_level
+        - facilities
+        - observed_at
+        - reported_at
+        - age_hours
+        - freshness
     PublicSpotListItemDto:
       type: object
       properties:
@@ -8491,6 +8606,11 @@ components:
             - stale
             - expired
           example: fresh
+        latest_condition:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PublicConditionDto"
         distance_m:
           type: integer
           example: 1830
@@ -8508,6 +8628,7 @@ components:
         - verified_at
         - updated_at
         - freshness
+        - latest_condition
     PublicSpotPageDto:
       type: object
       properties:
@@ -8787,6 +8908,11 @@ components:
           type: string
           enum: *a118
           example: fresh
+        latest_condition:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PublicConditionDto"
         distance_m:
           type: integer
           example: 1830
@@ -8866,6 +8992,7 @@ components:
         - verified_at
         - updated_at
         - freshness
+        - latest_condition
         - city_code
         - address
         - latitude

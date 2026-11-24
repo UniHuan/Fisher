@@ -1,4 +1,5 @@
 import { track } from '../../analytics';
+import { conditionFreshnessText, conditionSummary } from '../../condition';
 import {
   dictionaryLabel,
   distanceText,
@@ -21,6 +22,8 @@ interface DisplaySpot {
   openTone: string;
   freshnessLabel: string;
   freshnessTone: string;
+  conditionText: string;
+  conditionFreshness: string;
   distanceText: string;
   cover: string;
   isCore: boolean;
@@ -215,6 +218,12 @@ Page<IndexData, IndexMethods>({
           : freshness === 'stale'
             ? 'tag-warn'
             : '',
+      conditionText:
+        item.latest_condition === null ? '' : conditionSummary(item.latest_condition),
+      conditionFreshness:
+        item.latest_condition === null
+          ? ''
+          : conditionFreshnessText(item.latest_condition),
       distanceText: distanceText(item.distance_m),
       cover: mediaUrl(item.cover_image_url),
       isCore: item.is_core,

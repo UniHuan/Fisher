@@ -104,6 +104,10 @@
               class="tag tag-soft"
             >{{fish}}</text>
           </view>
+          <view wx:if="{{item.conditionText}}" class="spot-condition">
+            <text class="spot-condition-time">{{item.conditionFreshness}}</text>
+            <text class="spot-condition-text">{{item.conditionText}}</text>
+          </view>
           <view wx:if="{{item.freshnessLabel}}" class="freshness {{item.freshnessTone}}">
             <text class="freshness-dot"></text>
             <text>{{item.freshnessLabel}}</text>

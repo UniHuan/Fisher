@@ -3,6 +3,36 @@ import { OPEN_STATUS } from '@szfisher/shared';
 import type { Freshness } from '../public-spot.types';
 
 const FRESHNESS = ['fresh', 'stale', 'expired'] as const;
+const CONDITION_FRESHNESS = ['today', 'recent', 'stale'] as const;
+
+export class PublicConditionDto {
+  @ApiProperty({ type: String, nullable: true, example: 'open' })
+  open_status!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'free' })
+  fee_status!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'low' })
+  crowd_level!: string | null;
+
+  @ApiProperty({ type: [String], example: ['toilet', 'parking'] })
+  facilities!: string[];
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  observed_at!: string;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  reported_at!: string;
+
+  @ApiProperty({ type: 'integer', example: 3 })
+  age_hours!: number;
+
+  @ApiProperty({ enum: CONDITION_FRESHNESS, example: 'today' })
+  freshness!: (typeof CONDITION_FRESHNESS)[number];
+
+  @ApiProperty({ type: 'integer', required: false, example: 3 })
+  report_count_7d?: number;
+}
 
 export class PublicSpotListItemDto {
   @ApiProperty({ example: '01HX0000000000000000000000' })
@@ -43,6 +73,9 @@ export class PublicSpotListItemDto {
 
   @ApiProperty({ enum: FRESHNESS, example: 'fresh' })
   freshness!: Freshness;
+
+  @ApiProperty({ type: () => PublicConditionDto, nullable: true })
+  latest_condition!: PublicConditionDto | null;
 
   @ApiProperty({ type: 'integer', required: false, example: 1830 })
   distance_m?: number;

@@ -1,5 +1,19 @@
 export type Freshness = 'fresh' | 'stale' | 'expired';
 
+export type ConditionFreshness = 'today' | 'recent' | 'stale';
+
+export interface PublicCondition {
+  open_status: string | null;
+  fee_status: string | null;
+  crowd_level: string | null;
+  facilities: string[];
+  observed_at: string;
+  reported_at: string;
+  age_hours: number;
+  freshness: ConditionFreshness;
+  report_count_7d?: number;
+}
+
 export interface PublicNavigation {
   name: string;
   latitude: string;
@@ -21,6 +35,7 @@ export interface PublicSpotListItem {
   verified_at: string | null;
   updated_at: string;
   freshness: Freshness;
+  latest_condition: PublicCondition | null;
   distance_m?: number;
 }
 

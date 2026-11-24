@@ -30,6 +30,7 @@ import {
   toProductCardView,
   type ProductCardView,
 } from '../../commerce';
+import { conditionFreshnessText, conditionLabels } from '../../condition';
 import { ensureSession, getMe, getSession } from '../../session';
 
 interface DisplayPoiGroup {
@@ -64,8 +65,20 @@ interface DisplayReport {
   likeBusy: boolean;
 }
 
+interface ConditionView {
+  hasData: boolean;
+  openLabel: string;
+  feeLabel: string;
+  crowdLabel: string;
+  facilityLabels: string[];
+  timeText: string;
+  countText: string;
+  freshnessTone: string;
+}
+
 interface DetailData {
   spot: PublicSpotDetail | null;
+  conditionView: ConditionView;
   dictionaries: PublicDictionaries | null;
   loading: boolean;
   error: string;
@@ -152,6 +165,7 @@ interface ReportImageTapEvent {
 interface DetailMethods {
   load(spotId: string): Promise<void>;
   display(spot: PublicSpotDetail): void;
+  openConditionReport(): void;
   loadProducts(spot: PublicSpotDetail): Promise<void>;
   openProduct(event: ProductTapEvent): void;
   openShop(): void;
@@ -212,6 +226,16 @@ let currentSpotId = '';
 Page<DetailData, DetailMethods>({
   data: {
     spot: null,
+    conditionView: {
+      hasData: false,
+      openLabel: '',
+      feeLabel: '',
+      crowdLabel: '',
+      facilityLabels: [],
+      timeText: '',
+      countText: '',
+      freshnessTone: '',
+    },
     dictionaries: null,
     loading: true,
     error: '',
@@ -456,6 +480,17 @@ Page<DetailData, DetailMethods>({
     });
   },
 
+  openConditionReport(): void {
+    if (!this.data.ugcVisible) {
+      return;
+    }
+    track('condition_cta_click', { spot_id: currentSpotId });
+    const spotName = this.data.spot?.spot_name ?? '';
+    wx.navigateTo({
+      url: `/pages/report/create?spot_id=${encodeURIComponent(currentSpotId)}&spot_name=${encodeURIComponent(spotName)}&type=condition`,
+    });
+  },
+
   refreshMe(): void {
     if (getSession() === null) {
       return;
@@ -465,6 +500,32 @@ Page<DetailData, DetailMethods>({
 
   display(spot: PublicSpotDetail): void {
     const dictionaries = this.data.dictionaries;
+    const condition = spot.latest_condition;
+    const conditionView: ConditionView =
+      condition === null
+        ? {
+            hasData: false,
+            openLabel: '',
+            feeLabel: '',
+            crowdLabel: '',
+            facilityLabels: [],
+            timeText: '',
+            countText: '',
+            freshnessTone: '',
+          }
+        : {
+            hasData: true,
+            ...conditionLabels(condition),
+            timeText: conditionFreshnessText(condition),
+            countText: `${condition.report_count_7d ?? 0} 人上报`,
+            freshnessTone: condition.freshness === 'stale' ? 'tag-warn' : '',
+          };
+    if (condition !== null) {
+      track('condition_view', {
+        spot_id: spot.spot_id,
+        freshness: condition.freshness,
+      });
+    }
     const freshness =
       spot.freshness === 'fresh' ? '' : freshnessLabel(spot.freshness);
     const poiGroups = spot.poi_summary.map((group) => ({
@@ -485,6 +546,7 @@ Page<DetailData, DetailMethods>({
       dictionaryLabel(dictionaries?.fee_status, spot.fee_status) || '收费未标注';
     this.setData({
       spot,
+      conditionView,
       images: spot.images.map((url) => mediaUrl(url)),
       fishLabels,
       methodLabels,
